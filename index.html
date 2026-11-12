@@ -202,6 +202,7 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
             <option value="1">1 bar/s</option><option value="2">2 bar/s</option><option value="4" selected>4 bar/s</option><option value="10">10 bar/s</option><option value="25">25 bar/s</option>
           </select>
           <button class="btn" id="b-jump" title="Jump forward to the next 09:30 ET open">Next open</button>
+          <input type="date" class="ctl" id="jump-date" aria-label="Jump to date"><button class="btn" id="b-jumpdate">Go</button>
           <span class="clock" id="clock">–</span>
         </div>
         <div id="chart-wrap">
@@ -300,10 +301,12 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
           <h3>Market data</h3>
           <p class="note" id="data-status"></p>
           <div class="headrow" style="margin-top:10px">
-            <select class="ctl" id="imp-sym" aria-label="Instrument to import"></select>
-            <input type="file" id="imp-file" accept=".csv,.txt" aria-label="CSV file">
+            <label class="mut" for="imp-sym">Instrument</label><select class="ctl" id="imp-sym"></select>
+            <label class="mut" for="imp-tz">Times in file</label><select class="ctl" id="imp-tz"><option value="auto">Detect automatically</option><option value="et">New York time (ET)</option><option value="utc">UTC</option></select>
+            <input type="file" id="imp-file" accept=".csv,.txt" multiple aria-label="CSV files">
           </div>
-          <p class="note" style="margin-top:8px">CSV columns: <span class="num">time,open,high,low,close,volume</span>. Time can be Unix seconds or <span class="num">2025-03-03 09:30:00</span> in exchange time. Any bar size works (1-second to 1-hour). Imported data replaces the sample for that instrument and stays in this browser.</p>
+          <p class="note" id="imp-progress" style="margin-top:8px" hidden></p>
+          <p class="note" style="margin-top:8px">Works with Databento CSV exports (OHLCV-1m or OHLCV-1s), FirstRate Data, and any CSV with <span class="num">time,open,high,low,close,volume</span> columns. You can pick several files at once, like one per year. 1-second files are combined into 15-second bars. If a file holds several contract months, the app keeps the most active contract each day. Imported data replaces the sample for that instrument and stays in this browser only. Don't upload market data files to your public GitHub repo, because data licenses don't allow sharing them.</p>
         </div>
         <div class="card">
           <h3>Backup</h3>
@@ -337,7 +340,7 @@ const rt = (p, tick = 0.25) => Math.round(p / tick) * tick;
 /* ---------- Timeframes ---------- */
 const TFS = [
   ['15S', 15], ['30S', 30], ['1m', 60], ['3m', 180], ['5m', 300], ['15m', 900], ['30m', 1800],
-  ['1H', 3600], ['4H', 14400], ['1D', 86400], ['1W', 604800],
+  ['1H', 3600], ['4H', 14400], ['1D', 86400], ['1W', 604800], ['1Mo', 2592000],
 ];
 function tfLabel(sec) {
   const f = TFS.find(t => t[1] === sec); if (f) return f[0];
@@ -346,10 +349,12 @@ function tfLabel(sec) {
   if (sec % 60 === 0) return sec / 60 + 'm';
   return sec + 'S';
 }
+let mDay = -1, mVal = 0;
 function bucket(t, tf) {
   if (tf < 86400) return Math.floor(t / tf) * tf;
   const day = Math.floor((t + 6 * 3600) / 86400); // trading day starts 18:00 ET
   if (tf === 86400) return day * 86400;
+  if (tf === 2592000) { if (day !== mDay) { mDay = day; const d = new Date(day * 86400000); mVal = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000; } return mVal; }
   const monday = day - ((day + 3) % 7);
   return monday * 86400;
 }
@@ -396,24 +401,97 @@ function idxAtOrBefore(sym, t) { const T = DATA[sym].t; let lo = 0, hi = T.lengt
 function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open('tape-replay', 1); r.onupgradeneeded = () => r.result.createObjectStore('series'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
 async function idbPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('series', 'readwrite'); tx.objectStore('series').put(val, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) { console.warn(e); } }
 async function idbAll() { try { const db = await idb(); return await new Promise((res) => { const out = {}; const tx = db.transaction('series'); const st = tx.objectStore('series'); const rq = st.openCursor(); rq.onsuccess = () => { const c = rq.result; if (c) { out[c.key] = c.value; c.continue(); } else res(out); }; rq.onerror = () => res({}); }); } catch (e) { return {}; } }
-function parseCSV(text) {
-  const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const out = [];
-  for (const row of rows) {
-    const p = row.split(/[,;\t]/); if (p.length < 5) continue;
-    let ts = p[0].trim();
-    let t = /^\d{9,13}$/.test(ts) ? Number(ts) : Date.parse(ts.replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(ts) ? '' : 'Z')) / 1000;
-    if (t > 1e11) t = Math.floor(t / 1000);
-    const o = +p[1], h = +p[2], l = +p[3], c = +p[4], v = p[5] ? +p[5] : 0;
-    if (!isFinite(t) || !isFinite(o) || !isFinite(c)) continue;
-    out.push([t, o, h, l, c, v]);
+const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+const offCache = new Map();
+function utcToEt(t) { // DST changes happen on whole UTC hours, so cache the offset per hour
+  const hk = Math.floor(t / 3600); let off = offCache.get(hk);
+  if (off === undefined) { const g = {}; for (const x of ET_FMT.formatToParts(new Date(hk * 3600000))) g[x.type] = +x.value;
+    off = Date.UTC(g.year, g.month - 1, g.day, g.hour % 24, g.minute) / 1000 - hk * 3600; offCache.set(hk, off); }
+  return t + off;
+}
+function parseTime(s) { // returns [seconds, isUtc]
+  s = s.replace(/"/g, '').trim();
+  if (/^\d+$/.test(s)) {
+    if (s.length === 8) return [Date.UTC(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)) / 1000, false];
+    const n = Number(s); if (s.length >= 18) return [Math.floor(n / 1e9), true]; if (s.length >= 15) return [Math.floor(n / 1e6), true]; if (s.length >= 12) return [Math.floor(n / 1e3), true]; return [n, true];
   }
-  out.sort((a, b) => a[0] - b[0]);
-  const n = out.length; if (n < 10) throw new Error('Found fewer than 10 valid rows. Check the column order: time,open,high,low,close,volume.');
-  const X = { t: new Float64Array(n), o: new Float64Array(n), h: new Float64Array(n), l: new Float64Array(n), c: new Float64Array(n), v: new Float64Array(n) };
-  out.forEach((r, i) => { X.t[i] = r[0]; X.o[i] = r[1]; X.h[i] = r[2]; X.l[i] = r[3]; X.c[i] = r[4]; X.v[i] = r[5]; });
-  const diffs = []; for (let i = 1; i < Math.min(n, 500); i++) diffs.push(X.t[i] - X.t[i - 1]); diffs.sort((a, b) => a - b);
-  X.base = Math.max(1, diffs[Math.floor(diffs.length / 2)]);
+  let m = s.match(/^(\d{4})(\d{2})(\d{2})[ T]?(\d{2}):?(\d{2}):?(\d{2})?$/);
+  if (m) return [Date.UTC(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) / 1000, false];
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T]?(?:(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) return [Date.UTC(+m[3], m[1] - 1, +m[2], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)) / 1000, false];
+  const z = /[zZ]$|[+-]\d\d:?\d\d$/.test(s);
+  const iso = s.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1');
+  return [Math.floor(Date.parse(z ? iso : iso + 'Z') / 1000), z];
+}
+class Grow { constructor(T) { this.T = T; this.a = new T(1 << 16); this.n = 0; } push(v) { if (this.n === this.a.length) { const b = new this.T(this.a.length * 2); b.set(this.a); this.a = b; } this.a[this.n++] = v; } get() { return this.a.subarray(0, this.n); } }
+async function importFiles(files, tzMode, onProgress) {
+  const G = { t: new Grow(Float64Array), o: new Grow(Float32Array), h: new Grow(Float32Array), l: new Grow(Float32Array), c: new Grow(Float32Array), v: new Grow(Float32Array), s: new Grow(Uint16Array) };
+  const symIds = new Map(), symNames = [];
+  let anyUtc = false, sawText = false, total = files.reduce((a, f) => a + f.size, 0), done = 0;
+  for (const f of files) {
+    let col = null, rest = '', bytes = 0, lineNo = 0;
+    const handle = (line) => {
+      line = line.trim(); if (!line) return;
+      const p = line.split(/[,;\t]/);
+      if (!col) {
+        const low = p.map(x => x.replace(/"/g, '').trim().toLowerCase());
+        if (low.some(x => x === 'open' || x === 'close' || x === '<open>')) {
+          const f2 = (...names) => low.findIndex(x => names.includes(x.replace(/[<>]/g, '')));
+          col = { t: f2('ts_event', 'timestamp', 'datetime', 'date_time', 'time', 'date', 'ts_recv'), o: f2('open'), h: f2('high'), l: f2('low'), c: f2('close', 'last'), v: f2('volume', 'vol'), s: f2('symbol', 'raw_symbol') };
+          const d = f2('date'), tm = f2('time'); if (d >= 0 && tm >= 0 && d !== tm) { col.t = d; col.t2 = tm; }
+          return;
+        }
+        col = /^\d{1,2}:\d{2}/.test((p[1] || '').trim()) ? { t: 0, t2: 1, o: 2, h: 3, l: 4, c: 5, v: 6, s: -1 } : { t: 0, o: 1, h: 2, l: 3, c: 4, v: 5, s: -1 };
+      }
+      const ts = col.t2 != null ? p[col.t] + ' ' + p[col.t2] : p[col.t];
+      const [t, utc] = parseTime(ts || ''); if (!isFinite(t)) return;
+      let o = +p[col.o], h = +p[col.h], l = +p[col.l], c = +p[col.c];
+      if (!isFinite(o) || !isFinite(c)) return;
+      if (o > 1e7) { o /= 1e9; h /= 1e9; l /= 1e9; c /= 1e9; } // Databento fixed-point prices
+      let sid = 0;
+      if (col.s >= 0) { const name = (p[col.s] || '').replace(/"/g, '').trim(); if (name.includes('-') || name.includes(':')) return; // skip calendar spreads
+        sid = symIds.get(name); if (sid === undefined) { sid = symNames.length; symIds.set(name, sid); symNames.push(name); } }
+      if (utc) anyUtc = true; sawText = true;
+      G.t.push(t); G.o.push(o); G.h.push(h); G.l.push(l); G.c.push(c); G.v.push(col.v >= 0 ? +p[col.v] || 0 : 0); G.s.push(sid);
+    };
+    const reader = f.stream().pipeThrough(new TextDecoderStream()).getReader();
+    for (;;) {
+      const { value, done: end } = await reader.read(); if (end) break;
+      bytes += value.length; const chunk = rest + value; const lines = chunk.split('\n'); rest = lines.pop();
+      for (const ln of lines) handle(ln);
+      onProgress && onProgress((done + Math.min(bytes, f.size)) / total, G.t.n);
+    }
+    handle(rest); done += f.size;
+  }
+  let n = G.t.n; if (n < 10) throw new Error('Found fewer than 10 price rows. Check that the file has time, open, high, low, close columns.');
+  const T = G.t.get(), O = G.o.get(), H = G.h.get(), L = G.l.get(), Cc = G.c.get(), V = G.v.get(), SI = G.s.get();
+  const toEt = tzMode === 'utc' || (tzMode === 'auto' && anyUtc);
+  if (toEt) for (let i = 0; i < n; i++) T[i] = utcToEt(T[i]);
+  // Several contracts in one file: keep the most traded contract per trading day
+  let keep = null;
+  if (symNames.length > 1) {
+    const vol = new Map();
+    for (let i = 0; i < n; i++) { const k = Math.floor((T[i] + 21600) / 86400) * 65536 + SI[i]; vol.set(k, (vol.get(k) || 0) + V[i]); }
+    const best = new Map();
+    for (const [k, v] of vol) { const day = Math.floor(k / 65536), sid = k % 65536; const b = best.get(day); if (!b || v > b[1]) best.set(day, [sid, v]); }
+    keep = new Uint8Array(n); for (let i = 0; i < n; i++) keep[i] = best.get(Math.floor((T[i] + 21600) / 86400))[0] === SI[i] ? 1 : 0;
+  }
+  let idx = []; for (let i = 0; i < n; i++) if (!keep || keep[i]) idx.push(i);
+  let sorted = true; for (let i = 1; i < idx.length; i++) if (T[idx[i]] < T[idx[i - 1]]) { sorted = false; break; }
+  if (!sorted) idx.sort((a, b) => T[a] - T[b]);
+  // median bar spacing
+  const diffs = []; for (let i = 1; i < Math.min(idx.length, 2000); i++) { const d = T[idx[i]] - T[idx[i - 1]]; if (d > 0) diffs.push(d); } diffs.sort((a, b) => a - b);
+  const raw = Math.max(1, diffs[Math.floor(diffs.length / 2)] || 60);
+  const base = raw < 15 ? 15 : raw; // 1-second data is rolled up into 15-second bars
+  const X = { t: new Float64Array(idx.length), o: new Float32Array(idx.length), h: new Float32Array(idx.length), l: new Float32Array(idx.length), c: new Float32Array(idx.length), v: new Float32Array(idx.length), base };
+  let k = -1;
+  for (const i of idx) {
+    const b = base === raw ? T[i] : Math.floor(T[i] / base) * base;
+    if (k >= 0 && X.t[k] === b) { if (base === raw) continue; X.h[k] = Math.max(X.h[k], H[i]); X.l[k] = Math.min(X.l[k], L[i]); X.c[k] = Cc[i]; X.v[k] += V[i]; continue; }
+    k++; X.t[k] = b; X.o[k] = O[i]; X.h[k] = H[i]; X.l[k] = L[i]; X.c[k] = Cc[i]; X.v[k] = V[i];
+  }
+  for (const key of ['t', 'o', 'h', 'l', 'c', 'v']) X[key] = X[key].slice(0, k + 1);
+  X.contracts = symNames.length; X.convertedFromUtc = toEt;
   return X;
 }
 
@@ -476,6 +554,7 @@ function processBar(sess, sym, i) {
 }
 function advanceTo(sess, newT) {
   let any = false;
+  if (!sess.orders.length && !sess.positions.length) { for (const sym of sess.syms) ptr[sym] = Math.max(ptr[sym], idxAtOrBefore(sym, newT)); sess.cursorT = newT; return false; }
   for (const sym of sess.syms) {
     const T = DATA[sym].t;
     while (ptr[sym] + 1 < T.length && T[ptr[sym] + 1] <= newT) { ptr[sym]++; processBar(sess, sym, ptr[sym]); any = true; }
@@ -815,8 +894,9 @@ function renderSessions() {
       ${confirmDel === s.id ? `<button class="btn danger" data-delyes="${s.id}">Delete for good</button><button class="btn" data-delno="1">Keep</button>` : `<button class="btn danger" data-del="${s.id}">Delete</button>`}</div></div>`;
   }).join('');
   $('#ns-syms').innerHTML = SYMS.map(s => `<label><input type="checkbox" value="${s}" ${s === 'MNQ' || s === 'MES' ? 'checked' : ''}> ${s}</label>`).join('');
-  const D = DATA.MNQ, mn = new Date(D.t[0] * 1000).toISOString().slice(0, 10), mx = new Date(D.t[D.t.length - 1] * 1000).toISOString().slice(0, 10);
-  const di = $('#ns-date'); di.min = mn; di.max = mx; if (!di.value) di.value = new Date((D.t[0] + 86400 * 2) * 1000).toISOString().slice(0, 10);
+  const lo = Math.min(...SYMS.map(x => DATA[x].t[0])), hi = Math.max(...SYMS.map(x => DATA[x].t[DATA[x].t.length - 1]));
+  const D = DATA.MNQ, mn = new Date(lo * 1000).toISOString().slice(0, 10), mx = new Date(hi * 1000).toISOString().slice(0, 10);
+  const di = $('#ns-date'); di.min = mn; di.max = mx; if (!di.value || di.value < mn || di.value > mx) di.value = new Date((lo + 86400 * 2) * 1000).toISOString().slice(0, 10);
   $('#imp-sym').innerHTML = SYMS.map(s => `<option>${s}</option>`).join('');
   $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : 'your imported data'}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
     + '<br><span>The sample is generated, realistic-looking price action for practice. It is not real market history. Import real data below to backtest for real.</span>';
@@ -842,6 +922,12 @@ $('#b-next').addEventListener('click', stepBar);
 $('#b-play').addEventListener('click', () => playT ? stopPlay() : startPlay());
 $('#speed').addEventListener('change', () => { if (playT) startPlay(); });
 $('#b-jump').addEventListener('click', jumpToOpen);
+$('#b-jumpdate').addEventListener('click', () => {
+  const v = $('#jump-date').value; if (!v) { toast('Pick a date first.'); return; }
+  const sess = S(), target = Date.parse(v + 'T09:29:00Z') / 1000;
+  if (target <= sess.cursorT) { toast('Replay only moves forward. To start earlier, create a new session with that start date.'); return; }
+  stopPlay(); advanceTo(sess, target); rebuildChart(true); renderAll(); save(); toast('Jumped to ' + fmtT(target) + ' ET.');
+});
 $('#o-long').addEventListener('click', () => setSide(1));
 $('#o-short').addEventListener('click', () => setSide(-1));
 function setSide(s) { ticket.side = s; $('#o-long').setAttribute('aria-pressed', s > 0); $('#o-short').setAttribute('aria-pressed', s < 0); renderTicket(); }
@@ -900,11 +986,16 @@ $('#b-csv').addEventListener('click', async () => {
 $('#b-export').addEventListener('click', async () => { const txt = JSON.stringify(store); $('#io').value = txt; try { await navigator.clipboard.writeText(txt); toast('Backup copied to your clipboard.'); } catch (e) { $('#io').select(); toast('Select the backup text and copy it.'); } });
 $('#b-import').addEventListener('click', () => { try { const s = JSON.parse($('#io').value); if (!s.sessions || !Array.isArray(s.sessions)) throw 0; store = s; openSession(store.activeId || store.sessions[0].id); renderSessions(); toast('Backup restored.'); } catch (e) { toast('That text is not a Tape Replay backup. Paste the whole backup and try again.'); } });
 $('#imp-file').addEventListener('change', async e => {
-  const f = e.target.files[0]; if (!f) return; const sym = $('#imp-sym').value;
-  try { const X = parseCSV(await f.text()); DATA[sym] = X; await idbPut(sym, X);
+  const files = Array.from(e.target.files || []); if (!files.length) return; const sym = $('#imp-sym').value, pr = $('#imp-progress');
+  pr.hidden = false; pr.textContent = 'Reading ' + files.length + ' file' + (files.length > 1 ? 's' : '') + '…';
+  try {
+    const X = await importFiles(files, $('#imp-tz').value, (f, rows) => { pr.textContent = `Reading… ${Math.round(f * 100)}% · ${rows.toLocaleString()} rows`; });
+    DATA[sym] = X; pr.textContent = 'Saving to this browser…'; await idbPut(sym, X);
     for (const s of store.sessions) if (s.syms.includes(sym)) { if (s.cursorT < X.t[0] || s.cursorT > X.t[X.t.length - 1]) s.cursorT = X.t[Math.min(X.t.length - 1, 200)]; }
-    openSession(store.activeId); renderSessions(); toast(`Imported ${X.t.length.toLocaleString()} ${tfLabel(X.base)} bars for ${sym}.`);
-  } catch (err) { toast(err.message || 'Could not read that file.'); }
+    openSession(store.activeId); renderSessions();
+    pr.textContent = `Imported ${X.t.length.toLocaleString()} ${tfLabel(X.base)} bars for ${sym}, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}${X.convertedFromUtc ? ', times converted from UTC to New York time' : ''}${X.contracts > 1 ? ', most active of ' + X.contracts + ' contracts each day' : ''}.`;
+    toast(`Imported ${sym}. Create a new session to start replaying it.`);
+  } catch (err) { pr.textContent = err.message || 'Could not read that file.'; }
   e.target.value = '';
 });
 
