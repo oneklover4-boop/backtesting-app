@@ -303,10 +303,10 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
           <div class="headrow" style="margin-top:10px">
             <label class="mut" for="imp-sym">Instrument</label><select class="ctl" id="imp-sym"></select>
             <label class="mut" for="imp-tz">Times in file</label><select class="ctl" id="imp-tz"><option value="auto">Detect automatically</option><option value="et">New York time (ET)</option><option value="utc">UTC</option></select>
-            <input type="file" id="imp-file" accept=".csv,.txt" multiple aria-label="CSV files">
+            <input type="file" id="imp-file" accept=".csv,.txt,.zip" multiple aria-label="CSV files">
           </div>
           <p class="note" id="imp-progress" style="margin-top:8px" hidden></p>
-          <p class="note" style="margin-top:8px">Works with Databento CSV exports (OHLCV-1m or OHLCV-1s), FirstRate Data, and any CSV with <span class="num">time,open,high,low,close,volume</span> columns. You can pick several files at once, like one per year. 1-second files are combined into 15-second bars. If a file holds several contract months, the app keeps the most active contract each day. Imported data replaces the sample for that instrument and stays in this browser only. Don't upload market data files to your public GitHub repo, because data licenses don't allow sharing them.</p>
+          <p class="note" style="margin-top:8px">Works with Databento downloads (the .zip as it arrives, or the CSV files inside it; OHLCV-1m or OHLCV-1s), FirstRate Data, and any CSV with <span class="num">time,open,high,low,close,volume</span> columns. You can pick several files at once, like one per year. 1-second files are combined into 15-second bars. If a file holds several contract months, the app keeps the most active contract each day. Imported data replaces the sample for that instrument and stays in this browser only. Don't upload market data files to your public GitHub repo, because data licenses don't allow sharing them.</p>
         </div>
         <div class="card">
           <h3>Backup</h3>
@@ -424,7 +424,49 @@ function parseTime(s) { // returns [seconds, isUtc]
   return [Math.floor(Date.parse(z ? iso : iso + 'Z') / 1000), z];
 }
 class Grow { constructor(T) { this.T = T; this.a = new T(1 << 16); this.n = 0; } push(v) { if (this.n === this.a.length) { const b = new this.T(this.a.length * 2); b.set(this.a); this.a = b; } this.a[this.n++] = v; } get() { return this.a.subarray(0, this.n); } }
+async function unzipEntries(file) {
+  const tailLen = Math.min(file.size, 65557 + 20);
+  const tail = new DataView(await file.slice(file.size - tailLen).arrayBuffer());
+  let e = -1; for (let i = tailLen - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error('This .zip file looks damaged. Double-click it in Finder and pick the files inside.');
+  let count = tail.getUint16(e + 10, true), cdSize = tail.getUint32(e + 12, true), cdOff = tail.getUint32(e + 16, true);
+  if (cdOff === 0xFFFFFFFF || count === 0xFFFF || cdSize === 0xFFFFFFFF) { // zip64
+    const L = e - 20;
+    if (L >= 0 && tail.getUint32(L, true) === 0x07064b50) { const zo = Number(tail.getBigUint64(L + 8, true)); const z = new DataView(await file.slice(zo, zo + 56).arrayBuffer()); count = Number(z.getBigUint64(32, true)); cdSize = Number(z.getBigUint64(40, true)); cdOff = Number(z.getBigUint64(48, true)); }
+  }
+  const cd = new DataView(await file.slice(cdOff, cdOff + cdSize).arrayBuffer()), dec = new TextDecoder();
+  const out = [], skipped = []; let p = 0;
+  for (let k = 0; k < count && p + 46 <= cd.byteLength; k++) {
+    if (cd.getUint32(p, true) !== 0x02014b50) break;
+    const method = cd.getUint16(p + 10, true); let csize = cd.getUint32(p + 20, true), usize = cd.getUint32(p + 24, true);
+    const nlen = cd.getUint16(p + 28, true), xlen = cd.getUint16(p + 30, true), clen = cd.getUint16(p + 32, true); let loff = cd.getUint32(p + 42, true);
+    const name = dec.decode(new Uint8Array(cd.buffer, p + 46, nlen));
+    let x = p + 46 + nlen; const xe = x + xlen;
+    while (x + 4 <= xe) { const id = cd.getUint16(x, true), sz = cd.getUint16(x + 2, true);
+      if (id === 1) { let q = x + 4; if (usize === 0xFFFFFFFF) { usize = Number(cd.getBigUint64(q, true)); q += 8; } if (csize === 0xFFFFFFFF) { csize = Number(cd.getBigUint64(q, true)); q += 8; } if (loff === 0xFFFFFFFF) loff = Number(cd.getBigUint64(q, true)); }
+      x += 4 + sz; }
+    p += 46 + nlen + xlen + clen;
+    if (name.endsWith('/')) continue;
+    if (!/\.(csv|txt)$/i.test(name)) { skipped.push(name); continue; }
+    if (method !== 0 && method !== 8) throw new Error('This .zip uses a packing method the app cannot open. Double-click it in Finder and pick the files inside.');
+    out.push({ name, loff, csize, size: usize, method });
+  }
+  if (!out.length) throw new Error(skipped.some(n => /\.(zst|dbn)/i.test(n)) ? 'The files in this .zip are compressed Databento files (.zst / .dbn). Request the data again with Encoding CSV and Compression None.' : 'No CSV files found inside this .zip.');
+  for (const en of out) {
+    const lh = new DataView(await file.slice(en.loff, en.loff + 30).arrayBuffer());
+    const start = en.loff + 30 + lh.getUint16(26, true) + lh.getUint16(28, true), blob = file.slice(start, start + en.csize);
+    en.stream = () => en.method === 8 ? blob.stream().pipeThrough(new DecompressionStream('deflate-raw')) : blob.stream();
+  }
+  return out;
+}
 async function importFiles(files, tzMode, onProgress, want) {
+  const list = [];
+  for (const f of files) {
+    if (/\.zip$/i.test(f.name)) list.push(...await unzipEntries(f));
+    else if (/\.(zst|dbn)$/i.test(f.name)) throw new Error(f.name + ' is a compressed Databento file. Request the data again with Encoding CSV and Compression None.');
+    else list.push(f);
+  }
+  files = list.sort((a, b) => a.name.localeCompare(b.name));
   const wantRe = want ? new RegExp('^' + want + '([FGHJKMNQUVXZ]\\d{1,2}|\\..*)?$') : null; const otherRoots = new Set();
   const G = { t: new Grow(Float64Array), o: new Grow(Float32Array), h: new Grow(Float32Array), l: new Grow(Float32Array), c: new Grow(Float32Array), v: new Grow(Float32Array), s: new Grow(Uint16Array) };
   const symIds = new Map(), symNames = [];
