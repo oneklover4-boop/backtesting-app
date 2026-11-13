@@ -323,7 +323,7 @@ form.newsess input, form.newsess select { background: var(--bg); border: 1px sol
 .checks { display: flex; gap: 10px; flex-wrap: wrap; padding: 6px 0; }
 .checks label { flex-direction: row !important; align-items: center; color: var(--fg) !important; }
 textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; font-family: var(--font-data); font-size: 11px; }
-.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; z-index: 20; font-size: 12px; }
+.toast { position: fixed; left: 50%; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; z-index: 20; font-size: 12px; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
 .note { font-size: 12px; color: var(--muted); line-height: 1.55; max-width: 70ch; }
 
@@ -338,6 +338,93 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
   .replay label { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* Round 3: trade labels, quick trade bar, colour picker, drawing settings */
+.ptags { position: absolute; left: 0; top: 0; height: 0; z-index: 6; pointer-events: none; }
+.ptag { position: absolute; right: 0; top: -11px; height: 22px; display: flex; align-items: stretch; border: 1px solid var(--c); border-radius: 4px; background: #0f0f12; font: 500 11px var(--font-data); color: var(--fg); pointer-events: auto; white-space: nowrap; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.4); user-select: none; }
+.ptag.drag { cursor: ns-resize; }
+.ptag > * { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--c); }
+.ptag > :first-child { border-left: 0; }
+.ptag .pk { background: var(--c); color: #fff; font: 600 11px var(--font-ui); }
+.ptag .pv.up { color: var(--long); } .ptag .pv.dn { color: var(--short); }
+.ptag button { background: none; border: 0; border-left: 1px solid var(--c); color: var(--muted); font-size: 14px; line-height: 1; padding: 0 7px; cursor: pointer; }
+.ptag button:hover { background: var(--c); color: #fff; }
+.quick { position: relative; gap: 8px; }
+.quick > .qb, .quick > .qs { height: 34px; padding: 0 18px 0 14px; border-radius: 10px; font-size: 14px; gap: 8px; }
+.quick > .qb { background: #0b63f6; } .quick > .qs { background: #f2867a; }
+.quick > .qb:hover { background: #2a78ff; } .quick > .qs:hover { background: #f59a8f; }
+.quick > button svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.qqty { display: flex; align-items: stretch; height: 34px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; }
+.qqty:focus-within { border-color: var(--accent); }
+.quick .qqty input { width: 72px; border: 0; border-radius: 0; background: none; text-align: left; padding: 0 12px; font-size: 13px; }
+.qqty button { width: 34px; background: none; border: 0; border-left: 1px solid var(--line); color: var(--muted); display: grid; place-items: center; }
+.qqty button:hover { color: var(--fg); }
+.qqty svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+#q-pop { bottom: 44px; left: 0; min-width: 220px; }
+.qchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.qchip { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.qchip[aria-pressed="true"] { border-color: var(--accent); }
+.qchip button { background: none; border: 0; color: var(--fg); padding: 5px 10px; font-family: var(--font-data); }
+.qchip .qx { color: var(--muted); padding: 5px 7px; border-left: 1px solid var(--line); }
+.qchip button:hover { background: var(--bg); }
+.steplbl { font-size: 11px; color: var(--muted); padding-left: 6px; }
+#epop { z-index: 70; }
+.cpop { width: 286px; }
+.cpop .pal { grid-template-columns: repeat(10, 22px); gap: 5px; }
+.cpop .pal button { border-radius: 50%; }
+.cpop .pal.cust { display: flex; flex-wrap: wrap; min-height: 0; }
+.cp-new { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 8px; padding: 8px 10px; color: var(--fg); margin-top: 6px; text-align: left; }
+.cp-new:hover { background: var(--bg); }
+.cp-new span { font-size: 16px; color: var(--muted); }
+.cpop .op { gap: 10px; }
+.cpop #pc-op { -webkit-appearance: none; appearance: none; height: 8px; border-radius: 99px; background: linear-gradient(90deg, transparent, var(--c)), repeating-conic-gradient(#3a3a40 0 25%, #222 0 50%) 0 0 / 8px 8px; }
+.cpop #pc-op::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #111; }
+.cpop #pc-op::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid #111; }
+.cpop .pct { display: flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-family: var(--font-data); font-size: 12px; color: var(--muted); }
+.cpop .pct input { width: 34px; background: none; border: 0; color: var(--fg); font: inherit; text-align: right; -moz-appearance: textfield; }
+.cpop .pct input::-webkit-inner-spin-button { display: none; }
+#cpick { position: fixed; z-index: 71; width: 290px; padding: 12px; }
+.cp-head { display: flex; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.cp-head span { flex: 1; }
+.cp-head .ibtn { width: 26px; height: 26px; font-size: 18px; }
+.cp-head svg { width: 15px; height: 15px; }
+.cp-sv { position: relative; height: 130px; border-radius: 8px; background-image: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent); cursor: crosshair; touch-action: none; }
+.cp-sv i, .cp-hue i { position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.5); transform: translate(-50%, -50%); pointer-events: none; }
+.cp-hue { position: relative; height: 12px; margin: 14px 7px 12px; border-radius: 99px; background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); cursor: pointer; touch-action: none; }
+.cp-hue i { top: 50%; background: transparent; }
+.cp-lbl { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px 34px; }
+.cp-hex { display: flex; align-items: center; gap: 8px; }
+.cp-hex .sw { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line); flex: none; }
+.cp-hex input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--fg); font-family: var(--font-data); }
+.cp-fmt { display: grid; grid-template-columns: repeat(3, 1fr); margin: 10px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.cp-fmt button { background: none; border: 0; padding: 7px 0; color: var(--muted); font-size: 12px; font-weight: 600; }
+.cp-fmt button + button { border-left: 1px solid var(--line); }
+.cp-fmt button[aria-pressed="true"] { background: var(--panel); color: var(--fg); }
+.cp-addbtn { width: 100%; background: var(--buy); color: #fff; border: 0; border-radius: 10px; padding: 10px; font-weight: 600; }
+.cp-addbtn:hover { filter: brightness(1.1); }
+.dlg.dlg-sm { width: min(440px, 100%); }
+.ds-tabs { display: flex; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.ds-tabs button { background: none; border: 0; padding: 10px 0; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.ds-tabs button[aria-current="true"] { color: var(--fg); border-bottom-color: var(--buy); }
+#ds-main { min-height: 220px; }
+.drow { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.drow > span:first-child, .drow > label:first-child { flex: 1; }
+.drow .ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--fg); }
+.drow .num { width: 92px; font-family: var(--font-data); }
+.drow.vis .num { width: 64px; }
+.drow input[type=datetime-local] { width: 170px; color-scheme: dark; }
+.drow .mut, .ds-tabs + .dlg-main .mut { color: var(--muted); }
+.dsw { width: 34px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg) repeating-conic-gradient(#2a2a30 0 25%, #1a1a1f 0 50%) 0 0 / 8px 8px; padding: 4px; }
+.dsw i { display: block; width: 100%; height: 100%; border-radius: 4px; }
+.chk { width: 18px; height: 18px; accent-color: var(--buy); }
+.tbtn { width: 32px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--muted); }
+.tbtn[aria-pressed="true"] { color: var(--fg); border-color: var(--buy); }
+.dtxt { width: 100%; resize: vertical; margin: 4px 0 6px; font-family: var(--font-ui); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--fg); }
+.srow .dsw { width: 40px; }
+#dset { background: rgba(0,0,0,.25); }
+.drow > label:first-child { display: flex; align-items: center; gap: 10px; }
+.drow .num { width: 104px; }
+.drow input[type=datetime-local] { width: 196px; }
+
 </style>
 </head>
 <body>
@@ -445,16 +532,17 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
       </div>
       <div class="ws-bot">
         <div class="quick">
-          <button class="qb" id="q-buy">Buy <small id="q-buy-px">–</small></button>
-          <button class="qs" id="q-sell">Sell <small id="q-sell-px">–</small></button>
-          <input id="q-qty" type="number" min="1" step="1" value="1" aria-label="Contracts for quick Buy and Sell" title="Contracts for quick Buy and Sell">
+          <button class="qb" id="q-buy" title="Buy at market"><svg viewBox="0 0 14 14"><path d="M3 11l8-8M5 3h6v6"/></svg>Buy</button>
+          <button class="qs" id="q-sell" title="Sell at market"><svg viewBox="0 0 14 14"><path d="M3 3l8 8M11 5v6H5"/></svg>Sell</button>
+          <div class="qqty"><input id="q-qty" type="number" min="1" step="1" value="1" aria-label="Contracts for quick Buy and Sell" title="Contracts for quick Buy and Sell"><button id="q-pre" title="Size presets" aria-label="Size presets"><svg viewBox="0 0 16 16"><path d="M2 4h7M12 4h2M2 8h2M7 8h7M2 12h8M13 12h1"/><circle cx="10.5" cy="4" r="1.5"/><circle cx="5.5" cy="8" r="1.5"/><circle cx="11.5" cy="12" r="1.5"/></svg></button></div>
+          <div class="pop" id="q-pop" hidden></div>
         </div>
         <span class="grow"></span>
         <div class="replay">
           <button class="ibtn" id="b-play" title="Play or pause" aria-label="Play or pause"><svg viewBox="0 0 18 18"><path d="M5 3l10 6-10 6z"/></svg></button>
           <button class="ibtn" id="b-next" title="Next bar" aria-label="Next bar"><svg viewBox="0 0 18 18"><path d="M4 3l8 6-8 6zM14 3v12"/></svg></button>
-          <select id="step" title="How far each step moves" aria-label="Step size">
-            <option value="0">Chart TF</option>
+          <label class="steplbl" for="step">Step</label><select id="step" title="How far the chart moves each time you press Next or while playing" aria-label="Step size">
+            <option value="0">1 candle</option>
             <option value="15">15s</option>
             <option value="60">1m</option>
             <option value="300">5m</option>
@@ -570,6 +658,15 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 <div class="toast" id="toast" hidden></div>
 <div class="flyout" id="fly" hidden></div>
 <div class="pop" id="epop" style="position:fixed" hidden></div>
+<div class="pop" id="cpick" hidden></div>
+<div class="modal" id="dset" hidden role="dialog" aria-modal="true" aria-labelledby="ds-title">
+  <div class="dlg dlg-sm">
+    <div class="dlg-head"><h2 id="ds-title">Drawing</h2><button class="x" id="ds-x" aria-label="Close">×</button></div>
+    <nav class="ds-tabs" id="ds-tabs"></nav>
+    <div class="dlg-main" id="ds-main"></div>
+    <div class="dlg-foot"><button class="btn" id="ds-cancel">Cancel</button><button class="btn primary" id="ds-ok">Ok</button></div>
+  </div>
+</div>
 <div class="modal" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="set-title">
   <div class="dlg">
     <div class="dlg-head"><h2 id="set-title">Chart settings</h2><button class="x" id="set-close" aria-label="Close">×</button></div>
@@ -805,7 +902,7 @@ async function importFiles(files, tzMode, onProgress, want) {
 const KEY = 'tape-replay.v1';
 const DEF_SET = { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350',
   bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', volume: true, priceLine: true, markers: false,
-  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [] };
+  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5] };
 const SET = () => store.settings;
 function initSettings() { store.settings = Object.assign({}, DEF_SET, store.settings || {}); }
 let store = null;
@@ -884,7 +981,7 @@ function placeOrder(sess, o) {
 /* ---------- Chart workspace: one or two panes on the same replay clock ---------- */
 const css = getComputedStyle(document.documentElement);
 const C = { bg: css.getPropertyValue('--bg').trim(), line: css.getPropertyValue('--line').trim(), fg: css.getPropertyValue('--fg').trim(), muted: css.getPropertyValue('--muted').trim(),
-  long: css.getPropertyValue('--long').trim(), short: css.getPropertyValue('--short').trim(), accent: css.getPropertyValue('--accent').trim() };
+  long: css.getPropertyValue('--long').trim(), short: css.getPropertyValue('--short').trim(), accent: css.getPropertyValue('--accent').trim(), buy: '#0b63f6', sell: '#f2867a' };
 const UPV = 'rgba(38,176,122,.28)', DNV = 'rgba(226,85,79,.28)';
 const MAXBARS = 6000;
 const panesEl = $('#panes');
@@ -908,7 +1005,7 @@ function migrate(s) {
 
 function makePane(i) {
   const el = document.createElement('div'); el.className = 'pane'; el.dataset.i = i;
-  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div>';
+  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div><div class="ptags"></div>';
   panesEl.appendChild(el);
   const chart = LWC.createChart(el.querySelector('.chart'), {
     autoSize: true,
@@ -921,7 +1018,7 @@ function makePane(i) {
   const volume = chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, color: 'rgba(127,139,153,.25)', lastValueVisible: false, priceLineVisible: false });
   chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
   const P = { i, el, chart, candles, volume, agg: [], lines: [], lastIdx: -1, sym: null, tf: 0, hover: null, sig: '', x0: 0, dx: 1, pw: 0, ph: 0,
-    cv: el.querySelector('canvas.draw'), legend: el.querySelector('.legend') };
+    cv: el.querySelector('canvas.draw'), legend: el.querySelector('.legend'), tags: el.querySelector('.ptags') };
   P.ctx = P.cv.getContext('2d');
   chart.subscribeCrosshairMove(prm => { const d = prm.time != null && prm.seriesData ? prm.seriesData.get(candles) : null; P.hover = d && d.open != null ? d : null; renderLegend(P); });
   bindPane(P);
@@ -975,8 +1072,8 @@ function refreshPanes() { layoutPanes(); for (const P of visiblePanes()) extendP
 
 /* Price lines (positions, orders, order preview) and trade markers */
 function clearLines(P) { for (const l of P.lines) P.candles.removePriceLine(l.pl); P.lines = []; }
-function addLine(P, price, color, title, style, kind, ref, width = 1) {
-  P.lines.push({ pl: P.candles.createPriceLine({ price, color, lineWidth: width, lineStyle: style, axisLabelVisible: true, title }), kind, ref, price });
+function addLine(P, price, color, style, kind, ref, width, tag) {
+  P.lines.push({ pl: P.candles.createPriceLine({ price, color, lineWidth: width || 1, lineStyle: style, axisLabelVisible: true, title: '' }), kind, ref, price, tag });
 }
 const pnlAt = (p, px) => p.side * (px - p.entry) * p.qty * INSTR[p.sym].pv;
 function drawPaneOverlays(P) {
@@ -984,21 +1081,23 @@ function drawPaneOverlays(P) {
   clearLines(P);
   for (const p of sess.positions.filter(p => p.sym === sym)) {
     const col = p.side > 0 ? C.long : C.short;
-    addLine(P, p.entry, col, `${p.side > 0 ? 'Long' : 'Short'} ${p.qty}  ${fmtUsd(unrealized(sess, p))}`, 0, 'entry', p, 2);
-    if (p.sl != null) addLine(P, p.sl, C.short, `SL ${fmtUsd(pnlAt(p, p.sl))}`, 0, 'psl', p);
-    if (p.tp != null) addLine(P, p.tp, C.long, `TP ${fmtUsd(pnlAt(p, p.tp))}`, 0, 'ptp', p);
+    addLine(P, p.entry, col, 0, 'entry', p, 1, { k: p.side > 0 ? 'Long' : 'Short', q: p.qty, v: unrealized(sess, p), c: col, x: `data-close="${p.id}"`, xt: 'Close this position at the current price' });
+    if (p.sl != null) addLine(P, p.sl, C.short, 2, 'psl', p, 1, { k: 'SL', v: pnlAt(p, p.sl), c: C.short, x: `data-rmsl="${p.id}"`, xt: 'Remove the stop loss', drag: 1 });
+    if (p.tp != null) addLine(P, p.tp, C.long, 2, 'ptp', p, 1, { k: 'TP', v: pnlAt(p, p.tp), c: C.long, x: `data-rmtp="${p.id}"`, xt: 'Remove the take profit', drag: 1 });
   }
   for (const o of sess.orders.filter(o => o.sym === sym)) {
-    addLine(P, o.price, C.accent, `${o.side > 0 ? 'Buy' : 'Sell'} ${o.type} ${o.qty}`, 2, 'order', o);
-    if (o.sl != null) addLine(P, o.sl, C.short, 'SL', 2, 'osl', o);
-    if (o.tp != null) addLine(P, o.tp, C.long, 'TP', 2, 'otp', o);
+    const oc = o.side > 0 ? C.buy : C.sell, risk = o.sl != null ? -Math.abs(o.price - o.sl) * o.qty * INSTR[sym].pv : null, rew = o.tp != null ? Math.abs(o.tp - o.price) * o.qty * INSTR[sym].pv : null;
+    addLine(P, o.price, oc, 2, 'order', o, 1, { k: (o.side > 0 ? 'Buy ' : 'Sell ') + o.type, q: o.qty, c: oc, x: `data-cancel="${o.id}"`, xt: 'Cancel this order', drag: 1 });
+    if (o.sl != null) addLine(P, o.sl, C.short, 2, 'osl', o, 1, { k: 'SL', v: risk, c: C.short, x: `data-rmsl="${o.id}"`, xt: 'Remove the stop loss', drag: 1 });
+    if (o.tp != null) addLine(P, o.tp, C.long, 2, 'otp', o, 1, { k: 'TP', v: rew, c: C.long, x: `data-rmtp="${o.id}"`, xt: 'Remove the take profit', drag: 1 });
   }
   if (ticket.open && P === AP()) {
-    const k = ticketCalc();
-    addLine(P, k.entry, 'rgba(47,124,246,.9)', `${ticket.side > 0 ? 'Buy' : 'Sell'} ${ticket.type} ${k.qty}`, 1, 'tentry', null);
-    if (k.sl != null) addLine(P, k.sl, 'rgba(226,85,79,.6)', `SL -$${fmt0(k.riskUsd)}`, 1, 'tsl', null);
-    if (k.tp != null) addLine(P, k.tp, 'rgba(38,176,122,.6)', `TP +$${fmt0(k.rewardUsd)}`, 1, 'ttp', null);
+    const k = ticketCalc(), tc = ticket.side > 0 ? C.buy : C.sell;
+    addLine(P, k.entry, tc, 1, 'tentry', null, 1, { k: `${ticket.side > 0 ? 'Buy' : 'Sell'} ${ticket.type}`, q: k.qty, c: tc, drag: 1 });
+    if (k.sl != null) addLine(P, k.sl, C.short, 1, 'tsl', null, 1, { k: 'SL', v: -k.riskUsd, c: C.short, drag: 1 });
+    if (k.tp != null) addLine(P, k.tp, C.long, 1, 'ttp', null, 1, { k: 'TP', v: k.rewardUsd, c: C.long, drag: 1 });
   }
+  renderTags(P);
   const tf = P.tf, m = [];
   for (const t of sess.trades.filter(t => t.sym === sym)) {
     m.push({ time: bucket(t.openT, tf), position: t.side > 0 ? 'belowBar' : 'aboveBar', color: t.side > 0 ? C.long : C.short, shape: t.side > 0 ? 'arrowUp' : 'arrowDown', text: '' });
@@ -1095,6 +1194,7 @@ const ICON = {
   magnet: '<path d="M4 2v7a5 5 0 0 0 10 0V2h-3v7a2 2 0 0 1-4 0V2z"/>',
   star: '<path d="M9 1.8l2.2 4.6 5 .7-3.6 3.5.9 5L9 13.2l-4.5 2.4.9-5L1.8 7.1l5-.7z"/>',
   collapse: '<path d="M11 4L6 9l5 5"/>',
+  gear: '<path d="M2 4.5h8M13 4.5h3M2 9h3M8 9h8M2 13.5h9M14 13.5h2"/><circle cx="11.5" cy="4.5" r="1.5"/><circle cx="6.5" cy="9" r="1.5"/><circle cx="12.5" cy="13.5" r="1.5"/>',
   clone: '<rect x="6" y="6" width="9" height="9" rx="1.5"/><path d="M12 3.5V3a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h.5"/>',
   keep: '<path d="M3 15l1.5-4.5L12 3l3 3-7.5 7.5z"/><path d="M10.5 4.5l3 3"/>',
   lock: '<rect x="4" y="8" width="10" height="8" rx="1"/><path d="M6 8V5.5a3 3 0 0 1 6 0V8"/>',
@@ -1140,6 +1240,24 @@ function fromXY(P, x, y, snap) {
 /* Painting */
 let tagMax = 0;
 const FIB = [[0, '#7f8b99'], [0.236, '#e2554f'], [0.382, '#e4a640'], [0.5, '#26b07a'], [0.618, '#26a69a'], [0.786, '#4c8dff'], [1, '#7f8b99']];
+function drawLabel(P, ctx, d, q) {
+  const [a, b] = q, W = P.pw, H = P.ph, v = d.tv || 'top', hz = d.th || 'center';
+  let L, R;
+  if (['rect', 'ellipse', 'fib', 'measure'].includes(d.type)) { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y = v === 'top' ? Math.min(a[1], b[1]) : v === 'bottom' ? Math.max(a[1], b[1]) : (a[1] + b[1]) / 2; L = [x1, y]; R = [x2, y]; }
+  else if (d.type === 'hline') { L = [0, a[1]]; R = [W - 70, a[1]]; }
+  else if (d.type === 'hray') { L = a; R = [W - 70, a[1]]; }
+  else if (d.type === 'vline' || d.type === 'cross') { L = R = [a[0], d.type === 'vline' ? 30 : a[1]]; }
+  else if (b) { [L, R] = a[0] <= b[0] ? [a, b] : [b, a]; }
+  else { L = R = a; }
+  const t = hz === 'left' ? 0 : hz === 'right' ? 1 : .5, px = L[0] + (R[0] - L[0]) * t, py = L[1] + (R[1] - L[1]) * t;
+  let ang = Math.atan2(R[1] - L[1], R[0] - L[0]); if (!isFinite(ang) || ['rect', 'ellipse', 'fib', 'measure'].includes(d.type)) ang = 0;
+  ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.translate(px, py); ctx.rotate(ang);
+  ctx.font = dFont(d); ctx.fillStyle = d.tc || d.color || DCOL[0]; ctx.textAlign = hz;
+  ctx.textBaseline = v === 'top' ? 'bottom' : v === 'bottom' ? 'top' : 'middle';
+  const lines = String(d.label).split('\n'), lh = (d.fs || 14) * 1.25, off = v === 'top' ? -6 - (lines.length - 1) * lh : v === 'bottom' ? 6 : -(lines.length - 1) * lh / 2;
+  lines.forEach((ln, i) => ctx.fillText(ln, hz === 'left' ? 4 : hz === 'right' ? -4 : 0, off + i * lh));
+  ctx.restore();
+}
 function seg(ctx, a, b) { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
 function far(a, b, k = 1e4) { const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1; return [a[0] + dx / n * k, a[1] + dy / n * k]; }
 function alpha(col, a) { const n = parseInt(col.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
@@ -1163,19 +1281,19 @@ function renderD(P, ctx, d, isSel) {
   ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = d.w || 2; ctx.setLineDash(d.ls === 'dashed' ? [6, 4] : d.ls === 'dotted' ? [1.5, 3.5] : []);
   const [a, b, c] = q, W = P.pw, H = P.ph;
   switch (d.type) {
-    case 'trend': seg(ctx, a, b); break;
+    case 'trend': seg(ctx, d.ext === 'left' || d.ext === 'both' ? far(b, a) : a, d.ext === 'right' || d.ext === 'both' ? far(a, b) : b); break;
     case 'arrow': { seg(ctx, a, b); const g = Math.atan2(b[1] - a[1], b[0] - a[0]); ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - 12 * Math.cos(g - .4), b[1] - 12 * Math.sin(g - .4)); ctx.lineTo(b[0] - 12 * Math.cos(g + .4), b[1] - 12 * Math.sin(g + .4)); ctx.closePath(); ctx.fill(); break; }
     case 'ray': seg(ctx, a, far(a, b)); break;
     case 'ext': seg(ctx, far(b, a), far(a, b)); break;
-    case 'hline': seg(ctx, [0, a[1]], [W, a[1]]); tag(ctx, W - 4, a[1], fmtPx(d.pts[0].p), col, '#0c1015', 'right'); break;
-    case 'hray': seg(ctx, a, [W, a[1]]); tag(ctx, W - 4, a[1], fmtPx(d.pts[0].p), col, '#0c1015', 'right'); break;
+    case 'hline': seg(ctx, [0, a[1]], [W, a[1]]); if (d.plab !== false) tag(ctx, W - 4, a[1], fmtPx(d.pts[0].p), col, '#0c1015', 'right'); break;
+    case 'hray': seg(ctx, a, [W, a[1]]); if (d.plab !== false) tag(ctx, W - 4, a[1], fmtPx(d.pts[0].p), col, '#0c1015', 'right'); break;
     case 'vline': seg(ctx, [a[0], 0], [a[0], H]); break;
     case 'cross': seg(ctx, [0, a[1]], [W, a[1]]); seg(ctx, [a[0], 0], [a[0], H]); break;
     case 'channel': {
       seg(ctx, a, b); if (!c) break;
       const off = chanOff(a, b, c), a2 = [a[0], a[1] + off], b2 = [b[0], b[1] + off];
       seg(ctx, a2, b2);
-      ctx.fillStyle = alpha(col, .1); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(a2[0], a2[1]); ctx.closePath(); ctx.fill();
+      if (d.fill !== false) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || col, (d.fo ?? .1) * (d.op ?? 1)); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(a2[0], a2[1]); ctx.closePath(); ctx.fill(); ctx.restore(); }
       ctx.setLineDash([4, 4]); seg(ctx, [a[0], a[1] + off / 2], [b[0], b[1] + off / 2]); ctx.setLineDash([]);
       break;
     }
@@ -1191,8 +1309,8 @@ function renderD(P, ctx, d, isSel) {
       ctx.strokeStyle = alpha(col, .6); ctx.setLineDash([4, 4]); seg(ctx, a, b); ctx.setLineDash([]);
       break;
     }
-    case 'rect': { const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]), w = Math.abs(b[0] - a[0]), h = Math.abs(b[1] - a[1]); ctx.fillStyle = alpha(col, .12); ctx.fillRect(x, y, w, h); ctx.strokeRect(x, y, w, h); break; }
-    case 'ellipse': { ctx.beginPath(); ctx.ellipse((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.abs(b[0] - a[0]) / 2, Math.abs(b[1] - a[1]) / 2, 0, 0, Math.PI * 2); ctx.fillStyle = alpha(col, .12); ctx.fill(); ctx.stroke(); break; }
+    case 'rect': { const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]), w = Math.abs(b[0] - a[0]), h = Math.abs(b[1] - a[1]); if (d.fill !== false) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || col, (d.fo ?? .12) * (d.op ?? 1)); ctx.fillRect(x, y, w, h); ctx.restore(); } ctx.strokeRect(x, y, w, h); break; }
+    case 'ellipse': { ctx.beginPath(); ctx.ellipse((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, Math.abs(b[0] - a[0]) / 2, Math.abs(b[1] - a[1]) / 2, 0, 0, Math.PI * 2); if (d.fill !== false) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || col, (d.fo ?? .12) * (d.op ?? 1)); ctx.fill(); ctx.restore(); } ctx.stroke(); break; }
     case 'measure': {
       const dp = d.pts[1].p - d.pts[0].p, mc = dp >= 0 ? '#4c8dff' : '#e2554f';
       const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]), w = Math.abs(b[0] - a[0]), h = Math.abs(b[1] - a[1]), cx = x + w / 2, cy = y + h / 2;
@@ -1214,12 +1332,15 @@ function renderD(P, ctx, d, isSel) {
       break;
     }
     case 'text': {
-      ctx.font = '14px "IBM Plex Sans", system-ui, sans-serif'; ctx.textBaseline = 'middle'; ctx.fillText(d.text || '', a[0], a[1]);
-      if (isSel) { const w = ctx.measureText(d.text || '').width; ctx.setLineDash([3, 3]); ctx.strokeRect(a[0] - 4, a[1] - 11, w + 8, 22); ctx.setLineDash([]); }
+      ctx.font = dFont(d); ctx.textBaseline = 'middle'; ctx.fillText(d.text || '', a[0], a[1]);
+      if (isSel) { const w = ctx.measureText(d.text || '').width, hh = (d.fs || 14) / 2 + 4; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeRect(a[0] - 4, a[1] - hh, w + 8, hh * 2); ctx.setLineDash([]); }
       break;
     }
   }
-  ctx.globalAlpha = 1; ctx.setLineDash([]);
+  ctx.setLineDash([]);
+  if (d.plab && !['hline', 'hray'].includes(d.type)) { ctx.globalAlpha = 1; const n = d.type === 'channel' ? 2 : d.pts.length; for (let i = 0; i < n; i++) tag(ctx, q[i][0] + 6, q[i][1] + (q[i][1] < 16 ? 12 : -12), fmtPx(d.pts[i].p), col, '#0c1015', 'left'); }
+  if (d.label && HAS_TEXT(d.type) && d.type !== 'text') drawLabel(P, ctx, d, q);
+  ctx.globalAlpha = 1;
   if (isSel && d.type !== 'text') for (const [hx, hy] of q) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill(); ctx.stroke(); }
 }
 function paint(P) {
@@ -1234,10 +1355,10 @@ function paint(P) {
   if (draw.hidden || !last) return;
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, P.pw, P.ph); ctx.clip(); tagMax = P.pw;
   const sel = selD();
-  for (const d of dList(P.sym)) { try { renderD(P, ctx, d, d === sel); } catch (e) { /* skip a broken drawing */ } }
+  for (const d of dList(P.sym)) { if (!visibleOn(d, P.tf)) continue; try { renderD(P, ctx, d, d === sel); } catch (e) { /* skip a broken drawing */ } }
   ctx.restore();
 }
-function paintLoop() { for (const P of visiblePanes()) paint(P); requestAnimationFrame(paintLoop); }
+function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P); } requestAnimationFrame(paintLoop); }
 
 /* Hit testing */
 function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy; let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); }
@@ -1257,7 +1378,7 @@ function hitD(P, d, pt) {
     case 'fib': case 'rect': case 'measure': return inBox(pt, a, b);
     case 'ellipse': { const cx = (a[0] + b[0]) / 2, cy = (a[1] + b[1]) / 2, rx = Math.abs(b[0] - a[0]) / 2 + 4, ry = Math.abs(b[1] - a[1]) / 2 + 4; return ((pt[0] - cx) / rx) ** 2 + ((pt[1] - cy) / ry) ** 2 <= 1; }
     case 'long': case 'short': return inBox(pt, [a[0], b[1]], [b[0], c[1]]);
-    case 'text': { P.ctx.font = '14px "IBM Plex Sans", system-ui, sans-serif'; const w = P.ctx.measureText(d.text || '').width; return pt[0] >= a[0] - 4 && pt[0] <= a[0] + w + 4 && Math.abs(pt[1] - a[1]) < 12; }
+    case 'text': { P.ctx.font = dFont(d); const w = P.ctx.measureText(d.text || '').width; return pt[0] >= a[0] - 4 && pt[0] <= a[0] + w + 4 && Math.abs(pt[1] - a[1]) < (d.fs || 14) / 2 + 5; }
   }
   return false;
 }
@@ -1268,7 +1389,7 @@ const GRIP = '<svg viewBox="0 0 6 18" aria-hidden="true"><circle cx="1.5" cy="4"
 function mixHex(a, b, t) { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); const ch = (s) => Math.round(((x >> s) & 255) * (1 - t) + ((y >> s) & 255) * t); return '#' + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join(''); }
 const HUES = ['#f23645', '#ff9800', '#ffeb3b', '#4caf50', '#089981', '#00bcd4', '#2962ff', '#673ab7', '#9c27b0', '#e91e63'];
 const PALETTE = ['#ffffff', '#e0e0e0', '#bdbdbd', '#9e9e9e', '#757575', '#5d5d5d', '#424242', '#2e2e2e', '#1a1a1a', '#000000',
-  ...HUES, ...HUES.map(c => mixHex(c, '#ffffff', .6)), ...HUES.map(c => mixHex(c, '#ffffff', .3)), ...HUES.map(c => mixHex(c, '#000000', .3)), ...HUES.map(c => mixHex(c, '#000000', .55))];
+  ...HUES, ...[.75, .55, .35, .15].flatMap(t => HUES.map(c => mixHex(c, '#ffffff', t))), ...[.25, .5].flatMap(t => HUES.map(c => mixHex(c, '#000000', t)))];
 const LINEISH = ['trend', 'ray', 'ext', 'arrow', 'channel'];
 const dashSvg = (ls) => `<svg viewBox="0 0 40 10"><path d="M2 5h36" stroke-width="2" stroke-dasharray="${ls === 'dashed' ? '6 4' : ls === 'dotted' ? '1.5 3.5' : 'none'}"/></svg>`;
 function select(d, P) { draw.sel = d ? { sym: d.sym, id: d.id, pane: P ? P.i : (draw.sel ? draw.sel.pane : 0) } : null; closePop(); renderSelbars(); bump(); }
@@ -1291,6 +1412,7 @@ function renderSelbars() {
   if (LINEISH.includes(d.type)) h += `<button data-e="flat" title="Make the line perfectly flat">${svg('hline')}Make flat</button>`;
   if (d.type === 'text') h += '<button data-e="text">Edit text</button>';
   if (d.type === 'long' || d.type === 'short') { const k = posInfo(P.sym, d), s = d.type === 'long' ? 1 : -1, typ = orderTypeFor(s, k.e, priceNow(P.sym), INSTR[P.sym].tick); h += `<button class="go" data-e="place">Place ${s > 0 ? 'buy' : 'sell'} ${typ} · ${k.qty} ${P.sym}</button>`; }
+  h += `<button data-e="settings" title="Settings: colours, text, exact prices and which timeframes show it">${svg('gear')}</button>`;
   h += `<span class="vsep"></span><button data-e="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Unlock this drawing' : 'Lock this drawing in place'}">${svg('lock')}</button>`;
   h += `<button data-e="clone" title="Copy this drawing">${svg('clone')}</button><button data-e="del" class="danger" title="Delete this drawing">${svg('trash')}</button>`;
   bar.innerHTML = h; bar.hidden = false; placeBar(bar, SET().editPos, EDIT_DEF);
@@ -1330,8 +1452,8 @@ function openFly(btn, gid, list) {
   f.style.left = (r.right + 6) + 'px'; f.style.top = Math.max(6, Math.min(r.top, innerHeight - f.offsetHeight - 6)) + 'px';
 }
 let popFn = null;
-function closePop() { const p = $('#epop'); if (p) p.hidden = true; popFn = null; }
-function closeMenus() { $('#fly').hidden = true; $('#tf-menu').hidden = true; $('#jump-pop').hidden = true; closePop(); }
+function closePop() { const p = $('#epop'); if (p) { p.hidden = true; p.classList.remove('cpop'); p._btn = null; } const c = $('#cpick'); if (c) c.hidden = true; popFn = null; }
+function closeMenus() { $('#fly').hidden = true; $('#tf-menu').hidden = true; $('#jump-pop').hidden = true; $('#q-pop').hidden = true; closePop(); }
 function openPop(btn, html, bind) {
   const p = $('#epop'), r = btn.getBoundingClientRect();
   p.innerHTML = html; p.hidden = false; popFn = bind || null;
@@ -1339,12 +1461,101 @@ function openPop(btn, html, bind) {
   p.style.top = Math.min(r.bottom + 6, innerHeight - p.offsetHeight - 6) + 'px';
   if (bind) bind(p);
 }
-function colorPop(d) {
-  const cur = (d.color || DCOL[0]).toLowerCase(), cust = SET().customColors;
-  return `<div class="pal">${PALETTE.map(c => `<button data-col="${c}" style="background:${c}" aria-pressed="${c === cur}" title="${c}" aria-label="Colour ${c}"></button>`).join('')}</div>
-    <div class="mh">Custom</div><div class="row pal" style="display:flex;flex-wrap:wrap">${cust.map(c => `<button data-col="${c}" style="background:${c}" aria-pressed="${c === cur}" title="${c}"></button>`).join('')}
-    <label class="row" style="gap:6px"><input type="color" id="pc-custom" value="${cur.length === 7 ? cur : '#4c8dff'}" aria-label="Pick any colour"><span class="hint">Pick any colour</span></label></div>
-    <div class="mh">Opacity</div><div class="row"><input type="range" id="pc-op" min="10" max="100" value="${Math.round((d.op ?? 1) * 100)}" aria-label="Opacity"><span class="num" id="pc-opv">${Math.round((d.op ?? 1) * 100)}%</span></div>`;
+/* ---------- Colour picker (palette, custom colours, opacity) ---------- */
+const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; };
+const rgbHex = (r, g, b) => '#' + [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+function rgbHsv(r, g, b) { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0;
+  if (d) h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360; return [h, mx ? d / mx : 0, mx]; }
+function hsvRgb(h, s, v) { const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); }; return [f(5) * 255, f(3) * 255, f(1) * 255]; }
+function parseColor(txt) {
+  txt = String(txt).trim().toLowerCase();
+  let m = txt.match(/^#?([0-9a-f]{6})$/); if (m) return { hex: '#' + m[1], a: null };
+  m = txt.match(/^#?([0-9a-f]{3})$/); if (m) return { hex: '#' + m[1].split('').map(c => c + c).join(''), a: null };
+  m = txt.match(/^rgba?\(?\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*(?:[,/ ]\s*([\d.]+%?))?\s*\)?$/);
+  if (m) { let a = m[4] == null ? null : m[4].endsWith('%') ? parseFloat(m[4]) / 100 : parseFloat(m[4]); if (a != null) a = Math.max(0, Math.min(1, a)); return { hex: rgbHex(+m[1], +m[2], +m[3]), a }; }
+  return null;
+}
+const EYE = '<svg viewBox="0 0 18 18"><path d="M12.5 2.5l3 3-2 2-3-3zM10.5 4.5l-7 7-.8 3.8 3.8-.8 7-7"/></svg>';
+function colorPop(cur, op) {
+  cur = (cur || DCOL[0]).toLowerCase(); const cust = SET().customColors, pct = Math.round((op ?? 1) * 100);
+  const sw = (c) => `<button data-col="${c}" style="background:${c}" aria-pressed="${c === cur}" title="${c}" aria-label="Colour ${c}"></button>`;
+  return `<div class="pal">${PALETTE.map(sw).join('')}</div>
+    <div class="mh">Custom</div><div class="pal cust">${cust.map(sw).join('')}</div>
+    <button class="cp-new" id="pc-add"><span>+</span> Custom</button>
+    ${op === null ? '' : `<div class="mh">Opacity</div><div class="row op"><input type="range" id="pc-op" min="0" max="100" value="${pct}" aria-label="Opacity" style="--c:${cur}"><label class="pct"><input type="number" id="pc-opn" min="0" max="100" value="${pct}" aria-label="Opacity percent">%</label></div>`}`;
+}
+/* Opens the colour pop-up under btn. pick(hex, op) is called on every change. op === null hides the opacity slider. */
+function openColorPop(btn, cur, op, pick) {
+  if (!$('#epop').hidden && popFn === 'color' && $('#epop')._btn === btn) { closePop(); return; }
+  let c = (cur || DCOL[0]).toLowerCase(), o = op;
+  const paint = (p) => {
+    p.innerHTML = colorPop(c, o); p.classList.add('cpop'); p._btn = btn;
+    p.onclick = (ev) => {
+      const s = ev.target.closest('button[data-col]');
+      if (s) { c = s.dataset.col; for (const x of p.querySelectorAll('button[data-col]')) x.setAttribute('aria-pressed', x.dataset.col === c); const r = p.querySelector('#pc-op'); if (r) r.style.setProperty('--c', c); pick(c, o); return; }
+      if (ev.target.closest('#pc-add')) openCustom(p, c, o, (hex, a) => {
+        const cc = SET().customColors; const i = cc.indexOf(hex); if (i >= 0) cc.splice(i, 1); cc.unshift(hex); cc.length = Math.min(cc.length, 20);
+        c = hex; if (a != null && o !== null) o = a; pick(c, o); save(); paint(p);
+      });
+    };
+    p.oninput = (ev) => {
+      if (ev.target.id === 'pc-op' || ev.target.id === 'pc-opn') { const v = Math.max(0, Math.min(100, +ev.target.value || 0)); o = v / 100;
+        const other = p.querySelector(ev.target.id === 'pc-op' ? '#pc-opn' : '#pc-op'); if (other) other.value = v; pick(c, o); }
+    };
+    p.onchange = null;
+  };
+  openPop(btn, '', (p) => { popFn = 'color'; paint(p);
+    const r = btn.getBoundingClientRect(); p.style.left = Math.max(6, Math.min(r.left, innerWidth - p.offsetWidth - 6)) + 'px';
+    p.style.top = (r.bottom + 6 + p.offsetHeight > innerHeight - 6 ? Math.max(6, r.top - p.offsetHeight - 6) : r.bottom + 6) + 'px'; });
+}
+/* FX Replay-style custom colour panel: saturation box, hue strip, eyedropper, HEX / RGB / RGBA input, Add color */
+const cp = { h: 0, s: 1, v: 1, a: 1, fmt: 'hex', done: null };
+function openCustom(anchor, hex, op, done) {
+  const el = $('#cpick'); [cp.h, cp.s, cp.v] = rgbHsv(...hexRgb(hex)); cp.a = op ?? 1; cp.done = done;
+  if (!el.dataset.ready) buildCustom(el);
+  el.querySelector('#cp-eye').hidden = !window.EyeDropper;
+  el.hidden = false; renderCustom();
+  const r = anchor.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+  el.style.left = (r.left - w - 8 >= 6 ? r.left - w - 8 : Math.min(r.right + 8, innerWidth - w - 6)) + 'px';
+  el.style.top = Math.max(6, Math.min(r.top, innerHeight - h - 6)) + 'px';
+}
+const cpHex = () => rgbHex(...hsvRgb(cp.h, cp.s, cp.v));
+function cpText() { const [r, g, b] = hsvRgb(cp.h, cp.s, cp.v).map(Math.round);
+  return cp.fmt === 'hex' ? cpHex() : cp.fmt === 'rgb' ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${+cp.a.toFixed(2)})`; }
+function renderCustom(keepInput) {
+  const el = $('#cpick'), hex = cpHex();
+  el.querySelector('#cp-sv').style.backgroundColor = `hsl(${cp.h},100%,50%)`;
+  const k = el.querySelector('#cp-svk'); k.style.left = cp.s * 100 + '%'; k.style.top = (1 - cp.v) * 100 + '%'; k.style.background = hex;
+  el.querySelector('#cp-huek').style.left = cp.h / 360 * 100 + '%';
+  el.querySelector('#cp-sw').style.background = cp.fmt === 'rgba' ? alpha(hex, cp.a) : hex;
+  el.querySelector('#cp-lbl').textContent = cp.fmt === 'hex' ? 'Hex' : cp.fmt.toUpperCase();
+  if (!keepInput) el.querySelector('#cp-in').value = cpText();
+  for (const b of el.querySelectorAll('[data-fmt]')) b.setAttribute('aria-pressed', b.dataset.fmt === cp.fmt);
+}
+function buildCustom(el) {
+  el.dataset.ready = '1';
+  el.innerHTML = `<div class="cp-head"><span>Custom colour</span><button class="ibtn" id="cp-eye" title="Pick a colour from anywhere on the screen" aria-label="Pick a colour from the screen">${EYE}</button><button class="ibtn" id="cp-x" aria-label="Close">×</button></div>
+    <div class="cp-sv" id="cp-sv"><i id="cp-svk"></i></div>
+    <div class="cp-hue" id="cp-hue"><i id="cp-huek"></i></div>
+    <label class="cp-lbl" id="cp-lbl" for="cp-in">Hex</label>
+    <div class="cp-hex"><span class="sw" id="cp-sw"></span><input id="cp-in" spellcheck="false" autocomplete="off"></div>
+    <div class="cp-fmt" role="group" aria-label="Colour format"><button data-fmt="hex">HEX</button><button data-fmt="rgb">RGB</button><button data-fmt="rgba">RGBA</button></div>
+    <button class="cp-addbtn" id="cp-add">Add colour</button>`;
+  const drag = (zone, fn) => zone.addEventListener('pointerdown', e => {
+    e.preventDefault(); zone.setPointerCapture(e.pointerId);
+    const go = (ev) => { const r = zone.getBoundingClientRect(); fn(Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)), Math.max(0, Math.min(1, (ev.clientY - r.top) / r.height))); renderCustom(); };
+    go(e); const up = () => { zone.removeEventListener('pointermove', go); zone.removeEventListener('pointerup', up); };
+    zone.addEventListener('pointermove', go); zone.addEventListener('pointerup', up);
+  });
+  drag(el.querySelector('#cp-sv'), (x, y) => { cp.s = x; cp.v = 1 - y; });
+  drag(el.querySelector('#cp-hue'), (x) => { cp.h = Math.min(359.9, x * 360); });
+  el.querySelector('#cp-in').addEventListener('input', e => { const c = parseColor(e.target.value); if (!c) return; [cp.h, cp.s, cp.v] = rgbHsv(...hexRgb(c.hex)); if (c.a != null) cp.a = c.a; renderCustom(true); });
+  el.addEventListener('click', async e => {
+    const f = e.target.closest('[data-fmt]'); if (f) { cp.fmt = f.dataset.fmt; renderCustom(); return; }
+    if (e.target.closest('#cp-x')) { el.hidden = true; return; }
+    if (e.target.closest('#cp-add')) { el.hidden = true; if (cp.done) cp.done(cpHex(), cp.fmt === 'rgba' ? cp.a : null); return; }
+    if (e.target.closest('#cp-eye') && window.EyeDropper) { try { const r = await new EyeDropper().open(); [cp.h, cp.s, cp.v] = rgbHsv(...hexRgb(r.sRGBHex)); renderCustom(); } catch (_) { /* cancelled */ } }
+  });
 }
 function optsPop(items, cur) { return '<div class="opts">' + items.map(([v, html]) => `<button data-opt="${v}" aria-pressed="${String(v) === String(cur)}">${html}</button>`).join('') + '</div>'; }
 function flatten(d) {
@@ -1397,7 +1608,7 @@ function placeFromPos(d) {
 
 /* Pointer handling on each pane: price-line drags first, then drawings, else the chart pans as normal */
 const local = (P, e) => { const r = P.el.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
-function nearLine(P, y) { let best = null, bd = 7; for (const l of P.lines) { if (l.kind === 'entry') continue; const cy = P.candles.priceToCoordinate(l.price); if (cy == null) continue; const d = Math.abs(cy - y); if (d < bd) { bd = d; best = l; } } return best; }
+function nearLine(P, y, tol = 7) { let best = null, bd = tol; for (const l of P.lines) { if (l.kind === 'entry') continue; const cy = P.candles.priceToCoordinate(l.price); if (cy == null) continue; const d = Math.abs(cy - y); if (d < bd) { bd = d; best = l; } } return best; }
 function grab(P, e) { e.stopPropagation(); e.preventDefault(); try { P.el.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ } lockChart(P, true); }
 function dragLine(P, A, y) {
   const p = P.candles.coordinateToPrice(y); if (p == null) return;
@@ -1416,8 +1627,13 @@ function dragLine(P, A, y) {
 }
 function bindPane(P) {
   const el = P.el;
+  el.addEventListener('dblclick', e => {
+    if (draw.hidden || draw.tool !== 'cursor' || e.target.closest('.ptag')) return;
+    geo(P); const [x, y] = local(P, e), list = dList(P.sym);
+    for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { select(list[k], P); openDrawSettings(list[k], list[k].type === 'text' ? 'text' : undefined); return; }
+  });
   el.addEventListener('pointerdown', e => {
-    if (e.target.closest('.selbar, .txtin')) return;
+    if (e.target.closest('.selbar, .txtin, .ptag button')) return;
     if (P.i < nPanes() && LAY().active !== P.i) { LAY().active = P.i; layoutPanes(); renderToolbar(); renderTicket(); renderLive(); save(); }
     closeMenus();
     if (e.button !== 0) return;
@@ -1426,7 +1642,7 @@ function bindPane(P) {
     const mk = draw.mk;
     if (mk && mk.P === P) { grab(P, e); mk.n++; if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); } return; }
     if (draw.tool !== 'cursor') { grab(P, e); startMk(P, x, y); return; }
-    const ln = nearLine(P, y);
+    const ln = nearLine(P, y, e.target.closest('.ptag') ? 13 : 7);
     if (ln) { grab(P, e); draw.act = { kind: 'line', P, line: ln }; el.style.cursor = 'ns-resize'; return; }
     if (!draw.locked && !draw.hidden) {
       const s = selD();
@@ -1435,7 +1651,7 @@ function bindPane(P) {
         for (let i = 0; i < hs.length; i++) if (hs[i][1] != null && Math.hypot(hs[i][0] - x, hs[i][1] - y) < 9) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i }; return; }
       }
       const list = dList(P.sym);
-      for (let k = list.length - 1; k >= 0; k--) if (hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: list[k].pts.map(p => toXY(P, p)) }; return; }
+      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: list[k].pts.map(p => toXY(P, p)) }; return; }
     }
     if (draw.sel) select(null);
   }, true);
@@ -1548,7 +1764,7 @@ function renderBal() {
   const sess = S(), bal = balanceOf(sess), up = openPnl(sess), sym = activeSym();
   $('#b-bal').innerHTML = `<span>${fmtUsd(bal, false)}</span><span class="${cls(up)}">${fmtUsd(up)}</span><span class="cnt">${sess.positions.length} open${sess.orders.length ? ' · ' + sess.orders.length + ' working' : ''}</span>`;
   $('#b-bal').setAttribute('aria-expanded', !$('#drawer').hidden);
-  const px = fmtPx(priceNow(sym)); $('#q-buy-px').textContent = px; $('#q-sell-px').textContent = px;
+  const px = fmtPx(priceNow(sym)); $('#q-buy').title = 'Buy ' + sym + ' at market (' + px + ')'; $('#q-sell').title = 'Sell ' + sym + ' at market (' + px + ')';
   $('#clock').textContent = fmtT(sess.cursorT, DATA[sym].base < 60) + ' ET';
 }
 function renderLive() { renderHeader(); for (const P of visiblePanes()) renderLegend(P); renderPositions(); renderBal(); renderTicket(false); }
@@ -1717,7 +1933,7 @@ function applySettings() {
 }
 let setSec = 'candles';
 function renderSettings() {
-  const s = SET(), col = (k) => `<input type="color" data-set="${k}" value="${s[k]}" aria-label="${k}">`, sw = (k) => `<input type="checkbox" class="switch" data-set="${k}" ${s[k] ? 'checked' : ''}>`;
+  const s = SET(), col = (k) => `<button class="dsw" data-setcol="${k}" title="Change colour" aria-label="Change ${k} colour"><i style="background:${s[k]}"></i></button>`, sw = (k) => `<input type="checkbox" class="switch" data-set="${k}" ${s[k] ? 'checked' : ''}>`;
   for (const b of $$('#set-nav button')) b.setAttribute('aria-current', b.dataset.sec === setSec);
   const secs = {
     candles: `<h4>Candles</h4>
@@ -1738,22 +1954,147 @@ function renderSettings() {
 }
 function openSettings() { closeMenus(); renderSettings(); $('#settings').hidden = false; }
 $('#b-settings').addEventListener('click', openSettings);
-$('#set-close').addEventListener('click', () => { $('#settings').hidden = true; });
-$('#set-done').addEventListener('click', () => { $('#settings').hidden = true; });
-$('#settings').addEventListener('pointerdown', e => { if (e.target.id === 'settings') $('#settings').hidden = true; });
+$('#set-close').addEventListener('click', () => { closePop(); $('#settings').hidden = true; });
+$('#set-done').addEventListener('click', () => { closePop(); $('#settings').hidden = true; });
+$('#settings').addEventListener('pointerdown', e => { if (e.target.id === 'settings') { closePop(); $('#settings').hidden = true; } });
 $('#set-nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setSec = b.dataset.sec; renderSettings(); } });
-$('#set-main').addEventListener('input', e => {
-  const el = e.target, k = el.dataset.set; if (!k) return;
-  SET()[k] = el.type === 'checkbox' ? el.checked : el.value;
+function setSetting(k, v) {
+  SET()[k] = v;
   // one colour for body, border and wick until the border or wick is set on its own
-  if (k === 'up' || k === 'down') for (const part of ['Border', 'Wick']) if (!SET()['_' + k + part]) { SET()[k + part] = el.value; const o = $(`#set-main [data-set="${k + part}"]`); if (o) o.value = el.value; }
+  if (k === 'up' || k === 'down') for (const part of ['Border', 'Wick']) if (!SET()['_' + k + part]) { SET()[k + part] = v; const o = $(`#set-main [data-setcol="${k + part}"] i`); if (o) o.style.background = v; }
   if (/Border$|Wick$/.test(k)) SET()['_' + k] = true;
   applySettings(); save();
-});
+}
+$('#set-main').addEventListener('input', e => { const el = e.target, k = el.dataset.set; if (k) setSetting(k, el.type === 'checkbox' ? el.checked : el.value); });
+$('#set-main').addEventListener('click', e => { const b = e.target.closest('button[data-setcol]'); if (!b) return; const k = b.dataset.setcol;
+  openColorPop(b, SET()[k], null, (c) => { b.querySelector('i').style.background = c; setSetting(k, c); }); });
+$('#settings').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
 $('#set-reset').addEventListener('click', () => {
   const keep = { favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, tools: SET().tools, customColors: SET().customColors };
   store.settings = Object.assign({}, DEF_SET, keep); applySettings(); renderSettings(); save(); toast('Chart colours reset to default.');
 });
+
+/* ---------- Drawing settings dialog (Style, Text, Coordinates, Visibility) ---------- */
+const VIS_UNITS = [['s', 'Seconds', 1, 59], ['m', 'Minutes', 1, 59], ['h', 'Hours', 1, 24], ['D', 'Days', 1, 366], ['W', 'Weeks', 1, 52], ['M', 'Months', 1, 12]];
+function tfUnit(tf) { return tf < 60 ? ['s', tf] : tf < 3600 ? ['m', tf / 60] : tf < 86400 ? ['h', tf / 3600] : tf < 604800 ? ['D', tf / 86400] : tf < 2592000 ? ['W', tf / 604800] : ['M', tf / 2592000]; }
+function visibleOn(d, tf) { if (!d.vis) return true; const [u, n] = tfUnit(tf), v = d.vis[u]; return !v || (v[0] && n >= v[1] && n <= v[2]); }
+const dFont = (d) => `${d.it ? 'italic ' : ''}${d.bold ? '600 ' : ''}${d.fs || 14}px "IBM Plex Sans", system-ui, sans-serif`;
+const HAS_TEXT = (t) => !['long', 'short', 'measure'].includes(t);
+const HAS_FILL = ['rect', 'ellipse', 'channel'];
+const PT_NAMES = { long: ['Entry', 'Stop', 'Target'], short: ['Entry', 'Stop', 'Target'] };
+const ds = { d: null, snap: null, tab: 'style' };
+function openDrawSettings(d, tab) {
+  closeMenus(); ds.d = d; ds.snap = JSON.stringify(d);
+  const tabs = dsTabs(d); ds.tab = tabs.includes(tab) ? tab : tabs[0];
+  $('#ds-title').textContent = TOOLDEF[d.type] ? TOOLDEF[d.type].n : 'Drawing';
+  renderDrawSettings(); $('#dset').hidden = false;
+}
+function dsTabs(d) {
+  const t = [];
+  if (!['text', 'long', 'short', 'measure'].includes(d.type)) t.push('style');
+  if (HAS_TEXT(d.type)) t.push('text');
+  t.push('coords', 'vis'); return t;
+}
+const TABN = { style: 'Style', text: 'Text', coords: 'Coordinates', vis: 'Visibility' };
+const swBtn = (key, col, op) => `<button class="dsw" data-dc="${key}" title="Change colour" aria-label="Change colour"><i style="background:${col};opacity:${op ?? 1}"></i></button>`;
+const selHtml = (key, items, cur) => `<select class="ctl" data-dk="${key}">${items.map(([v, n]) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+const chk = (key, on) => `<input type="checkbox" class="chk" data-dk="${key}" ${on ? 'checked' : ''}>`;
+function renderDrawSettings() {
+  const d = ds.d, tabs = dsTabs(d);
+  $('#ds-tabs').innerHTML = tabs.map(t => `<button data-tab="${t}" aria-current="${t === ds.tab}">${TABN[t]}</button>`).join('');
+  let h = '';
+  if (ds.tab === 'style') {
+    const stroke = d.type !== 'text';
+    h += `<div class="drow"><span>${HAS_FILL.includes(d.type) ? 'Border' : 'Line'}</span>${swBtn('color', d.color || DCOL[0], d.op)}${stroke ? selHtml('w', [1, 2, 3, 4].map(w => [w, w + 'px']), d.w || 2) + selHtml('ls', [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']], d.ls || 'solid') : ''}</div>`;
+    if (HAS_FILL.includes(d.type)) h += `<div class="drow"><span>Background</span>${chk('fill', d.fill !== false)}${swBtn('fc', d.fc || d.color || DCOL[0], d.fo ?? .12)}</div>`;
+    if (d.type === 'trend') h += `<div class="drow"><span>Extend</span>${selHtml('ext', [['', "Don't extend"], ['left', 'Left'], ['right', 'Right'], ['both', 'Both']], d.ext || '')}</div>`;
+    if (LINEISH.includes(d.type) || ['hline', 'hray', 'rect'].includes(d.type)) h += `<div class="drow"><span>Price labels</span>${chk('plab', d.plab ?? ['hline', 'hray'].includes(d.type))}</div>`;
+    if (LINEISH.includes(d.type)) h += `<div class="drow"><span>Make the line perfectly flat</span><button class="btn" data-dact="flat">Make flat</button></div>`;
+  } else if (ds.tab === 'text') {
+    const isT = d.type === 'text', txt = isT ? (d.text || '') : (d.label || '');
+    h += `<div class="drow"><span>Font</span>${swBtn('tc', isT ? (d.color || DCOL[0]) : (d.tc || d.color || DCOL[0]), isT ? d.op : 1)}${selHtml('fs', [10, 11, 12, 14, 16, 20, 24, 28, 32].map(s => [s, s]), d.fs || 14)}
+      <button class="tbtn" data-dk="bold" aria-pressed="${!!d.bold}" title="Bold"><b>B</b></button><button class="tbtn" data-dk="it" aria-pressed="${!!d.it}" title="Italic"><i>I</i></button></div>
+      <textarea class="ctl dtxt" data-dk="txt" rows="4" placeholder="Text">${txt.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea>`;
+    if (!isT) h += `<div class="drow"><span>Text alignment</span>${selHtml('tv', [['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']], d.tv || 'top')}${selHtml('th', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']], d.th || 'center')}</div>`;
+  } else if (ds.tab === 'coords') {
+    const names = PT_NAMES[d.type], tick = INSTR[d.sym] ? INSTR[d.sym].tick : 0.25;
+    h += d.pts.map((p, i) => `<div class="drow"><span>${names ? names[i] : '#' + (i + 1)} <span class="mut">(price, time)</span></span>
+      <input type="number" class="ctl num" data-cp="${i}" step="${tick}" value="${p.p}" aria-label="Price of point ${i + 1}">
+      <input type="datetime-local" class="ctl" data-ct="${i}" value="${new Date(Math.round(p.t) * 1000).toISOString().slice(0, 16)}" aria-label="Time of point ${i + 1}"></div>`).join('');
+    h += '<p class="hint">Times are New York time, the same as the chart.</p>';
+  } else {
+    h += VIS_UNITS.map(([u, n, lo, hi]) => { const v = (d.vis && d.vis[u]) || [true, lo, hi];
+      return `<div class="drow vis"><label><input type="checkbox" class="chk" data-vu="${u}" data-vi="0" ${v[0] ? 'checked' : ''}> ${n}</label>
+        <input type="number" class="ctl num" data-vu="${u}" data-vi="1" min="${lo}" max="${hi}" value="${v[1]}" aria-label="${n} from"><span class="mut">–</span><input type="number" class="ctl num" data-vu="${u}" data-vi="2" min="${lo}" max="${hi}" value="${v[2]}" aria-label="${n} to"></div>`; }).join('');
+    h += '<p class="hint">Choose which chart timeframes show this drawing. For example, untick Seconds and Minutes to see it only on 1H and higher.</p>';
+  }
+  $('#ds-main').innerHTML = h;
+}
+function dsChanged() { bump(); renderSelbars(); }
+$('#ds-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { closePop(); ds.tab = b.dataset.tab; renderDrawSettings(); } });
+$('#ds-main').addEventListener('click', e => {
+  const d = ds.d; if (!d) return;
+  const s = e.target.closest('button[data-dc]');
+  if (s) { const k = s.dataset.dc;
+    const cur = k === 'fc' ? (d.fc || d.color || DCOL[0]) : k === 'tc' && d.type !== 'text' ? (d.tc || d.color || DCOL[0]) : (d.color || DCOL[0]);
+    const op = k === 'fc' ? (d.fo ?? .12) : k === 'tc' && d.type !== 'text' ? null : (d.op ?? 1);
+    openColorPop(s, cur, op, (c, o) => {
+      if (k === 'fc') { d.fc = c; d.fo = o; } else if (k === 'tc' && d.type !== 'text') d.tc = c; else { d.color = c; d.op = o; draw.color = c; }
+      const i = s.querySelector('i'); i.style.background = c; if (o != null) i.style.opacity = o; dsChanged(); });
+    return; }
+  const t = e.target.closest('button.tbtn'); if (t) { d[t.dataset.dk] = !d[t.dataset.dk]; t.setAttribute('aria-pressed', !!d[t.dataset.dk]); dsChanged(); return; }
+  if (e.target.closest('button[data-dact="flat"]')) { flatten(d); dsChanged(); }
+});
+$('#ds-main').addEventListener('input', e => {
+  const d = ds.d, el = e.target; if (!d) return;
+  if (el.dataset.dk) { const k = el.dataset.dk;
+    if (k === 'txt') { if (d.type === 'text') d.text = el.value; else d.label = el.value; }
+    else if (el.type === 'checkbox') d[k] = el.checked;
+    else if (k === 'w' || k === 'fs') d[k] = +el.value;
+    else d[k] = el.value;
+  } else if (el.dataset.cp != null) { const v = parseFloat(el.value); if (!isFinite(v)) return; const i = +el.dataset.cp; setPt(d, i, { t: d.pts[i].t, p: rt(v, INSTR[d.sym] ? INSTR[d.sym].tick : 0.25) }); }
+  else if (el.dataset.ct != null) { const t = Date.parse(el.value + ':00Z') / 1000; if (!isFinite(t)) return; const i = +el.dataset.ct; setPt(d, i, { t, p: d.pts[i].p }); }
+  else if (el.dataset.vu) { const u = el.dataset.vu, def = VIS_UNITS.find(x => x[0] === u); d.vis = d.vis || {}; const v = d.vis[u] || [true, def[2], def[3]];
+    if (+el.dataset.vi === 0) v[0] = el.checked; else { const n = Math.round(+el.value); if (!isFinite(n)) return; v[+el.dataset.vi] = Math.max(def[2], Math.min(def[3], n)); }
+    d.vis[u] = v; }
+  dsChanged();
+});
+function closeDrawSettings(keep) {
+  const d = ds.d; closePop(); $('#dset').hidden = true; if (!d) return;
+  if (!keep) { const o = JSON.parse(ds.snap); for (const k of Object.keys(d)) delete d[k]; Object.assign(d, o); }
+  ds.d = null; dsChanged(); save();
+}
+$('#ds-ok').addEventListener('click', () => closeDrawSettings(true));
+$('#ds-cancel').addEventListener('click', () => closeDrawSettings(false));
+$('#ds-x').addEventListener('click', () => closeDrawSettings(false));
+
+/* On-chart trade labels: FX Replay style boxes on each position, order, stop and target line */
+function renderTags(P) {
+  P.tags.innerHTML = P.lines.map((l, i) => { const g = l.tag; if (!g) return '';
+    return `<div class="ptag${g.drag ? ' drag' : ''}" data-li="${i}" style="--c:${g.c}"><span class="pk">${g.k}</span>${g.q != null ? `<span class="pq">${g.q}</span>` : ''}${g.v != null ? `<span class="pv ${g.v >= 0 ? 'up' : 'dn'}">${fmtUsd(g.v)}</span>` : ''}${g.x ? `<button ${g.x} title="${g.xt}" aria-label="${g.xt}">×</button>` : ''}</div>`; }).join('');
+  placeTags(P);
+}
+function placeTags(P) {
+  if (!P.tags || !P.sym) return;
+  const w = P.el.clientWidth; P.tags.style.right = Math.max(0, w - P.pw + 56) + 'px';
+  for (const el of P.tags.children) { const l = P.lines[+el.dataset.li]; if (!l) continue;
+    const y = P.candles.priceToCoordinate(l.price);
+    if (y == null || y < 0 || y > P.ph) { el.hidden = true; continue; } el.hidden = false; el.style.transform = `translateY(${Math.round(y)}px)`; }
+}
+/* Size presets for the quick Buy and Sell buttons */
+function renderQPresets() {
+  const pr = SET().qtyPresets, n = Math.max(1, Math.floor(+$('#q-qty').value || 1));
+  $('#q-pop').innerHTML = `<div class="mh">Size presets</div>` + (pr.length ? `<div class="qchips">${pr.map(v => `<span class="qchip" aria-pressed="${v === n}"><button data-qp="${v}">${v}</button><button class="qx" data-qpx="${v}" title="Remove ${v}" aria-label="Remove preset ${v}">×</button></span>`).join('')}</div>` : '<p class="hint">No saved presets</p>')
+    + (pr.includes(n) ? '' : `<button class="cp-new" data-qsave="1"><span>+</span> Save ${n} contract${n > 1 ? 's' : ''} as a preset</button>`);
+}
+$('#q-pre').addEventListener('click', () => { const p = $('#q-pop'), was = p.hidden; closeMenus(); if (was) { renderQPresets(); p.hidden = false; } });
+$('#q-pop').addEventListener('click', e => {
+  const pr = SET().qtyPresets, b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.qp) { $('#q-qty').value = b.dataset.qp; $('#q-pop').hidden = true; return; }
+  if (b.dataset.qpx) { pr.splice(pr.indexOf(+b.dataset.qpx), 1); save(); renderQPresets(); return; }
+  if (b.dataset.qsave) { const n = Math.max(1, Math.floor(+$('#q-qty').value || 1)); if (!pr.includes(n)) { pr.push(n); pr.sort((a, c) => a - c); } save(); renderQPresets(); }
+});
+$('#dset').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
 
 /* ---------- Views ---------- */
 let view = 'chart';
@@ -1806,7 +2147,7 @@ $('#tools').addEventListener('click', e => {
   }
   renderTools();
 });
-document.addEventListener('pointerdown', e => { if (!e.target.closest('#fly, #tools, #tf-menu, #b-tf, #epop, #editbar, #jump-pop, #b-jump')) closeMenus(); });
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#fly, #tools, #tf-menu, #b-tf, #epop, #cpick, #editbar, #jump-pop, #b-jump, #q-pop, #q-pre, #dset .dsw, .srow .dsw')) closeMenus(); });
 $('#b-order').addEventListener('click', () => openTicket(!ticket.open));
 $('#tk-close').addEventListener('click', () => openTicket(false));
 $('#b-full').addEventListener('click', () => {
@@ -1859,20 +2200,15 @@ $('#editbar').addEventListener('click', e => {
   const b = e.target.closest('button[data-e]'); if (!b) return;
   const d = selD(); if (!d) return; const k = b.dataset.e;
   const done = () => { save(); bump(); renderSelbars(); };
-  if (k === 'color') { if (!$('#epop').hidden && popFn === 'color') { closePop(); return; }
-    openPop(b, colorPop(d), (p) => {
-      popFn = 'color';
-      p.onclick = (ev) => { const c = ev.target.closest('button[data-col]'); if (!c) return; d.color = c.dataset.col; draw.color = d.color; for (const x of p.querySelectorAll('button[data-col]')) x.setAttribute('aria-pressed', x === c); done(); };
-      p.oninput = (ev) => { if (ev.target.id === 'pc-custom') { d.color = ev.target.value; draw.color = d.color; done(); } if (ev.target.id === 'pc-op') { d.op = +ev.target.value / 100; p.querySelector('#pc-opv').textContent = ev.target.value + '%'; done(); } };
-      p.onchange = (ev) => { if (ev.target.id === 'pc-custom') { const c = SET().customColors; if (!c.includes(ev.target.value)) { c.unshift(ev.target.value); c.length = Math.min(c.length, 10); } save(); } };
-    }); return; }
+  if (k === 'color') { openColorPop(b, d.color || DCOL[0], d.op ?? 1, (c, o) => { d.color = c; d.op = o; draw.color = c; done(); }); return; }
   if (k === 'width' || k === 'style') {
     const items = k === 'width' ? [1, 2, 3, 4].map(w => [w, `<svg viewBox="0 0 40 10"><path d="M2 5h36" stroke-width="${w}"/></svg>${w}px`]) : [['solid', dashSvg('solid') + 'Solid'], ['dashed', dashSvg('dashed') + 'Dashed'], ['dotted', dashSvg('dotted') + 'Dotted']];
     openPop(b, optsPop(items, k === 'width' ? (d.w || 2) : (d.ls || 'solid')), (p) => { popFn = k; p.oninput = p.onchange = null; p.onclick = (ev) => { const o = ev.target.closest('button[data-opt]'); if (!o) return; if (k === 'width') d.w = +o.dataset.opt; else d.ls = o.dataset.opt; closePop(); done(); }; });
     return;
   }
   closePop();
-  if (k === 'flat') { flatten(d); done(); }
+  if (k === 'settings') openDrawSettings(d);
+  else if (k === 'flat') { flatten(d); done(); }
   else if (k === 'text') { const P = PANES[draw.sel.pane]; geo(P); const [x, y] = toXY(P, d.pts[0]); openText(P, d, x, y); }
   else if (k === 'place') placeFromPos(d);
   else if (k === 'lock') { d.locked = !d.locked; done(); }
@@ -1924,6 +2260,7 @@ document.addEventListener('click', e => {
   else if (d.addsl) { const p = sess.positions.find(x => x.id === d.addsl); if (p) { p.sl = rt(p.entry - p.side * slPts); toast('Stop added ' + slPts + ' points away. Drag the SL line to move it.'); } }
   else if (d.addtp) { const p = sess.positions.find(x => x.id === d.addtp); if (p) { p.tp = rt(p.entry + p.side * tpPts); toast('Target added ' + tpPts + ' points away. Drag the TP line to move it.'); } }
   else if (d.cancel) { sess.orders = sess.orders.filter(x => x.id !== d.cancel); toast('Order cancelled.'); }
+  else if (d.rmsl || d.rmtp) { const id = d.rmsl || d.rmtp, x = sess.positions.find(p => p.id === id) || sess.orders.find(o => o.id === id); if (x) { if (d.rmsl) x.sl = null; else x.tp = null; toast(d.rmsl ? 'Stop loss removed.' : 'Take profit removed.'); } }
   else if (d.open) { openSession(d.open); setView('chart'); return; }
   else if (d.an) { openSession(d.an); $('#an-scope').value = 'cur'; setView('analytics'); return; }
   else if (d.del) { confirmDel = d.del; renderSessions(); return; }
