@@ -10,17 +10,19 @@
 <style>
 /* Layout: one-screen trading terminal. Top bar, then chart + order ticket side by side, positions strip under the chart. Other views scroll. */
 :root {
-  --bg: #0c1015;
-  --panel: #131920;
-  --panel-2: #19212a;
-  --line: #242e39;
-  --fg: #d9e0e8;
-  --muted: #7f8b99;
-  --accent: #e4a640;
-  --long: #26b07a;
-  --short: #e2554f;
-  --long-soft: rgba(38,176,122,.14);
-  --short-soft: rgba(226,85,79,.14);
+  --bg: #0a0a0b;
+  --panel: #121214;
+  --panel-2: #1c1c21;
+  --line: #27272d;
+  --fg: #ececef;
+  --muted: #8b8b95;
+  --accent: #2f7cf6;
+  --buy: #2f7cf6;
+  --sell: #f0616d;
+  --long: #22b07d;
+  --short: #f0545f;
+  --long-soft: rgba(34,176,125,.14);
+  --short-soft: rgba(240,84,95,.14);
   --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -55,118 +57,196 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .view { flex: 1; min-height: 0; }
 .scroll { overflow: auto; padding-block: 18px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
-/* Chart workspace */
+/* Chart workspace (FX Replay style) */
 #v-chart { display: flex; flex-direction: column; min-height: 0; }
-.ws-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
-.ws-top .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+.ws-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.ws-top .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .ws-top .grow { flex: 1; }
-.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px; }
-.seg button { background: none; border: 0; padding: 3px 7px; border-radius: 4px; color: var(--muted); font-family: var(--font-data); font-size: 12px; }
-.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--accent); }
+.seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg button { background: none; border: 0; padding: 4px 8px; border-radius: 6px; color: var(--muted); font-family: var(--font-data); font-size: 12px; }
+.seg button:hover { color: var(--fg); }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--fg); }
 .seg button:disabled { opacity: .3; cursor: not-allowed; }
-.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; font-weight: 500; }
+.seg svg { width: 16px; height: 16px; display: block; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.btn { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 11px; font-weight: 500; }
 .btn:hover { border-color: var(--muted); }
 .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-.btn.icon { padding: 4px 8px; font-family: var(--font-data); }
-.btn.primary { background: var(--accent); color: #1a1205; border-color: var(--accent); }
+.btn.icon { padding: 5px 9px; font-family: var(--font-data); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
 .btn.danger { color: var(--short); }
-select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; min-width: 0; }
-.clock { font-family: var(--font-data); color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ibtn { width: 32px; height: 32px; display: inline-grid; place-items: center; background: none; border: 1px solid transparent; border-radius: 8px; color: var(--muted); padding: 0; }
+.ibtn:hover { color: var(--fg); background: var(--panel-2); }
+.ibtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; min-width: 0; }
+.clock { font-family: var(--font-data); color: var(--muted); font-size: 12px; white-space: nowrap; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; }
 .tfwrap { position: relative; }
-.menu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 30; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 6px; display: grid; grid-template-columns: repeat(4, 54px); gap: 4px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
-.menu button { background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 5px 0; font-family: var(--font-data); font-size: 12px; color: var(--fg); }
-.menu button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-.menu button:disabled { opacity: .3; }
-.menu .mh { grid-column: 1 / -1; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 2px 2px 0; }
-.ws-mid { flex: 1; min-height: 0; display: grid; grid-template-columns: 44px minmax(0,1fr) auto; }
-.tools { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; overflow-y: auto; }
-.tools button { width: 34px; height: 32px; display: grid; place-items: center; background: none; border: 1px solid transparent; border-radius: 6px; color: var(--muted); padding: 0; }
+#b-tf { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-family: var(--font-data); font-weight: 600; }
+.menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px; width: 220px; max-height: min(70vh, 520px); overflow: auto; box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+.menu .mh { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px 4px; }
+.menu .it { display: flex; align-items: center; border-radius: 6px; }
+.menu .it:hover { background: var(--bg); }
+.menu .it > button:first-child { flex: 1; text-align: left; background: none; border: 0; padding: 7px 10px; color: var(--fg); }
+.menu .it.on > button:first-child { color: var(--accent); }
+.menu .it > button:first-child:disabled { opacity: .35; cursor: not-allowed; }
+.star { background: none; border: 0; color: var(--muted); padding: 4px 8px; font-size: 14px; line-height: 1; }
+.star[aria-pressed="true"] { color: #f5c542; }
+.star:hover { color: var(--fg); }
+#b-order { display: inline-flex; align-items: center; gap: 6px; background: var(--fg); color: #0a0a0b; border: 0; border-radius: 999px; padding: 6px 14px; font-weight: 600; }
+#b-order[aria-pressed="true"] { background: var(--accent); color: #fff; }
+#b-order svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+
+.ws-mid { flex: 1; min-height: 0; display: grid; grid-template-columns: 46px minmax(0,1fr) auto; position: relative; }
+.ws-mid.notools { grid-template-columns: 0 minmax(0,1fr) auto; }
+.ws-mid.notools .tools { visibility: hidden; border: 0; padding: 0; }
+.tools { background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; overflow-y: auto; overflow-x: hidden; }
+.tools button { position: relative; width: 36px; height: 34px; flex: none; display: grid; place-items: center; background: none; border: 1px solid transparent; border-radius: 8px; color: var(--muted); padding: 0; }
 .tools button:hover { color: var(--fg); background: var(--panel-2); }
-.tools button[aria-pressed="true"] { color: var(--accent); background: var(--panel-2); border-color: var(--line); }
+.tools button[aria-pressed="true"] { color: #fff; background: var(--accent); }
 .tools button.warn { color: var(--short); }
-.tools hr { width: 24px; border: 0; border-top: 1px solid var(--line); margin: 4px 0; }
-.tools svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.panes { display: grid; min-width: 0; min-height: 0; gap: 2px; background: var(--line); }
-.panes[data-l="1"] { grid-template-columns: minmax(0,1fr); }
-.panes[data-l="2h"] { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
-.panes[data-l="2v"] { grid-template-rows: minmax(0,1fr) minmax(0,1fr); }
-.pane { position: relative; min-width: 0; min-height: 0; background: var(--bg); outline: 1px solid transparent; outline-offset: -1px; }
+.tools .grow { flex: 1; min-height: 6px; }
+.tools hr { width: 26px; border: 0; border-top: 1px solid var(--line); margin: 4px 0; flex: none; }
+.tools svg, .fbar svg, .flyout svg, .pop svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.tools .more { position: absolute; right: 3px; bottom: 3px; width: 0; height: 0; border-left: 4px solid transparent; border-bottom: 4px solid currentColor; opacity: .6; }
+#tools-open { position: absolute; left: 4px; top: 50%; transform: translateY(-50%); z-index: 8; width: 22px; height: 48px; border-radius: 0 8px 8px 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); padding: 0; }
+.flyout { position: fixed; z-index: 40; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 4px; min-width: 230px; box-shadow: 0 12px 32px rgba(0,0,0,.5); }
+.flyout .mh { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px 4px; }
+.flyout .it { display: flex; align-items: center; border-radius: 6px; }
+.flyout .it:hover { background: var(--bg); }
+.flyout .it > button:first-child { flex: 1; display: flex; gap: 10px; align-items: center; background: none; border: 0; padding: 7px 10px; color: var(--fg); text-align: left; }
+.flyout .it.on > button:first-child { color: var(--accent); }
+
+.panes { display: grid; min-width: 0; min-height: 0; gap: 0; position: relative; background: var(--line); }
+.pane { position: relative; min-width: 0; min-height: 0; background: var(--chart-bg, var(--bg)); outline: 1px solid transparent; outline-offset: -1px; }
 .panes:not([data-l="1"]) .pane.active { outline-color: var(--accent); }
 .pane .chart { position: absolute; inset: 0; }
 .pane canvas.draw { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
 .pane .legend { position: absolute; left: 10px; top: 8px; z-index: 4; font-family: var(--font-data); font-size: 12px; pointer-events: none; display: flex; gap: 10px; flex-wrap: wrap; right: 70px; }
 .pane .legend b { font-family: var(--font-ui); }
-.selbar { position: absolute; left: 50%; top: 34px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 6px; font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.35); }
-.selbar .sw { width: 16px; height: 16px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
-.selbar .sw[aria-pressed="true"] { border-color: var(--fg); }
-.selbar .btn { padding: 2px 8px; font-size: 12px; white-space: nowrap; }
-.pane .txtin { position: absolute; z-index: 7; background: var(--panel-2); border: 1px solid var(--accent); color: var(--fg); border-radius: 4px; padding: 3px 6px; font-size: 13px; width: 200px; }
-#tf-typed { position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%); background: var(--panel-2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 8px; font-family: var(--font-data); font-size: 22px; z-index: 20; }
-.quick { display: flex; align-items: stretch; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
-.quick button { border: 0; color: #fff; font-weight: 700; padding: 5px 12px; display: flex; flex-direction: column; align-items: center; line-height: 1.15; font-size: 12px; }
-.quick button small { font-family: var(--font-data); font-weight: 500; font-size: 11px; opacity: .9; }
-.quick .qs { background: var(--short); } .quick .qb { background: var(--long); }
-.quick input { width: 56px; background: var(--panel-2); border: 0; text-align: center; font-family: var(--font-data); color: var(--fg); }
-.ws-bot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-top: 1px solid var(--line); background: var(--panel); }
+.splitter { position: absolute; z-index: 9; background: var(--line); }
+.splitter::after { content: ""; position: absolute; inset: 0; background: transparent; }
+.splitter:hover, .splitter.drag { background: var(--accent); }
+.panes[data-l="2h"] .splitter { top: 0; bottom: 0; width: 4px; margin-left: -2px; cursor: col-resize; }
+.panes[data-l="2v"] .splitter { left: 0; right: 0; height: 4px; margin-top: -2px; cursor: row-resize; }
+.pane .txtin { position: absolute; z-index: 7; background: var(--panel-2); border: 1px solid var(--accent); color: var(--fg); border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 220px; }
+#tf-typed { position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%); background: var(--panel-2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 10px; font-family: var(--font-data); font-size: 22px; z-index: 20; }
+
+/* Floating bars: favourites and the edit bar for the selected drawing */
+.fbar { position: absolute; z-index: 12; display: flex; align-items: center; gap: 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
+.fbar .grip { cursor: grab; color: var(--muted); padding: 0 4px; display: grid; place-items: center; touch-action: none; }
+
+.fbar button { height: 32px; min-width: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 0; border-radius: 8px; color: var(--fg); padding: 0 8px; font-size: 12px; white-space: nowrap; }
+.fbar button:hover { background: var(--bg); }
+.fbar button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.fbar .grip svg { width: 8px; height: 18px; fill: currentColor; stroke: none; }
+.fbar .dash svg { width: 32px; height: 10px; }
+.fbar .vsep { width: 1px; height: 20px; background: var(--line); margin: 0 3px; }
+.fbar .swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); }
+.fbar .danger { color: var(--short); }
+.fbar .go { background: var(--accent); color: #fff; font-weight: 600; }
+.fbar .go:hover { background: var(--accent); filter: brightness(1.1); }
+.pop { position: absolute; z-index: 45; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; box-shadow: 0 14px 36px rgba(0,0,0,.55); }
+.pal { display: grid; grid-template-columns: repeat(10, 22px); gap: 5px; }
+.pal button { width: 22px; height: 22px; border-radius: 5px; border: 2px solid transparent; padding: 0; }
+.pal button[aria-pressed="true"] { border-color: #fff; }
+.pop .mh { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 10px 0 6px; }
+.pop .row { display: flex; align-items: center; gap: 8px; }
+.pop input[type=range] { flex: 1; accent-color: var(--accent); }
+.pop input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 0; }
+.pop .opts button { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: 0; border-radius: 6px; padding: 7px 10px; color: var(--fg); text-align: left; }
+.pop .opts button:hover { background: var(--bg); }
+.pop .opts button[aria-pressed="true"] { color: var(--accent); }
+.pop .opts svg { width: 40px; height: 10px; stroke: currentColor; fill: none; }
+
+/* Bottom bar */
+.ws-bot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 10px; border-top: 1px solid var(--line); background: var(--panel); }
 .ws-bot .grow { flex: 1; }
-.replay { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.replay label { font-size: 11px; color: var(--muted); }
-#jump { max-width: 170px; }
-@media (max-width: 1440px) { .replay label { display: none; } }
+.quick { display: flex; align-items: center; gap: 6px; }
+.quick > button { border: 0; color: #fff; font-weight: 600; padding: 7px 16px; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; }
+.quick small { font-family: var(--font-data); font-weight: 500; font-size: 11px; opacity: .85; }
+.quick .qb { background: var(--buy); } .quick .qs { background: var(--sell); }
+.quick input { width: 64px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 7px 8px; text-align: center; font-family: var(--font-data); color: var(--fg); }
+.replay { display: flex; align-items: center; gap: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 3px 6px; position: relative; }
+.replay .ibtn { width: 34px; height: 30px; }
+.replay #b-play { color: var(--fg); }
+.replay select { background: none; border: 0; color: var(--fg); font-family: var(--font-data); padding: 4px; }
 .replay input[type=range] { width: 90px; accent-color: var(--accent); }
-.balpill { display: flex; gap: 8px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-family: var(--font-data); font-size: 12px; }
+.replay .spd { font-family: var(--font-data); color: var(--muted); font-size: 11px; width: 30px; }
+#jump-pop { bottom: calc(100% + 8px); right: 0; width: 260px; }
+.balpill { display: flex; gap: 8px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-family: var(--font-data); font-size: 12px; color: var(--fg); cursor: pointer; }
+.balpill:hover { border-color: var(--muted); }
 .balpill .cnt { background: var(--panel-2); border-radius: 999px; padding: 0 7px; font-family: var(--font-ui); }
-.posdrawer { max-height: 210px; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
+.posdrawer { max-height: 220px; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
 .posdrawer h4 { margin: 0; padding: 8px 10px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
 :fullscreen #app, #app:fullscreen { background: var(--bg); }
+.ws-name { font-weight: 600; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body[data-view="chart"] .acct { display: none; }
 
-
-/* Order ticket (slides in from the right of the chart) */
-aside.ticket > * { flex-shrink: 0; }
-aside.ticket { width: 300px; background: var(--panel); border-left: 1px solid var(--line); overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
-.tk-head { display: flex; align-items: center; gap: 8px; }
-.tk-head b { font-size: 14px; }
-.tk-head .x { margin-left: auto; background: none; border: 0; color: var(--muted); font-size: 18px; padding: 0 4px; }
-.sidebtns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.sidebtns button { border: 1px solid var(--line); background: var(--bg); padding: 8px; border-radius: 6px; font-weight: 600; color: var(--muted); }
-.sidebtns button[data-s="1"][aria-pressed="true"] { background: var(--long-soft); color: var(--long); border-color: var(--long); }
-.sidebtns button[data-s="-1"][aria-pressed="true"] { background: var(--short-soft); color: var(--short); border-color: var(--short); }
-.chips { display: flex; gap: 4px; flex-wrap: wrap; }
-.chips button { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-family: var(--font-data); font-size: 12px; color: var(--muted); }
-.chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-.lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
-.field { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 8px; }
-.field label { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
-.field input[type=number], .field select { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-family: var(--font-data); width: 100%; text-align: right; }
+/* Order panel */
+aside.ticket { width: 320px; background: var(--panel); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.tk-body { flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 16px; }
+.tk-body > * { flex-shrink: 0; }
+.tk-head { display: flex; align-items: flex-start; gap: 8px; padding: 14px 14px 0; }
+.tk-head b { font-size: 15px; display: block; }
+.tk-head .sub { color: var(--muted); font-size: 12px; }
+.tk-px { font-family: var(--font-data); font-size: 13px; margin-left: auto; padding-top: 2px; }
+.tk-head .x { background: none; border: 0; color: var(--muted); font-size: 20px; line-height: 1; padding: 0 2px; }
+.sidebtns { display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.sidebtns button { border: 0; background: none; padding: 9px; border-radius: 8px; font-weight: 600; color: var(--muted); }
+.sidebtns button[data-s="1"][aria-pressed="true"] { background: var(--buy); color: #fff; }
+.sidebtns button[data-s="-1"][aria-pressed="true"] { background: var(--sell); color: #fff; }
+.tk-sec { display: flex; flex-direction: column; gap: 8px; }
+.lbl { font-size: 12px; color: var(--muted); }
+.chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.chips button { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 0; font-family: var(--font-data); font-size: 12px; color: var(--muted); }
+.chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: rgba(47,124,246,.12); }
+.field { display: grid; grid-template-columns: 1fr 120px; align-items: center; gap: 8px; }
+.field label { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+.field input[type=number], .field select { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-family: var(--font-data); width: 100%; text-align: right; }
 .field input:disabled { opacity: .35; }
 .field .px { grid-column: 2; font-family: var(--font-data); font-size: 11px; color: var(--muted); text-align: right; margin-top: -4px; }
-.est { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.est div { background: var(--bg); padding: 8px; display: flex; flex-direction: column; gap: 2px; }
-.est span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.est b { font-family: var(--font-data); font-size: 13px; font-weight: 500; }
-.place { padding: 11px; border-radius: 8px; border: 0; font-weight: 700; font-size: 14px; color: #fff; }
-.place.l { background: var(--long); } .place.s { background: var(--short); }
+.exit { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.exit .top { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.exit .row { display: flex; align-items: center; gap: 8px; }
+.exit .row input { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-family: var(--font-data); text-align: right; }
+.exit .row span { font-size: 11px; color: var(--muted); font-family: var(--font-data); white-space: nowrap; }
+.switch { appearance: none; -webkit-appearance: none; width: 34px; height: 20px; border-radius: 999px; background: var(--line); position: relative; cursor: pointer; flex: none; margin: 0; transition: background .15s; }
+.switch::after { content: ""; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(14px); }
+.est { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+.est div { padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+.est div + div { border-left: 1px solid var(--line); }
+.est span { font-size: 11px; color: var(--muted); }
+.est b { font-family: var(--font-data); font-size: 14px; font-weight: 500; }
+.tk-foot { padding: 12px 14px 14px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.place { padding: 12px; border-radius: 10px; border: 0; font-weight: 700; font-size: 14px; color: #fff; }
+.place.l { background: var(--buy); } .place.s { background: var(--sell); }
+.tk-foot .hint { text-align: center; }
 .hint { font-size: 11px; color: var(--muted); line-height: 1.5; }
-.hint kbd { font-family: var(--font-data); background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 10px; }
-h3.sec { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.tk-note { font-size: 11px; color: #f5c542; }
+.tk-seg { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 3px; }
+.tk-seg.two { grid-template-columns: 1fr 1fr; }
+.tk-seg button { background: none; border: 0; border-radius: 8px; padding: 7px; color: var(--muted); font-weight: 500; }
+.tk-seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--fg); }
 
-
-.tools button { position: relative; }
-.tools .more { position: absolute; right: 3px; bottom: 3px; width: 0; height: 0; border-left: 4px solid transparent; border-bottom: 4px solid currentColor; opacity: .7; }
-.flyout { position: fixed; z-index: 40; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px; min-width: 200px; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
-.flyout .mh { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; padding: 6px 10px 4px; }
-.flyout button { display: flex; gap: 10px; align-items: center; width: 100%; background: none; border: 0; padding: 7px 10px; border-radius: 5px; color: var(--fg); text-align: left; }
-.flyout button:hover { background: var(--bg); }
-.flyout button[aria-pressed="true"] { color: var(--accent); }
-.flyout svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.ws-mid { position: relative; }
-.ws-name { font-weight: 600; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#b-order[aria-pressed="true"] { background: var(--accent); color: #1a1205; border-color: var(--accent); }
-.balpill { color: var(--fg); cursor: pointer; }
-.balpill:hover { border-color: var(--muted); }
-.tk-px { font-family: var(--font-data); color: var(--muted); font-size: 12px; }
-.tk-note { font-size: 11px; color: var(--accent); }
-body[data-view="chart"] .acct { display: none; }
+/* Settings dialog */
+.modal { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.55); display: grid; place-items: center; padding: 16px; }
+.dlg { width: min(720px, 100%); max-height: min(640px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
+.dlg-head { display: flex; align-items: center; padding: 18px 20px 10px; }
+.dlg-head h2 { margin: 0; font-size: 20px; }
+.dlg-head .x { margin-left: auto; background: none; border: 0; color: var(--muted); font-size: 22px; }
+.dlg-body { display: grid; grid-template-columns: 170px minmax(0,1fr); min-height: 0; flex: 1; border-top: 1px solid var(--line); }
+.dlg-nav { padding: 10px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.dlg-nav button { background: none; border: 0; text-align: left; padding: 8px 12px; border-radius: 8px; color: var(--muted); }
+.dlg-nav button[aria-current="true"] { background: var(--panel-2); color: var(--fg); }
+.dlg-main { padding: 16px 20px; overflow: auto; }
+.dlg-main h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.srow { display: flex; align-items: center; gap: 10px; min-height: 40px; border-bottom: 1px solid var(--line); }
+.srow:last-child { border-bottom: 0; }
+.srow > span:first-child { flex: 1; }
+.srow input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 0; cursor: pointer; }
+.srow .cap { font-size: 11px; color: var(--muted); width: 44px; text-align: center; }
+.dlg-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid var(--line); }
 
 /* Analytics in the FX Replay style */
 .pl-kpis { display: flex; flex-wrap: wrap; gap: 14px 36px; margin-bottom: 14px; }
@@ -288,57 +368,74 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
         <span class="ws-name" id="ws-sess"></span>
         <span class="sep"></span>
         <select class="ctl" id="sym" aria-label="Symbol on the selected chart"></select>
-        <div class="tfwrap"><button class="btn icon" id="b-tf" aria-label="All timeframes">5m ▾</button><div class="menu" id="tf-menu" hidden></div></div>
-        <div class="seg" id="tf-fav" role="group" aria-label="Timeframe"></div>
+        <div class="tfwrap"><button id="b-tf" aria-label="Choose timeframe">5m</button><div class="menu" id="tf-menu" hidden></div></div>
+        <div class="seg" id="tf-fav" role="group" aria-label="Favourite timeframes"></div>
         <span class="sep"></span>
-        <select class="ctl" id="layout" aria-label="Chart layout">
-          <option value="1">1 chart</option>
-          <option value="2h">2 charts side by side</option>
-          <option value="2v">2 charts stacked</option>
-        </select>
+        <div class="seg" id="layout" role="group" aria-label="Chart layout">
+          <button data-l="1" title="1 chart" aria-label="1 chart"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/></svg></button>
+          <button data-l="2h" title="2 charts side by side" aria-label="2 charts side by side"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M8 2.5v11"/></svg></button>
+          <button data-l="2v" title="2 charts stacked" aria-label="2 charts stacked"><svg viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M1.5 8h13"/></svg></button>
+        </div>
         <span class="grow"></span>
         <span class="clock" id="clock">–</span>
-        <button class="btn" id="b-full">Full screen</button>
-        <button class="btn" id="b-order" aria-pressed="false">Order</button>
+        <button class="ibtn" id="b-settings" title="Chart settings" aria-label="Chart settings"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="2.5"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4"/></svg></button>
+        <button class="ibtn" id="b-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 18 18"><path d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4"/></svg></button>
+        <button id="b-order" aria-pressed="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v6M5 8h6"/></svg>Order</button>
       </div>
-      <div class="ws-mid">
+      <div class="ws-mid" id="ws-mid">
         <nav class="tools" id="tools" aria-label="Drawing tools"></nav>
-        <div class="panes" id="panes" data-l="1"></div>
-        <div id="tf-typed" hidden></div>
+        <div class="panes" id="panes" data-l="1"><div class="splitter" id="splitter" hidden></div></div>
         <aside class="ticket" id="ticket" aria-label="Order panel" hidden>
-          <div class="tk-head"><b id="tk-sym">MNQ</b><span class="tk-px" id="tk-px"></span><button class="x" id="tk-close" aria-label="Close order panel">×</button></div>
-          <div class="sidebtns">
-            <button data-s="-1" aria-pressed="false" id="o-short">Sell</button>
-            <button data-s="1" aria-pressed="true" id="o-long">Buy</button>
-          </div>
-          <div>
-            <div class="lbl" style="margin-bottom:6px">Size</div>
-            <div class="seg" id="o-mode" role="group" aria-label="Size by">
-              <button data-m="risk" aria-pressed="true" style="flex:1">Risk %</button>
-              <button data-m="qty" aria-pressed="false" style="flex:1">Contracts</button>
+          <div class="tk-head"><div><b id="tk-sym">MNQ</b><span class="sub" id="tk-name"></span></div><span class="tk-px" id="tk-px"></span><button class="x" id="tk-close" aria-label="Close order panel">×</button></div>
+          <div class="tk-body">
+            <div class="sidebtns">
+              <button data-s="-1" aria-pressed="false" id="o-short">Sell</button>
+              <button data-s="1" aria-pressed="true" id="o-long">Buy</button>
+            </div>
+            <div class="tk-sec">
+              <span class="lbl">Position size</span>
+              <div class="tk-seg two" id="o-mode" role="group" aria-label="Size by">
+                <button data-m="risk" aria-pressed="true">Risk % of balance</button>
+                <button data-m="qty" aria-pressed="false">Contracts</button>
+              </div>
+              <div class="chips" id="o-chips" role="group" aria-label="Risk percent">
+                <button data-r="0.5">0.5%</button><button data-r="1">1%</button><button data-r="2">2%</button><button data-r="3">3%</button><button data-r="5">5%</button>
+              </div>
+              <div class="field" id="f-risk"><label for="o-risk">Custom risk %</label><input type="number" id="o-risk" step="0.1" min="0.05" value="1"></div>
+              <div class="field" id="f-qty" hidden><label for="o-qty">Contracts</label><input type="number" id="o-qty" step="1" min="1" value="1"></div>
+              <div class="tk-note" id="o-note" hidden></div>
+            </div>
+            <div class="est" id="o-est"></div>
+            <div class="tk-sec">
+              <span class="lbl">Order type</span>
+              <div class="tk-seg" id="o-type" role="group" aria-label="Order type">
+                <button data-t="market" aria-pressed="true">Market</button>
+                <button data-t="limit" aria-pressed="false">Limit</button>
+                <button data-t="stop" aria-pressed="false">Stop</button>
+              </div>
+              <div class="field" id="f-price"><label for="o-price">Entry price</label><input type="number" id="o-price" step="0.25"></div>
+            </div>
+            <div class="tk-sec">
+              <span class="lbl">Exits</span>
+              <div class="exit">
+                <label class="top"><input type="checkbox" class="switch" id="o-sl-on" checked> Stop loss</label>
+                <div class="row" id="r-sl"><input type="number" id="o-sl" step="0.25" min="0.25" value="20" aria-label="Stop loss in points"><span>points</span><span id="o-sl-px"></span></div>
+              </div>
+              <div class="exit">
+                <label class="top"><input type="checkbox" class="switch" id="o-tp-on" checked> Take profit</label>
+                <div class="row" id="r-tp"><input type="number" id="o-tp" step="0.25" min="0.25" value="40" aria-label="Take profit in points"><span>points</span><span id="o-tp-px"></span></div>
+              </div>
             </div>
           </div>
-          <div class="chips" id="o-chips" role="group" aria-label="Risk percent">
-            <button data-r="0.5">0.5%</button><button data-r="1">1%</button><button data-r="2">2%</button><button data-r="3">3%</button><button data-r="5">5%</button>
+          <div class="tk-foot">
+            <button class="place l" id="o-place">Place order</button>
+            <span class="hint">Drag the dashed lines on the chart to adjust.</span>
           </div>
-          <div class="field" id="f-risk"><label for="o-risk">Risk %</label><input type="number" id="o-risk" step="0.1" min="0.05" value="1"></div>
-          <div class="field" id="f-qty" hidden><label for="o-qty">Contracts</label><input type="number" id="o-qty" step="1" min="1" value="1"></div>
-          <div class="est" id="o-est"></div>
-          <div class="tk-note" id="o-note" hidden></div>
-          <div>
-            <div class="lbl" style="margin-bottom:6px">Order type</div>
-            <div class="seg" id="o-type" role="group" aria-label="Order type">
-              <button data-t="market" aria-pressed="true" style="flex:1">Market</button>
-              <button data-t="limit" aria-pressed="false" style="flex:1">Limit</button>
-              <button data-t="stop" aria-pressed="false" style="flex:1">Stop</button>
-            </div>
-          </div>
-          <div class="field" id="f-price"><label for="o-price">Entry price</label><input type="number" id="o-price" step="0.25"></div>
-          <div class="field"><label for="o-sl"><input type="checkbox" id="o-sl-on" checked aria-label="Use stop loss">Stop loss (points)</label><input type="number" id="o-sl" step="0.25" min="0.25" value="20"><div class="px" id="o-sl-px"></div></div>
-          <div class="field"><label for="o-tp"><input type="checkbox" id="o-tp-on" checked aria-label="Use take profit">Take profit (points)</label><input type="number" id="o-tp" step="0.25" min="0.25" value="40"><div class="px" id="o-tp-px"></div></div>
-          <button class="place l" id="o-place">Buy</button>
-          <p class="hint">The dashed lines on the chart show the entry, stop and target. Drag them up or down to change the order before you place it. Dragging the entry line turns it into a limit or stop order.<br><br>The quick Buy and Sell buttons at the bottom use the contracts next to them and the stop and target set here.</p>
         </aside>
+        <div id="tf-typed" hidden></div>
+        <button id="tools-open" hidden title="Show drawing tools" aria-label="Show drawing tools">›</button>
+        <div class="fbar" id="favbar" hidden></div>
+        <div class="fbar" id="editbar" hidden></div>
       </div>
       <div class="posdrawer" id="drawer" hidden>
         <h4>Open positions</h4>
@@ -348,33 +445,34 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
       </div>
       <div class="ws-bot">
         <div class="quick">
-          <button class="qs" id="q-sell">Sell<small id="q-sell-px">–</small></button>
-          <input id="q-qty" type="number" min="1" step="1" value="1" aria-label="Contracts for quick Buy and Sell">
-          <button class="qb" id="q-buy">Buy<small id="q-buy-px">–</small></button>
+          <button class="qb" id="q-buy">Buy <small id="q-buy-px">–</small></button>
+          <button class="qs" id="q-sell">Sell <small id="q-sell-px">–</small></button>
+          <input id="q-qty" type="number" min="1" step="1" value="1" aria-label="Contracts for quick Buy and Sell" title="Contracts for quick Buy and Sell">
         </div>
         <span class="grow"></span>
         <div class="replay">
-          <button class="btn icon" id="b-play" title="Play or pause the replay">▶</button>
-          <button class="btn icon" id="b-next" title="Next bar">▶|</button>
-          <label for="step">Step</label>
-          <select class="ctl" id="step" title="How far each step moves">
-            <option value="0">Chart timeframe</option>
-            <option value="15">15 seconds</option>
-            <option value="60">1 minute</option>
-            <option value="300">5 minutes</option>
-            <option value="900">15 minutes</option>
-            <option value="3600">1 hour</option>
+          <button class="ibtn" id="b-play" title="Play or pause" aria-label="Play or pause"><svg viewBox="0 0 18 18"><path d="M5 3l10 6-10 6z"/></svg></button>
+          <button class="ibtn" id="b-next" title="Next bar" aria-label="Next bar"><svg viewBox="0 0 18 18"><path d="M4 3l8 6-8 6zM14 3v12"/></svg></button>
+          <select id="step" title="How far each step moves" aria-label="Step size">
+            <option value="0">Chart TF</option>
+            <option value="15">15s</option>
+            <option value="60">1m</option>
+            <option value="300">5m</option>
+            <option value="900">15m</option>
+            <option value="3600">1H</option>
           </select>
-          <label for="speed">Speed</label>
-          <input type="range" id="speed" min="1" max="20" value="4" title="Play speed, bars per second" aria-label="Play speed"><span class="num mut" id="speed-v">4/s</span>
-          <select class="ctl" id="jump" aria-label="Jump forward to">
-            <option value="">Jump to…</option>
-            <option value="570">Next New York open (09:30)</option>
-            <option value="180">Next London open (03:00)</option>
-            <option value="1200">Next Asia open (20:00)</option>
-            <option value="1080">Next day open (18:00)</option>
-          </select>
-          <input type="date" class="ctl" id="jump-date" aria-label="Jump to date"><button class="btn" id="b-jumpdate">Go</button>
+          <input type="range" id="speed" min="1" max="20" value="4" title="Play speed, bars per second" aria-label="Play speed"><span class="spd" id="speed-v">4/s</span>
+          <button class="ibtn" id="b-jump" title="Jump forward" aria-label="Jump forward"><svg viewBox="0 0 18 18"><path d="M3 12a6 6 0 0 1 11-3.5M14 4v4.5h-4.5"/></svg></button>
+          <div class="pop" id="jump-pop" hidden>
+            <div class="opts">
+              <button data-jump="570">Next New York open (09:30)</button>
+              <button data-jump="180">Next London open (03:00)</button>
+              <button data-jump="1200">Next Asia open (20:00)</button>
+              <button data-jump="1080">Next day open (18:00)</button>
+            </div>
+            <div class="mh">Or jump to a date</div>
+            <div class="row"><input type="date" class="ctl" id="jump-date" aria-label="Jump to date" style="flex:1"><button class="btn primary" id="b-jumpdate">Go</button></div>
+          </div>
         </div>
         <span class="grow"></span>
         <button class="balpill" id="b-bal" aria-expanded="false" title="Show positions and orders"></button>
@@ -471,6 +569,17 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="flyout" id="fly" hidden></div>
+<div class="pop" id="epop" style="position:fixed" hidden></div>
+<div class="modal" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="set-title">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="set-title">Chart settings</h2><button class="x" id="set-close" aria-label="Close">×</button></div>
+    <div class="dlg-body">
+      <nav class="dlg-nav" id="set-nav"><button data-sec="candles">Candles</button><button data-sec="canvas">Background and grid</button><button data-sec="trading">Trading</button></nav>
+      <div class="dlg-main" id="set-main"></div>
+    </div>
+    <div class="dlg-foot"><button class="btn" id="set-reset">Reset colours</button><button class="btn primary" id="set-done">Done</button></div>
+  </div>
+</div>
 
 <script>
 (() => {
@@ -491,8 +600,9 @@ const rt = (p, tick = 0.25) => Math.round(p / tick) * tick;
 
 /* ---------- Timeframes ---------- */
 const TFS = [
-  ['15S', 15], ['30S', 30], ['1m', 60], ['3m', 180], ['5m', 300], ['15m', 900], ['30m', 1800],
-  ['1H', 3600], ['4H', 14400], ['1D', 86400], ['1W', 604800], ['1Mo', 2592000],
+  ['15S', 15, '15 seconds'], ['30S', 30, '30 seconds'], ['1m', 60, '1 minute'], ['2m', 120, '2 minutes'], ['3m', 180, '3 minutes'], ['5m', 300, '5 minutes'],
+  ['10m', 600, '10 minutes'], ['15m', 900, '15 minutes'], ['30m', 1800, '30 minutes'], ['1H', 3600, '1 hour'], ['2H', 7200, '2 hours'], ['4H', 14400, '4 hours'],
+  ['1D', 86400, '1 day'], ['1W', 604800, '1 week'], ['1M', 2592000, '1 month'],
 ];
 function tfLabel(sec) {
   const f = TFS.find(t => t[1] === sec); if (f) return f[0];
@@ -693,6 +803,11 @@ async function importFiles(files, tzMode, onProgress, want) {
 
 /* ---------- Store ---------- */
 const KEY = 'tape-replay.v1';
+const DEF_SET = { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350',
+  bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', volume: true, priceLine: true, markers: false,
+  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [] };
+const SET = () => store.settings;
+function initSettings() { store.settings = Object.assign({}, DEF_SET, store.settings || {}); }
 let store = null;
 function load() { try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {} return null; }
 let saveT = 0;
@@ -793,12 +908,12 @@ function migrate(s) {
 
 function makePane(i) {
   const el = document.createElement('div'); el.className = 'pane'; el.dataset.i = i;
-  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div><div class="selbar" hidden></div>';
+  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div>';
   panesEl.appendChild(el);
   const chart = LWC.createChart(el.querySelector('.chart'), {
     autoSize: true,
     layout: { background: { color: C.bg }, textColor: C.muted, fontFamily: 'IBM Plex Mono, ui-monospace, monospace', fontSize: 11 },
-    grid: { vertLines: { color: 'rgba(36,46,57,.55)' }, horzLines: { color: 'rgba(36,46,57,.55)' } },
+    grid: { vertLines: { color: '#1a1a1f' }, horzLines: { color: '#1a1a1f' } },
     rightPriceScale: { borderColor: C.line }, timeScale: { borderColor: C.line, timeVisible: true, secondsVisible: false, rightOffset: 12 },
     crosshair: { mode: 0 },
   });
@@ -806,7 +921,7 @@ function makePane(i) {
   const volume = chart.addHistogramSeries({ priceScaleId: 'vol', priceFormat: { type: 'volume' }, color: 'rgba(127,139,153,.25)', lastValueVisible: false, priceLineVisible: false });
   chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
   const P = { i, el, chart, candles, volume, agg: [], lines: [], lastIdx: -1, sym: null, tf: 0, hover: null, sig: '', x0: 0, dx: 1, pw: 0, ph: 0,
-    cv: el.querySelector('canvas.draw'), legend: el.querySelector('.legend'), selbar: el.querySelector('.selbar') };
+    cv: el.querySelector('canvas.draw'), legend: el.querySelector('.legend') };
   P.ctx = P.cv.getContext('2d');
   chart.subscribeCrosshairMove(prm => { const d = prm.time != null && prm.seriesData ? prm.seriesData.get(candles) : null; P.hover = d && d.open != null ? d : null; renderLegend(P); });
   bindPane(P);
@@ -815,7 +930,7 @@ function makePane(i) {
 
 const aggBar = (D, i, b) => ({ time: b, open: D.o[i], high: D.h[i], low: D.l[i], close: D.c[i], value: D.v[i] });
 const cBar = (b) => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
-const vBar = (b) => ({ time: b.time, value: b.value, color: b.close >= b.open ? UPV : DNV });
+const vBar = (b) => ({ time: b.time, value: b.value, color: alpha(b.close >= b.open ? SET().up : SET().down, .32) });
 function mergeInto(a, D, i, tf) {
   const b = bucket(D.t[i], tf), last = a[a.length - 1];
   if (last && last.time === b) { if (D.h[i] > last.high) last.high = D.h[i]; if (D.l[i] < last.low) last.low = D.l[i]; last.close = D.c[i]; last.value += D.v[i]; }
@@ -847,8 +962,12 @@ function extendPane(P) {
   P.sig = '';
 }
 function layoutPanes() {
-  const n = nPanes(); panesEl.dataset.l = LAY().mode;
+  const n = nPanes(), mode = LAY().mode, sp = LAY().split || 0.5; panesEl.dataset.l = mode;
   if (LAY().active >= n) LAY().active = 0;
+  panesEl.style.gridTemplateColumns = mode === '2h' ? `minmax(0,${sp}fr) minmax(0,${1 - sp}fr)` : 'minmax(0,1fr)';
+  panesEl.style.gridTemplateRows = mode === '2v' ? `minmax(0,${sp}fr) minmax(0,${1 - sp}fr)` : 'minmax(0,1fr)';
+  const spl = $('#splitter'); spl.hidden = mode === '1';
+  spl.style.left = mode === '2h' ? sp * 100 + '%' : ''; spl.style.top = mode === '2v' ? sp * 100 + '%' : '';
   PANES.forEach((P, i) => { P.el.hidden = i >= n; if (i >= n) P.sym = null; P.el.classList.toggle('active', i === LAY().active); });
 }
 function rebuildAll(fit) { layoutPanes(); for (const P of visiblePanes()) rebuildPane(P, fit); }
@@ -876,7 +995,7 @@ function drawPaneOverlays(P) {
   }
   if (ticket.open && P === AP()) {
     const k = ticketCalc();
-    addLine(P, k.entry, 'rgba(228,166,64,.75)', `${ticket.side > 0 ? 'Buy' : 'Sell'} ${ticket.type} ${k.qty}`, 1, 'tentry', null);
+    addLine(P, k.entry, 'rgba(47,124,246,.9)', `${ticket.side > 0 ? 'Buy' : 'Sell'} ${ticket.type} ${k.qty}`, 1, 'tentry', null);
     if (k.sl != null) addLine(P, k.sl, 'rgba(226,85,79,.6)', `SL -$${fmt0(k.riskUsd)}`, 1, 'tsl', null);
     if (k.tp != null) addLine(P, k.tp, 'rgba(38,176,122,.6)', `TP +$${fmt0(k.rewardUsd)}`, 1, 'ttp', null);
   }
@@ -887,7 +1006,7 @@ function drawPaneOverlays(P) {
   }
   for (const p of sess.positions.filter(p => p.sym === sym)) m.push({ time: bucket(p.openT, tf), position: p.side > 0 ? 'belowBar' : 'aboveBar', color: p.side > 0 ? C.long : C.short, shape: p.side > 0 ? 'arrowUp' : 'arrowDown', text: '' });
   const first = P.agg.length ? P.agg[0].time : 0;
-  P.candles.setMarkers(m.filter(x => x.time >= first).sort((a, b) => a.time - b.time));
+  P.candles.setMarkers(SET().markers ? m.filter(x => x.time >= first).sort((a, b) => a.time - b.time) : []);
 }
 const drawOverlays = () => { for (const P of visiblePanes()) drawPaneOverlays(P); };
 
@@ -912,7 +1031,7 @@ function renderTicket(redraw = true) {
   $('#ticket').hidden = !ticket.open; $('#b-order').setAttribute('aria-pressed', ticket.open);
   if (ticket.open) {
     const k = ticketCalc();
-    $('#tk-sym').textContent = k.sym + ' · ' + INSTR[k.sym].name; $('#tk-px').textContent = fmtPx(priceNow(k.sym));
+    $('#tk-sym').textContent = k.sym; $('#tk-name').textContent = INSTR[k.sym].name; $('#tk-px').textContent = fmtPx(priceNow(k.sym));
     $('#o-long').setAttribute('aria-pressed', ticket.side > 0); $('#o-short').setAttribute('aria-pressed', ticket.side < 0);
     for (const b of $$('#o-type button')) b.setAttribute('aria-pressed', b.dataset.t === ticket.type);
     for (const b of $$('#o-mode button')) b.setAttribute('aria-pressed', b.dataset.m === ticket.mode);
@@ -920,7 +1039,7 @@ function renderTicket(redraw = true) {
     $('#f-price').hidden = ticket.type === 'market';
     $('#f-risk').hidden = $('#o-chips').hidden = ticket.mode !== 'risk'; $('#f-qty').hidden = ticket.mode !== 'qty';
     $('#o-sl').disabled = !$('#o-sl-on').checked; $('#o-tp').disabled = !$('#o-tp-on').checked;
-    $('#o-sl-px').textContent = k.sl != null ? 'at ' + fmtPx(k.sl) : ''; $('#o-tp-px').textContent = k.tp != null ? 'at ' + fmtPx(k.tp) : '';
+    $('#o-sl-px').textContent = k.sl != null ? '@ ' + fmtPx(k.sl) : ''; $('#o-tp-px').textContent = k.tp != null ? '@ ' + fmtPx(k.tp) : ''; $('#r-sl').hidden = !$('#o-sl-on').checked; $('#r-tp').hidden = !$('#o-tp-on').checked;
     const rr = k.riskUsd && k.rewardUsd ? (k.rewardUsd / k.riskUsd).toFixed(2) : '–';
     $('#o-est').innerHTML = `<div><span>Est. loss</span><b class="neg">${k.riskUsd ? '-$' + k.riskUsd.toFixed(2) : 'no stop'}</b></div><div><span>Est. profit</span><b class="pos">${k.rewardUsd ? '+$' + k.rewardUsd.toFixed(2) : '–'}</b></div><div><span>R:R</span><b>${rr}</b></div>`;
     const note = $('#o-note'); note.hidden = !(ticket.mode === 'risk' && !$('#o-sl-on').checked);
@@ -974,6 +1093,9 @@ const ICON = {
   measure: '<path d="M2 12L12 2l4 4L6 16z"/><path d="M5 9l1.5 1.5M7.5 6.5L9 8M10 4l1.5 1.5"/>',
   text: '<path d="M3 4V2h12v2M9 2v14M6 16h6"/>',
   magnet: '<path d="M4 2v7a5 5 0 0 0 10 0V2h-3v7a2 2 0 0 1-4 0V2z"/>',
+  star: '<path d="M9 1.8l2.2 4.6 5 .7-3.6 3.5.9 5L9 13.2l-4.5 2.4.9-5L1.8 7.1l5-.7z"/>',
+  collapse: '<path d="M11 4L6 9l5 5"/>',
+  clone: '<rect x="6" y="6" width="9" height="9" rx="1.5"/><path d="M12 3.5V3a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h.5"/>',
   keep: '<path d="M3 15l1.5-4.5L12 3l3 3-7.5 7.5z"/><path d="M10.5 4.5l3 3"/>',
   lock: '<rect x="4" y="8" width="10" height="8" rx="1"/><path d="M6 8V5.5a3 3 0 0 1 6 0V8"/>',
   hide: '<path d="M1 9s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5z"/><circle cx="9" cy="9" r="2"/>',
@@ -1038,7 +1160,7 @@ const fmtSpan = (s) => s < 3600 ? Math.round(s / 60) + 'm' : s < 86400 ? Math.fl
 function renderD(P, ctx, d, isSel) {
   const col = d.color || DCOL[0], q = d.pts.map(p => toXY(P, p));
   if (q.some(v => v[1] == null || !isFinite(v[0]))) return;
-  ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = d.w || 2; ctx.setLineDash(d.ls === 'dashed' ? [6, 4] : d.ls === 'dotted' ? [1.5, 3.5] : []);
   const [a, b, c] = q, W = P.pw, H = P.ph;
   switch (d.type) {
     case 'trend': seg(ctx, a, b); break;
@@ -1097,7 +1219,8 @@ function renderD(P, ctx, d, isSel) {
       break;
     }
   }
-  if (isSel && d.type !== 'text') for (const [hx, hy] of q) { ctx.fillStyle = '#0c1015'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill(); ctx.stroke(); }
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
+  if (isSel && d.type !== 'text') for (const [hx, hy] of q) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill(); ctx.stroke(); }
 }
 function paint(P) {
   if (!P.sym) return;
@@ -1140,24 +1263,47 @@ function hitD(P, d, pt) {
 }
 function setPt(d, i, v) { d.pts[i] = v; if ((d.type === 'long' || d.type === 'short') && i > 0) d.pts[3 - i].t = v.t; }
 
-/* Selection, tools and the floating bar over a selected drawing */
-function select(d, P) { draw.sel = d ? { sym: d.sym, id: d.id, pane: P ? P.i : (draw.sel ? draw.sel.pane : 0) } : null; renderSelbars(); bump(); }
+/* Floating edit bar for the selected drawing, favourites bar, flyouts */
+const GRIP = '<svg viewBox="0 0 6 18" aria-hidden="true"><circle cx="1.5" cy="4" r="1.2"/><circle cx="4.5" cy="4" r="1.2"/><circle cx="1.5" cy="9" r="1.2"/><circle cx="4.5" cy="9" r="1.2"/><circle cx="1.5" cy="14" r="1.2"/><circle cx="4.5" cy="14" r="1.2"/></svg>';
+function mixHex(a, b, t) { const x = parseInt(a.slice(1), 16), y = parseInt(b.slice(1), 16); const ch = (s) => Math.round(((x >> s) & 255) * (1 - t) + ((y >> s) & 255) * t); return '#' + [16, 8, 0].map(s => ch(s).toString(16).padStart(2, '0')).join(''); }
+const HUES = ['#f23645', '#ff9800', '#ffeb3b', '#4caf50', '#089981', '#00bcd4', '#2962ff', '#673ab7', '#9c27b0', '#e91e63'];
+const PALETTE = ['#ffffff', '#e0e0e0', '#bdbdbd', '#9e9e9e', '#757575', '#5d5d5d', '#424242', '#2e2e2e', '#1a1a1a', '#000000',
+  ...HUES, ...HUES.map(c => mixHex(c, '#ffffff', .6)), ...HUES.map(c => mixHex(c, '#ffffff', .3)), ...HUES.map(c => mixHex(c, '#000000', .3)), ...HUES.map(c => mixHex(c, '#000000', .55))];
+const LINEISH = ['trend', 'ray', 'ext', 'arrow', 'channel'];
+const dashSvg = (ls) => `<svg viewBox="0 0 40 10"><path d="M2 5h36" stroke-width="2" stroke-dasharray="${ls === 'dashed' ? '6 4' : ls === 'dotted' ? '1.5 3.5' : 'none'}"/></svg>`;
+function select(d, P) { draw.sel = d ? { sym: d.sym, id: d.id, pane: P ? P.i : (draw.sel ? draw.sel.pane : 0) } : null; closePop(); renderSelbars(); bump(); }
 function removeD(d) { const l = dList(d.sym), i = l.indexOf(d); if (i >= 0) l.splice(i, 1); if (draw.sel && draw.sel.id === d.id) select(null); bump(); save(); }
+function placeBar(el, pos, def) {
+  const m = $('#ws-mid'), W = m.clientWidth, H = m.clientHeight, w = el.offsetWidth, h = el.offsetHeight;
+  let [x, y] = pos ? [pos.x, pos.y] : def(W, w);
+  x = Math.max(4, Math.min(x, W - w - 4)); y = Math.max(4, Math.min(y, H - h - 4));
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+}
+const EDIT_DEF = (W, w) => [panesEl.offsetLeft + panesEl.offsetWidth - w - 80, 52];
+const FAV_DEF = (W, w) => [panesEl.offsetLeft + (panesEl.offsetWidth - w) / 2, 8];
 function renderSelbars() {
-  const d = selD();
-  for (const P of PANES) {
-    const show = !!d && draw.sel.pane === P.i && P.sym === d.sym; P.selbar.hidden = !show; if (!show) continue;
-    let h = '';
-    if (!['long', 'short', 'measure'].includes(d.type)) h += DCOL.map(c => `<button class="sw" style="background:${c}" data-dcol="${c}" aria-pressed="${(d.color || DCOL[0]) === c}" title="Colour" aria-label="Colour ${c}"></button>`).join('');
-    if (d.type === 'text') h += '<button class="btn" data-dtext="1">Edit text</button>';
-    if (d.type === 'long' || d.type === 'short') { const k = posInfo(P.sym, d), s = d.type === 'long' ? 1 : -1, typ = orderTypeFor(s, k.e, priceNow(P.sym)); h += `<button class="btn primary" data-dplace="1">Place ${s > 0 ? 'buy' : 'sell'} ${typ} order · ${k.qty} ${P.sym}</button>`; }
-    h += '<button class="btn danger" data-ddel="1">Delete</button>';
-    P.selbar.innerHTML = h;
-  }
+  const d = selD(), bar = $('#editbar'), P = d ? PANES[draw.sel.pane] : null;
+  if (!d || draw.hidden || !P || P.sym !== d.sym || view !== 'chart') { bar.hidden = true; return; }
+  const hasColor = !['long', 'short', 'measure'].includes(d.type), hasStroke = !['text', 'long', 'short', 'measure'].includes(d.type);
+  let h = `<span class="grip" data-grip="editPos" title="Drag to move this bar">${GRIP}</span>`;
+  if (hasColor) h += `<button data-e="color" title="Colour"><span class="swatch" style="background:${d.color || DCOL[0]};opacity:${d.op ?? 1}"></span></button>`;
+  if (hasStroke) h += `<button data-e="width" title="Line thickness">${d.w || 2}px</button><button data-e="style" class="dash" title="Line style">${dashSvg(d.ls)}</button>`;
+  if (LINEISH.includes(d.type)) h += `<button data-e="flat" title="Make the line perfectly flat">${svg('hline')}Make flat</button>`;
+  if (d.type === 'text') h += '<button data-e="text">Edit text</button>';
+  if (d.type === 'long' || d.type === 'short') { const k = posInfo(P.sym, d), s = d.type === 'long' ? 1 : -1, typ = orderTypeFor(s, k.e, priceNow(P.sym), INSTR[P.sym].tick); h += `<button class="go" data-e="place">Place ${s > 0 ? 'buy' : 'sell'} ${typ} · ${k.qty} ${P.sym}</button>`; }
+  h += `<span class="vsep"></span><button data-e="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Unlock this drawing' : 'Lock this drawing in place'}">${svg('lock')}</button>`;
+  h += `<button data-e="clone" title="Copy this drawing">${svg('clone')}</button><button data-e="del" class="danger" title="Delete this drawing">${svg('trash')}</button>`;
+  bar.innerHTML = h; bar.hidden = false; placeBar(bar, SET().editPos, EDIT_DEF);
+}
+function renderFavbar() {
+  const el = $('#favbar'), favs = SET().favTools, on = SET().favBar && favs.length > 0;
+  el.hidden = !on; if (!on) return;
+  el.innerHTML = `<span class="grip" data-grip="favPos" title="Drag to move this bar">${GRIP}</span>` + favs.map(t => `<button data-tool="${t}" aria-pressed="${draw.tool === t}" title="${TOOLDEF[t].n}" aria-label="${TOOLDEF[t].n}">${svg(t)}</button>`).join('');
+  placeBar(el, SET().favPos, FAV_DEF);
 }
 function setTool(t) {
   if (draw.mk) { const m = draw.mk; draw.mk = null; lockChart(m.P, false); removeD(m.d); }
-  draw.tool = t; renderTools();
+  draw.tool = t; renderTools(); renderFavbar();
   for (const P of PANES) P.el.style.cursor = t === 'cursor' ? '' : 'crosshair';
 }
 function renderTools() {
@@ -1168,16 +1314,48 @@ function renderTools() {
   const tg = [['magnet', 'Magnet: snap to candle open, high, low and close', draw.magnet], ['keep', 'Keep drawing: stay on the tool after each drawing', draw.keep],
     ['lock', 'Lock all drawings', draw.locked], ['hide', 'Hide all drawings', draw.hidden]]
     .map(([id, t, on]) => `<button data-tg="${id}" aria-pressed="${on}" title="${t}" aria-label="${t}">${svg(id)}</button>`).join('');
-  $('#tools').innerHTML = g + '<hr>' + tg + `<button data-tg="trash" class="${draw.armed > Date.now() ? 'warn' : ''}" title="Remove all drawings on this symbol" aria-label="Remove all drawings on this symbol">${svg('trash')}</button>`;
+  $('#tools').innerHTML = g + '<hr>' + tg + `<button data-tg="trash" class="${draw.armed > Date.now() ? 'warn' : ''}" title="Remove all drawings on this symbol" aria-label="Remove all drawings on this symbol">${svg('trash')}</button>`
+    + `<span class="grow"></span><button data-tg="favbar" aria-pressed="${SET().favBar}" title="Show or hide the favourites bar" aria-label="Show or hide the favourites bar">${svg('star')}</button>`
+    + `<button data-tg="collapse" title="Hide the drawing tools" aria-label="Hide the drawing tools">${svg('collapse')}</button>`;
+  $('#ws-mid').classList.toggle('notools', !SET().tools); $('#tools-open').hidden = SET().tools;
+}
+function flyHtml(gid, list) {
+  return `<div class="mh">${GNAME[gid]}</div>` + list.map(t => `<div class="it ${draw.tool === t ? 'on' : ''}"><button data-tool="${t}">${svg(t)}<span>${TOOLDEF[t].n}</span></button>${t === 'cursor' ? '' : `<button class="star" data-favtool="${t}" aria-pressed="${SET().favTools.includes(t)}" title="Add to favourites bar" aria-label="Add ${TOOLDEF[t].n} to favourites">★</button>`}</div>`).join('');
 }
 function openFly(btn, gid, list) {
   const f = $('#fly'); if (!f.hidden && f.dataset.g === gid) { closeMenus(); return; }
   closeMenus();
-  f.innerHTML = `<div class="mh">${GNAME[gid]}</div>` + list.map(t => `<button data-tool="${t}" aria-pressed="${draw.tool === t}">${svg(t)}<span>${TOOLDEF[t].n}</span></button>`).join('');
+  f.innerHTML = flyHtml(gid, list);
   const r = btn.getBoundingClientRect(); f.hidden = false; f.dataset.g = gid;
   f.style.left = (r.right + 6) + 'px'; f.style.top = Math.max(6, Math.min(r.top, innerHeight - f.offsetHeight - 6)) + 'px';
 }
-function closeMenus() { $('#fly').hidden = true; $('#tf-menu').hidden = true; }
+let popFn = null;
+function closePop() { const p = $('#epop'); if (p) p.hidden = true; popFn = null; }
+function closeMenus() { $('#fly').hidden = true; $('#tf-menu').hidden = true; $('#jump-pop').hidden = true; closePop(); }
+function openPop(btn, html, bind) {
+  const p = $('#epop'), r = btn.getBoundingClientRect();
+  p.innerHTML = html; p.hidden = false; popFn = bind || null;
+  p.style.left = Math.max(6, Math.min(r.left, innerWidth - p.offsetWidth - 6)) + 'px';
+  p.style.top = Math.min(r.bottom + 6, innerHeight - p.offsetHeight - 6) + 'px';
+  if (bind) bind(p);
+}
+function colorPop(d) {
+  const cur = (d.color || DCOL[0]).toLowerCase(), cust = SET().customColors;
+  return `<div class="pal">${PALETTE.map(c => `<button data-col="${c}" style="background:${c}" aria-pressed="${c === cur}" title="${c}" aria-label="Colour ${c}"></button>`).join('')}</div>
+    <div class="mh">Custom</div><div class="row pal" style="display:flex;flex-wrap:wrap">${cust.map(c => `<button data-col="${c}" style="background:${c}" aria-pressed="${c === cur}" title="${c}"></button>`).join('')}
+    <label class="row" style="gap:6px"><input type="color" id="pc-custom" value="${cur.length === 7 ? cur : '#4c8dff'}" aria-label="Pick any colour"><span class="hint">Pick any colour</span></label></div>
+    <div class="mh">Opacity</div><div class="row"><input type="range" id="pc-op" min="10" max="100" value="${Math.round((d.op ?? 1) * 100)}" aria-label="Opacity"><span class="num" id="pc-opv">${Math.round((d.op ?? 1) * 100)}%</span></div>`;
+}
+function optsPop(items, cur) { return '<div class="opts">' + items.map(([v, html]) => `<button data-opt="${v}" aria-pressed="${String(v) === String(cur)}">${html}</button>`).join('') + '</div>'; }
+function flatten(d) {
+  if (LINEISH.includes(d.type)) { d.pts[1].p = d.pts[0].p; toast('The line is now perfectly flat at ' + fmtPx(d.pts[0].p) + '.'); }
+}
+function cloneD(d) {
+  const P = PANES[draw.sel.pane]; geo(P);
+  const c = JSON.parse(JSON.stringify(d)); c.id = uid(); c.locked = false;
+  c.pts = d.pts.map(q => { const [x, y] = toXY(P, q); return fromXY(P, x + 14, y + 14, false); });
+  dList(d.sym).push(c); select(c, P); save();
+}
 
 /* Creating drawings */
 function lockChart(P, on) { P.chart.applyOptions({ handleScroll: !on, handleScale: !on }); }
@@ -1252,12 +1430,12 @@ function bindPane(P) {
     if (ln) { grab(P, e); draw.act = { kind: 'line', P, line: ln }; el.style.cursor = 'ns-resize'; return; }
     if (!draw.locked && !draw.hidden) {
       const s = selD();
-      if (s && draw.sel.pane === P.i && s.sym === P.sym && s.type !== 'text') {
+      if (s && draw.sel.pane === P.i && s.sym === P.sym && s.type !== 'text' && !s.locked) {
         const hs = s.pts.map(p => toXY(P, p));
         for (let i = 0; i < hs.length; i++) if (hs[i][1] != null && Math.hypot(hs[i][0] - x, hs[i][1] - y) < 9) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i }; return; }
       }
       const list = dList(P.sym);
-      for (let k = list.length - 1; k >= 0; k--) if (hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); draw.act = { kind: 'move', P, d: list[k], x, y, orig: list[k].pts.map(p => toXY(P, p)) }; return; }
+      for (let k = list.length - 1; k >= 0; k--) if (hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: list[k].pts.map(p => toXY(P, p)) }; return; }
     }
     if (draw.sel) select(null);
   }, true);
@@ -1316,8 +1494,8 @@ function jumpTo(mins) {
   toast('No later ' + JUMPNAME[mins] + ' in the data.');
 }
 let playT = 0;
-function startPlay() { stopPlay(); playT = setInterval(stepBar, 1000 / (+$('#speed').value || 4)); $('#b-play').textContent = '❚❚'; }
-function stopPlay() { clearInterval(playT); playT = 0; $('#b-play').textContent = '▶'; }
+function startPlay() { stopPlay(); playT = setInterval(stepBar, 1000 / (+$('#speed').value || 4)); $('#b-play').innerHTML = '<svg viewBox="0 0 18 18"><path d="M5 3v12M13 3v12"/></svg>'; }
+function stopPlay() { clearInterval(playT); playT = 0; $('#b-play').innerHTML = '<svg viewBox="0 0 18 18"><path d="M5 3l10 6-10 6z"/></svg>'; }
 
 /* ---------- Formatting ---------- */
 const fmt0 = (n) => n == null ? '–' : Math.round(Math.abs(n)).toLocaleString('en-US');
@@ -1339,17 +1517,17 @@ function renderHeader() {
   $('#h-upl').innerHTML = `<span class="${cls(up)}">${fmtUsd(up)}</span>`;
   $('#h-wr').textContent = st.n ? (st.winRate * 100).toFixed(1) + '% · ' + st.n : '–';
 }
-const FAV = [60, 300, 900, 3600, 14400, 86400];
 function renderToolbar() {
-  const sess = S(), c = cfgOf(AP()), base = DATA[c.sym].base;
+  const sess = S(), c = cfgOf(AP()), base = DATA[c.sym].base, favs = SET().favTfs;
   $('#ws-sess').textContent = sess.name; $('#ws-sess').title = sess.name;
   $('#sym').innerHTML = SYMS.map(s => `<option value="${s}" ${s === c.sym ? 'selected' : ''}>${s}${DATA[s].sample ? ' (sample data)' : ''}</option>`).join('');
-  $('#b-tf').textContent = tfLabel(c.tf) + ' ▾';
+  $('#b-tf').textContent = tfLabel(c.tf);
   const dis = (sec) => sec < base ? `disabled title="Your ${c.sym} data is ${tfLabel(base)} bars"` : '';
-  $('#tf-fav').innerHTML = FAV.map(sec => `<button data-tf="${sec}" aria-pressed="${sec === c.tf}" ${dis(sec)}>${tfLabel(sec)}</button>`).join('');
-  const grp = [['Seconds', t => t < 60], ['Minutes', t => t >= 60 && t < 3600], ['Hours', t => t >= 3600 && t < 86400], ['Days, weeks, months', t => t >= 86400]];
-  $('#tf-menu').innerHTML = grp.map(([h, f]) => `<div class="mh">${h}</div>` + TFS.filter(t => f(t[1])).map(([l, sec]) => `<button data-tf="${sec}" aria-pressed="${sec === c.tf}" ${dis(sec)}>${l}</button>`).join('')).join('');
-  $('#layout').value = LAY().mode;
+  $('#tf-fav').innerHTML = favs.map(sec => `<button data-tf="${sec}" aria-pressed="${sec === c.tf}" ${dis(sec)}>${tfLabel(sec)}</button>`).join('');
+  $('#tf-fav').hidden = !favs.length;
+  const grp = [['Seconds', t => t < 60], ['Minutes', t => t >= 60 && t < 3600], ['Hours', t => t >= 3600 && t < 86400], ['Days, weeks and months', t => t >= 86400]];
+  $('#tf-menu').innerHTML = grp.map(([h, f]) => `<div class="mh">${h}</div>` + TFS.filter(t => f(t[1])).map(([l, sec, name]) => `<div class="it ${sec === c.tf ? 'on' : ''}"><button data-tf="${sec}" ${dis(sec)}>${name}</button><button class="star" data-favtf="${sec}" aria-pressed="${favs.includes(sec)}" title="Add to favourites" aria-label="Add ${name} to favourites">★</button></div>`).join('')).join('');
+  for (const b of $$('#layout button')) b.setAttribute('aria-pressed', b.dataset.l === LAY().mode);
 }
 function renderLegend(P) {
   if (!P.sym) return;
@@ -1525,6 +1703,58 @@ function renderSessions() {
     + '<br><span>The sample is generated, realistic-looking price action for practice. It is not real market history. Import real data below to backtest for real.</span>';
 }
 
+/* ---------- Chart settings ---------- */
+function applySettings() {
+  const s = SET();
+  document.documentElement.style.setProperty('--chart-bg', s.bg);
+  for (const P of PANES) {
+    P.chart.applyOptions({ layout: { background: { color: s.bg }, textColor: s.text },
+      grid: { vertLines: { visible: s.grid, color: s.gridColor }, horzLines: { visible: s.grid, color: s.gridColor } } });
+    P.candles.applyOptions({ upColor: s.up, downColor: s.down, borderUpColor: s.upBorder, borderDownColor: s.downBorder, wickUpColor: s.upWick, wickDownColor: s.downWick, priceLineVisible: s.priceLine, lastValueVisible: true });
+    P.volume.applyOptions({ visible: s.volume });
+    if (P.sym) { P.volume.setData(P.agg.map(vBar)); drawPaneOverlays(P); }
+  }
+}
+let setSec = 'candles';
+function renderSettings() {
+  const s = SET(), col = (k) => `<input type="color" data-set="${k}" value="${s[k]}" aria-label="${k}">`, sw = (k) => `<input type="checkbox" class="switch" data-set="${k}" ${s[k] ? 'checked' : ''}>`;
+  for (const b of $$('#set-nav button')) b.setAttribute('aria-current', b.dataset.sec === setSec);
+  const secs = {
+    candles: `<h4>Candles</h4>
+      <div class="srow"><span></span><span class="cap">Body</span><span class="cap">Border</span><span class="cap">Wick</span></div>
+      <div class="srow"><span>Up candles</span><span class="cap">${col('up')}</span><span class="cap">${col('upBorder')}</span><span class="cap">${col('upWick')}</span></div>
+      <div class="srow"><span>Down candles</span><span class="cap">${col('down')}</span><span class="cap">${col('downBorder')}</span><span class="cap">${col('downWick')}</span></div>
+      <div class="srow"><span>Volume bars</span>${sw('volume')}</div>
+      <div class="srow"><span>Last price line</span>${sw('priceLine')}</div>`,
+    canvas: `<h4>Background and grid</h4>
+      <div class="srow"><span>Background</span>${col('bg')}</div>
+      <div class="srow"><span>Grid lines</span>${sw('grid')}${col('gridColor')}</div>
+      <div class="srow"><span>Price and time text</span>${col('text')}</div>`,
+    trading: `<h4>Trading</h4>
+      <div class="srow"><span>Show trade arrows and P&amp;L numbers on the chart</span>${sw('markers')}</div>
+      <p class="hint" style="margin-top:10px">Your open positions and orders always show as lines on the chart, with their P&amp;L.</p>`,
+  };
+  $('#set-main').innerHTML = secs[setSec];
+}
+function openSettings() { closeMenus(); renderSettings(); $('#settings').hidden = false; }
+$('#b-settings').addEventListener('click', openSettings);
+$('#set-close').addEventListener('click', () => { $('#settings').hidden = true; });
+$('#set-done').addEventListener('click', () => { $('#settings').hidden = true; });
+$('#settings').addEventListener('pointerdown', e => { if (e.target.id === 'settings') $('#settings').hidden = true; });
+$('#set-nav').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setSec = b.dataset.sec; renderSettings(); } });
+$('#set-main').addEventListener('input', e => {
+  const el = e.target, k = el.dataset.set; if (!k) return;
+  SET()[k] = el.type === 'checkbox' ? el.checked : el.value;
+  // one colour for body, border and wick until the border or wick is set on its own
+  if (k === 'up' || k === 'down') for (const part of ['Border', 'Wick']) if (!SET()['_' + k + part]) { SET()[k + part] = el.value; const o = $(`#set-main [data-set="${k + part}"]`); if (o) o.value = el.value; }
+  if (/Border$|Wick$/.test(k)) SET()['_' + k] = true;
+  applySettings(); save();
+});
+$('#set-reset').addEventListener('click', () => {
+  const keep = { favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, tools: SET().tools, customColors: SET().customColors };
+  store.settings = Object.assign({}, DEF_SET, keep); applySettings(); renderSettings(); save(); toast('Chart colours reset to default.');
+});
+
 /* ---------- Views ---------- */
 let view = 'chart';
 function setView(v) {
@@ -1554,12 +1784,6 @@ function setTf(sec) {
 }
 for (const id of ['#tf-fav', '#tf-menu']) $(id).addEventListener('click', e => { const b = e.target.closest('button[data-tf]'); if (b && !b.disabled) setTf(+b.dataset.tf); });
 $('#b-tf').addEventListener('click', () => { const m = $('#tf-menu'), was = m.hidden; closeMenus(); m.hidden = !was; });
-$('#layout').addEventListener('change', e => {
-  const L = LAY(); L.mode = e.target.value;
-  if (L.mode !== '1' && L.panes[1].sym === L.panes[0].sym) { const other = S().syms.find(x => x !== L.panes[0].sym); if (other) L.panes[1].sym = other; }
-  layoutPanes(); for (const P of visiblePanes()) if (!P.sym) rebuildPane(P, true);
-  renderToolbar(); renderLive(); drawOverlays(); renderSelbars(); save();
-});
 $('#tools').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.grp) {
@@ -1572,6 +1796,8 @@ $('#tools').addEventListener('click', e => {
   else if (t === 'keep') draw.keep = !draw.keep;
   else if (t === 'lock') { draw.locked = !draw.locked; if (draw.locked) select(null); }
   else if (t === 'hide') { draw.hidden = !draw.hidden; if (draw.hidden) select(null); bump(); }
+  else if (t === 'favbar') { SET().favBar = !SET().favBar; renderFavbar(); save(); }
+  else if (t === 'collapse') { SET().tools = false; closeMenus(); save(); }
   else if (t === 'trash') {
     const sym = activeSym(), n = dList(sym).length;
     if (!n) { toast('There are no drawings on ' + sym + '.'); return; }
@@ -1580,17 +1806,7 @@ $('#tools').addEventListener('click', e => {
   }
   renderTools();
 });
-$('#fly').addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (!b) return; draw.last[$('#fly').dataset.g] = b.dataset.tool; closeMenus(); setTool(b.dataset.tool); });
-document.addEventListener('pointerdown', e => { if (!e.target.closest('#fly, #tools, #tf-menu, #b-tf')) closeMenus(); });
-panesEl.addEventListener('click', e => {
-  const b = e.target.closest('.selbar button'); if (!b) return;
-  const d = selD(); if (!d) return; const dt = b.dataset;
-  if (dt.dcol) { d.color = dt.dcol; draw.color = dt.dcol; }
-  else if (dt.ddel) { removeD(d); return; }
-  else if (dt.dtext) { const P = PANES[draw.sel.pane]; geo(P); const [x, y] = toXY(P, d.pts[0]); openText(P, d, x, y); return; }
-  else if (dt.dplace) { placeFromPos(d); return; }
-  renderSelbars(); bump(); save();
-});
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#fly, #tools, #tf-menu, #b-tf, #epop, #editbar, #jump-pop, #b-jump')) closeMenus(); });
 $('#b-order').addEventListener('click', () => openTicket(!ticket.open));
 $('#tk-close').addEventListener('click', () => openTicket(false));
 $('#b-full').addEventListener('click', () => {
@@ -1600,17 +1816,78 @@ $('#b-full').addEventListener('click', () => {
   if (!f) { toast('Full screen is not available in this browser.'); return; }
   try { Promise.resolve(f.call(el)).catch(() => toast('The browser did not allow full screen.')); } catch (e) { toast('The browser did not allow full screen.'); }
 });
-for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(ev, () => { $('#b-full').textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? 'Exit full screen' : 'Full screen'; });
+for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(ev, () => { $('#b-full').title = (document.fullscreenElement || document.webkitFullscreenElement) ? 'Exit full screen' : 'Full screen'; });
 $('#b-bal').addEventListener('click', () => { $('#drawer').hidden = !$('#drawer').hidden; renderBal(); });
 $('#b-next').addEventListener('click', stepBar);
 $('#b-play').addEventListener('click', () => playT ? stopPlay() : startPlay());
 $('#speed').addEventListener('input', () => { $('#speed-v').textContent = $('#speed').value + '/s'; if (playT) startPlay(); });
-$('#jump').addEventListener('change', e => { const v = e.target.value; e.target.value = ''; if (v) jumpTo(+v); });
+$('#layout').addEventListener('click', e => {
+  const b = e.target.closest('button[data-l]'); if (!b) return;
+  const L = LAY(); L.mode = b.dataset.l;
+  if (L.mode !== '1' && L.panes[1].sym === L.panes[0].sym) { const other = S().syms.find(x => x !== L.panes[0].sym); if (other) L.panes[1].sym = other; }
+  layoutPanes(); for (const P of visiblePanes()) if (!P.sym) rebuildPane(P, true);
+  renderToolbar(); renderLive(); drawOverlays(); renderSelbars(); save();
+});
+$('#splitter').addEventListener('pointerdown', e => {
+  e.preventDefault(); const sp = e.currentTarget; sp.setPointerCapture(e.pointerId); sp.classList.add('drag');
+  const mv = (ev) => { const r = panesEl.getBoundingClientRect(), v = LAY().mode === '2h' ? (ev.clientX - r.left) / r.width : (ev.clientY - r.top) / r.height; LAY().split = Math.min(.85, Math.max(.15, v)); layoutPanes(); };
+  const up = () => { sp.classList.remove('drag'); sp.removeEventListener('pointermove', mv); sp.removeEventListener('pointerup', up); renderSelbars(); renderFavbar(); save(); };
+  sp.addEventListener('pointermove', mv); sp.addEventListener('pointerup', up);
+});
+$('#splitter').addEventListener('dblclick', () => { LAY().split = 0.5; layoutPanes(); save(); });
+$('#tf-menu').addEventListener('click', e => {
+  const s = e.target.closest('button[data-favtf]'); if (!s) return;
+  const sec = +s.dataset.favtf, f = SET().favTfs, i = f.indexOf(sec);
+  if (i >= 0) f.splice(i, 1); else { f.push(sec); f.sort((a, b) => a - b); }
+  renderToolbar(); save();
+});
+$('#fly').addEventListener('click', e => {
+  const s = e.target.closest('button[data-favtool]');
+  if (s) { const t = s.dataset.favtool, f = SET().favTools, i = f.indexOf(t); if (i >= 0) f.splice(i, 1); else f.push(t); if (i < 0) SET().favBar = true;
+    const gid = $('#fly').dataset.g; $('#fly').innerHTML = flyHtml(gid, GROUPS.find(g => g[0] === gid)[1]); renderFavbar(); renderTools(); save(); return; }
+  const b = e.target.closest('button[data-tool]'); if (!b) return; draw.last[$('#fly').dataset.g] = b.dataset.tool; closeMenus(); setTool(b.dataset.tool);
+});
+$('#favbar').addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (b) setTool(draw.tool === b.dataset.tool ? 'cursor' : b.dataset.tool); });
+for (const id of ['#favbar', '#editbar']) $(id).addEventListener('pointerdown', e => {
+  const g = e.target.closest('.grip'); if (!g) return; e.preventDefault();
+  const el = $(id), key = g.dataset.grip, r0 = el.getBoundingClientRect(), ox = e.clientX - r0.left, oy = e.clientY - r0.top;
+  const mv = (ev) => { const m = $('#ws-mid').getBoundingClientRect(); SET()[key] = { x: ev.clientX - m.left - ox, y: ev.clientY - m.top - oy }; placeBar(el, SET()[key]); };
+  const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); save(); };
+  document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
+});
+$('#editbar').addEventListener('click', e => {
+  const b = e.target.closest('button[data-e]'); if (!b) return;
+  const d = selD(); if (!d) return; const k = b.dataset.e;
+  const done = () => { save(); bump(); renderSelbars(); };
+  if (k === 'color') { if (!$('#epop').hidden && popFn === 'color') { closePop(); return; }
+    openPop(b, colorPop(d), (p) => {
+      popFn = 'color';
+      p.onclick = (ev) => { const c = ev.target.closest('button[data-col]'); if (!c) return; d.color = c.dataset.col; draw.color = d.color; for (const x of p.querySelectorAll('button[data-col]')) x.setAttribute('aria-pressed', x === c); done(); };
+      p.oninput = (ev) => { if (ev.target.id === 'pc-custom') { d.color = ev.target.value; draw.color = d.color; done(); } if (ev.target.id === 'pc-op') { d.op = +ev.target.value / 100; p.querySelector('#pc-opv').textContent = ev.target.value + '%'; done(); } };
+      p.onchange = (ev) => { if (ev.target.id === 'pc-custom') { const c = SET().customColors; if (!c.includes(ev.target.value)) { c.unshift(ev.target.value); c.length = Math.min(c.length, 10); } save(); } };
+    }); return; }
+  if (k === 'width' || k === 'style') {
+    const items = k === 'width' ? [1, 2, 3, 4].map(w => [w, `<svg viewBox="0 0 40 10"><path d="M2 5h36" stroke-width="${w}"/></svg>${w}px`]) : [['solid', dashSvg('solid') + 'Solid'], ['dashed', dashSvg('dashed') + 'Dashed'], ['dotted', dashSvg('dotted') + 'Dotted']];
+    openPop(b, optsPop(items, k === 'width' ? (d.w || 2) : (d.ls || 'solid')), (p) => { popFn = k; p.oninput = p.onchange = null; p.onclick = (ev) => { const o = ev.target.closest('button[data-opt]'); if (!o) return; if (k === 'width') d.w = +o.dataset.opt; else d.ls = o.dataset.opt; closePop(); done(); }; });
+    return;
+  }
+  closePop();
+  if (k === 'flat') { flatten(d); done(); }
+  else if (k === 'text') { const P = PANES[draw.sel.pane]; geo(P); const [x, y] = toXY(P, d.pts[0]); openText(P, d, x, y); }
+  else if (k === 'place') placeFromPos(d);
+  else if (k === 'lock') { d.locked = !d.locked; done(); }
+  else if (k === 'clone') cloneD(d);
+  else if (k === 'del') removeD(d);
+});
+$('#tools-open').addEventListener('click', () => { SET().tools = true; renderTools(); save(); });
+$('#b-jump').addEventListener('click', () => { const p = $('#jump-pop'), was = p.hidden; closeMenus(); p.hidden = !was; });
+$('#jump-pop').addEventListener('click', e => { const b = e.target.closest('button[data-jump]'); if (b) { closeMenus(); jumpTo(+b.dataset.jump); } });
+window.addEventListener('resize', () => { renderFavbar(); renderSelbars(); });
 $('#b-jumpdate').addEventListener('click', () => {
   const v = $('#jump-date').value; if (!v) { toast('Pick a date first.'); return; }
   const sess = S(), target = Date.parse(v + 'T09:29:00Z') / 1000;
   if (target <= sess.cursorT) { toast('Replay only moves forward. To start earlier, create a new session with that start date.'); return; }
-  stopPlay(); advanceTo(sess, target); afterAdvance(true); toast('Jumped to ' + fmtT(target) + ' ET.');
+  closeMenus(); stopPlay(); advanceTo(sess, target); afterAdvance(true); toast('Jumped to ' + fmtT(target) + ' ET.');
 });
 function quick(side) {
   const sess = S(), sym = activeSym(), px = priceNow(sym), qty = Math.max(1, Math.floor(+$('#q-qty').value || 1));
@@ -1681,7 +1958,7 @@ $('#b-csv').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText(txt); toast('Trades copied as CSV. Paste into a spreadsheet.'); } catch (e) { ta.select(); toast('Select the text below and copy it.'); }
 });
 $('#b-export').addEventListener('click', async () => { const txt = JSON.stringify(store); $('#io').value = txt; try { await navigator.clipboard.writeText(txt); toast('Backup copied to your clipboard.'); } catch (e) { $('#io').select(); toast('Select the backup text and copy it.'); } });
-$('#b-import').addEventListener('click', () => { try { const s = JSON.parse($('#io').value); if (!s.sessions || !Array.isArray(s.sessions)) throw 0; store = s; openSession(store.activeId || store.sessions[0].id); renderSessions(); toast('Backup restored.'); } catch (e) { toast('That text is not a Tape Replay backup. Paste the whole backup and try again.'); } });
+$('#b-import').addEventListener('click', () => { try { const s = JSON.parse($('#io').value); if (!s.sessions || !Array.isArray(s.sessions)) throw 0; store = s; initSettings(); applySettings(); openSession(store.activeId || store.sessions[0].id); renderSessions(); toast('Backup restored.'); } catch (e) { toast('That text is not a Tape Replay backup. Paste the whole backup and try again.'); } });
 $('#imp-file').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []); if (!files.length) return; const sym = $('#imp-sym').value, pr = $('#imp-progress');
   pr.hidden = false; pr.textContent = 'Reading ' + files.length + ' file' + (files.length > 1 ? 's' : '') + '…';
@@ -1702,7 +1979,7 @@ document.addEventListener('keydown', e => {
   if (view !== 'chart' || e.target.matches('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
   if (/^\d$/.test(k)) { typed += k; showTyped(); e.preventDefault(); return; }
-  if (typed && /^[smhdwSMHDW]$/.test(k)) { const n = +typed, u = k.toLowerCase(); typed = ''; hideTyped(); setTf(n * ({ s: 1, m: 60, h: 3600, d: 86400, w: 604800 })[u]); e.preventDefault(); return; }
+  if (typed && /^[shdwmSHDWM]$/.test(k)) { const n = +typed || 1, u = k.toLowerCase(); typed = ''; hideTyped(); setTf(u === 's' ? n : u === 'h' ? n * 3600 : ({ d: 86400, w: 604800, m: 2592000 })[u]); e.preventDefault(); return; }
   if (typed && k === 'Enter') { const n = +typed; typed = ''; hideTyped(); setTf(n * 60); e.preventDefault(); return; }
   if (typed && (k === 'Escape' || k === 'Backspace')) { typed = k === 'Backspace' ? typed.slice(0, -1) : ''; typed ? showTyped() : hideTyped(); e.preventDefault(); return; }
   if (k === 'Escape') { closeMenus(); if (draw.tool !== 'cursor') setTool('cursor'); else if (draw.sel) select(null); return; }
@@ -1712,7 +1989,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'b' || k === 'B') quick(1);
   else if (k === 's' || k === 'S') quick(-1);
 });
-function showTyped() { const el = $('#tf-typed'); el.hidden = false; el.textContent = typed + ' …  (Enter = minutes, or S / H / D)'; clearTimeout(typedT); typedT = setTimeout(hideTyped, 4000); }
+function showTyped() { const el = $('#tf-typed'); el.hidden = false; el.textContent = typed + ' …  (Enter = minutes, or S, H, D, W, M)'; clearTimeout(typedT); typedT = setTimeout(hideTyped, 4000); }
 function hideTyped() { typed = ''; $('#tf-typed').hidden = true; }
 
 /* ---------- Boot ---------- */
@@ -1742,10 +2019,11 @@ async function boot() {
   for (const [sym, X] of Object.entries(imported)) if (INSTR[sym] && X && X.t) DATA[sym] = X;
   store = load();
   if (!store || !store.sessions || !store.sessions.length) { const s = defaultSession(); store = { sessions: [s], activeId: s.id }; }
+  initSettings();
   PANES.push(makePane(0), makePane(1));
   migrate(S()); syncPtrs(S());
   document.body.dataset.view = 'chart';
-  rebuildAll(true); renderAll();
+  applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   requestAnimationFrame(paintLoop);
   window.TapeReplay = { PANES, draw, S, DATA, ptr };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
