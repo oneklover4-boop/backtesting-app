@@ -425,6 +425,39 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 .drow .num { width: 104px; }
 .drow input[type=datetime-local] { width: 196px; }
 
+.tpls { max-height: 240px; overflow: auto; margin-bottom: 8px; }
+.tplrow { display: flex; align-items: center; border-radius: 6px; }
+.tplrow:hover { background: var(--bg); }
+.tplrow button[data-tpl] { flex: 1; display: flex; align-items: center; gap: 10px; background: none; border: 0; color: var(--fg); padding: 8px 10px; text-align: left; }
+.pop .opts.tpls .tplrow .qx { width: auto; flex: none; background: none; border: 0; color: var(--muted); padding: 6px 10px; font-size: 15px; }
+.tplrow button[data-tpl] span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tplrow .qx:hover { color: var(--fg); }
+.tsw { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.tplsave { display: flex; gap: 6px; }
+.tplsave .ctl { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--fg); }
+.dlg-foot .tplb { margin-right: auto; }
+.an-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
+.an-filters label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.an-filters .ctl { min-width: 0; }
+.an-filters input.ctl { width: 120px; }
+.an-filters .af-n { margin-left: auto; font-size: 12px; align-self: center; }
+.an-sec { display: flex; flex-direction: column; gap: 18px; }
+.an-tabs button { font-family: var(--font-ui); font-size: 13px; padding: 6px 12px; }
+.grid5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+#dd-chart { height: 260px; }
+.hist { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: end; height: 190px; margin-bottom: 8px; }
+.hcol { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+.hbar { flex: 1; width: 100%; max-width: 54px; display: flex; flex-direction: column; justify-content: flex-end; }
+.hbar i { display: block; width: 100%; }
+.hbar i:last-child { border-radius: 4px 4px 0 0; }
+.hn { font-family: var(--font-data); font-size: 12px; }
+.hk { font-size: 11px; color: var(--muted); }
+table.grid tr.hl td { background: rgba(47,124,246,.1); }
+.mc-form { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: flex-end; margin-bottom: 14px; }
+.mc-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
+.mc-form input { width: 130px; }
+.mcsvg { width: 100%; height: 240px; display: block; margin-top: 14px; background: var(--bg); border-radius: 8px; }
+#an-sim input[type=range] { accent-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -589,15 +622,31 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
         <div class="headrow">
           <h2 id="an-title">Analytics</h2>
           <div class="right">
-            <select class="ctl" id="an-scope" aria-label="Analytics scope"><option value="cur">This session</option><option value="all">All sessions</option></select>
+            <div class="seg an-tabs" id="an-tabs" role="group" aria-label="Analytics view"><button data-at="perf" aria-pressed="true">Performance</button><button data-at="dd" aria-pressed="false">Drawdown</button><button data-at="sim" aria-pressed="false">Simulation</button></div>
           </div>
         </div>
+        <div class="card an-filters" id="an-filters">
+          <label>Session<select class="ctl" id="an-scope"><option value="cur">This session</option></select></label>
+          <label>Asset<select class="ctl" id="af-sym"><option value="">All assets</option></select></label>
+          <label>Side<select class="ctl" id="af-side"><option value="">Long and short</option><option value="1">Long</option><option value="-1">Short</option></select></label>
+          <label>Outcome<select class="ctl" id="af-out"><option value="">All</option><option value="win">Wins</option><option value="loss">Losses</option><option value="be">Breakeven</option></select></label>
+          <label>Day<select class="ctl" id="af-day"><option value="">Every day</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="0">Sunday</option></select></label>
+          <label>Entry time from<input class="ctl" type="time" id="af-from"></label>
+          <label>to<input class="ctl" type="time" id="af-to"></label>
+          <label>Tag or note<input class="ctl" id="af-tag" placeholder="e.g. A+ setup"></label>
+          <label title="Trades that make or lose less than this count as breakeven">Breakeven within $<input class="ctl" type="number" id="af-be" min="0" step="1" placeholder="0"></label>
+          <button class="btn" id="af-clear">Clear filters</button>
+          <span class="mut af-n" id="af-n"></span>
+        </div>
+        <div id="an-perf" class="an-sec">
         <div class="card">
           <h3>Profit and loss</h3>
           <div class="pl-kpis" id="pl-kpis"></div>
           <div id="eq-chart"></div>
         </div>
         <div class="grid4" id="rr-cards"></div>
+        <h2 class="h2s">Risk and reward</h2>
+        <div class="grid5" id="rr2"></div>
         <h2 class="h2s">Winners and losers</h2>
         <div class="two" id="wl"></div>
         <h2 class="h2s">Performance</h2>
@@ -613,6 +662,34 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
           <div id="cal"></div>
         </div>
         <div class="card"><h3>How often you trade</h3><div class="freq" id="freq"></div></div>
+        </div>
+        <div id="an-dd" class="an-sec" hidden>
+          <div class="grid4" id="dd-kpis"></div>
+          <div class="card"><div class="headrow" style="margin-bottom:10px"><h3 style="margin:0">Drawdown from your highest balance</h3><div class="right"><select class="ctl" id="dd-unit" aria-label="Show drawdown in"><option value="usd">In dollars</option><option value="pct">In percent</option></select></div></div><div id="dd-chart"></div></div>
+          <div class="two">
+            <div class="card"><h3>Maximum adverse excursion</h3><div id="mae-hist"></div></div>
+            <div class="card"><h3>How far winners went against you first</h3><div id="dd-win"></div></div>
+          </div>
+        </div>
+        <div id="an-sim" class="an-sec" hidden>
+          <div class="card"><div class="headrow" style="margin-bottom:10px"><h3 style="margin:0">Stop loss simulator</h3><div class="right"><label class="mut" for="sl-f">Your pick</label><input type="range" id="sl-f" min="10" max="100" step="5" value="50"><span class="num" id="sl-fv">50%</span></div></div>
+            <p class="hint" style="margin:0 0 10px">What your closed trades would have made with a tighter stop, same size. A trade counts as stopped out if price went that far against it.</p><div class="tbl-wrap" id="sim-sl"></div></div>
+          <div class="card"><div class="headrow" style="margin-bottom:10px"><h3 style="margin:0">Risk to reward simulator</h3><div class="right"><label class="mut" for="rr-k">Your pick</label><input type="number" class="ctl" id="rr-k" min="0.5" step="0.5" value="2.5" style="width:80px"><span class="mut">R</span></div></div>
+            <p class="hint" style="margin:0 0 10px">What your trades would have made with a fixed target. A trade counts as hitting the target if price reached it while the trade was open; otherwise it keeps its real result.</p><div class="tbl-wrap" id="sim-rr"></div></div>
+          <div class="card"><h3>Monte Carlo</h3>
+            <p class="hint" style="margin:0 0 10px">Plays out thousands of random futures using your win rate and average win and loss. Filled in from your trades; change any number and press Run.</p>
+            <form class="mc-form" id="mc-form">
+              <label>Simulations<input class="ctl" type="number" id="mc-n" min="1" max="2000" value="200"></label>
+              <label>Trades per simulation<input class="ctl" type="number" id="mc-t" min="1" max="2000" value="100"></label>
+              <label>Starting balance ($)<input class="ctl" type="number" id="mc-bal" min="0" step="100"></label>
+              <label>Win rate (%)<input class="ctl" type="number" id="mc-win" min="0" max="100" step="0.1"></label>
+              <label>Average win ($)<input class="ctl" type="number" id="mc-gain" min="0" step="1"></label>
+              <label>Average loss ($)<input class="ctl" type="number" id="mc-loss" min="0" step="1"></label>
+              <button class="btn primary" type="submit">Run</button>
+            </form>
+            <div id="mc-out"></div><div id="mc-chart"></div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -664,14 +741,14 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
     <div class="dlg-head"><h2 id="ds-title">Drawing</h2><button class="x" id="ds-x" aria-label="Close">×</button></div>
     <nav class="ds-tabs" id="ds-tabs"></nav>
     <div class="dlg-main" id="ds-main"></div>
-    <div class="dlg-foot"><button class="btn" id="ds-cancel">Cancel</button><button class="btn primary" id="ds-ok">Ok</button></div>
+    <div class="dlg-foot"><button class="btn tplb" id="ds-tpl">Template ▾</button><button class="btn" id="ds-cancel">Cancel</button><button class="btn primary" id="ds-ok">Ok</button></div>
   </div>
 </div>
 <div class="modal" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="set-title">
   <div class="dlg">
     <div class="dlg-head"><h2 id="set-title">Chart settings</h2><button class="x" id="set-close" aria-label="Close">×</button></div>
     <div class="dlg-body">
-      <nav class="dlg-nav" id="set-nav"><button data-sec="candles">Candles</button><button data-sec="canvas">Background and grid</button><button data-sec="trading">Trading</button></nav>
+      <nav class="dlg-nav" id="set-nav"><button data-sec="candles">Candles</button><button data-sec="canvas">Background, grid and scales</button><button data-sec="trading">Trading</button></nav>
       <div class="dlg-main" id="set-main"></div>
     </div>
     <div class="dlg-foot"><button class="btn" id="set-reset">Reset colours</button><button class="btn primary" id="set-done">Done</button></div>
@@ -902,7 +979,7 @@ async function importFiles(files, tzMode, onProgress, want) {
 const KEY = 'tape-replay.v1';
 const DEF_SET = { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350',
   bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', volume: true, priceLine: true, markers: false,
-  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5] };
+  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, scaleText: '#e6e6ea', fontSize: 12 };
 const SET = () => store.settings;
 function initSettings() { store.settings = Object.assign({}, DEF_SET, store.settings || {}); }
 let store = null;
@@ -1194,6 +1271,7 @@ const ICON = {
   magnet: '<path d="M4 2v7a5 5 0 0 0 10 0V2h-3v7a2 2 0 0 1-4 0V2z"/>',
   star: '<path d="M9 1.8l2.2 4.6 5 .7-3.6 3.5.9 5L9 13.2l-4.5 2.4.9-5L1.8 7.1l5-.7z"/>',
   collapse: '<path d="M11 4L6 9l5 5"/>',
+  tpl: '<rect x="2.5" y="2.5" width="5.5" height="5.5" rx="1"/><rect x="10" y="2.5" width="5.5" height="5.5" rx="1"/><rect x="2.5" y="10" width="5.5" height="5.5" rx="1"/><path d="M12.75 10.5v4.5M10.5 12.75h4.5"/>',
   gear: '<path d="M2 4.5h8M13 4.5h3M2 9h3M8 9h8M2 13.5h9M14 13.5h2"/><circle cx="11.5" cy="4.5" r="1.5"/><circle cx="6.5" cy="9" r="1.5"/><circle cx="12.5" cy="13.5" r="1.5"/>',
   clone: '<rect x="6" y="6" width="9" height="9" rx="1.5"/><path d="M12 3.5V3a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h.5"/>',
   keep: '<path d="M3 15l1.5-4.5L12 3l3 3-7.5 7.5z"/><path d="M10.5 4.5l3 3"/>',
@@ -1243,14 +1321,15 @@ const FIB = [[0, '#7f8b99'], [0.236, '#e2554f'], [0.382, '#e4a640'], [0.5, '#26b
 function drawLabel(P, ctx, d, q) {
   const [a, b] = q, W = P.pw, H = P.ph, v = d.tv || 'top', hz = d.th || 'center';
   let L, R;
-  if (['rect', 'ellipse', 'fib', 'measure'].includes(d.type)) { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y = v === 'top' ? Math.min(a[1], b[1]) : v === 'bottom' ? Math.max(a[1], b[1]) : (a[1] + b[1]) / 2; L = [x1, y]; R = [x2, y]; }
+  if (d.type === 'long' || d.type === 'short') { const x1 = Math.min(a[0], b[0]), x2 = x1 + Math.max(8, Math.abs(b[0] - a[0])), c = q[2], top = Math.min(b[1], c[1]), bot = Math.max(b[1], c[1]), y = v === 'top' ? top - 22 : v === 'bottom' ? bot + 22 : a[1] - 20; L = [x1, y]; R = [x2, y]; }
+  else if (['rect', 'ellipse', 'fib', 'measure'].includes(d.type)) { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y = v === 'top' ? Math.min(a[1], b[1]) : v === 'bottom' ? Math.max(a[1], b[1]) : (a[1] + b[1]) / 2; L = [x1, y]; R = [x2, y]; }
   else if (d.type === 'hline') { L = [0, a[1]]; R = [W - 70, a[1]]; }
   else if (d.type === 'hray') { L = a; R = [W - 70, a[1]]; }
   else if (d.type === 'vline' || d.type === 'cross') { L = R = [a[0], d.type === 'vline' ? 30 : a[1]]; }
   else if (b) { [L, R] = a[0] <= b[0] ? [a, b] : [b, a]; }
   else { L = R = a; }
   const t = hz === 'left' ? 0 : hz === 'right' ? 1 : .5, px = L[0] + (R[0] - L[0]) * t, py = L[1] + (R[1] - L[1]) * t;
-  let ang = Math.atan2(R[1] - L[1], R[0] - L[0]); if (!isFinite(ang) || ['rect', 'ellipse', 'fib', 'measure'].includes(d.type)) ang = 0;
+  let ang = Math.atan2(R[1] - L[1], R[0] - L[0]); if (!isFinite(ang) || ['rect', 'ellipse', 'fib', 'measure', 'long', 'short'].includes(d.type)) ang = 0;
   ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.translate(px, py); ctx.rotate(ang);
   ctx.font = dFont(d); ctx.fillStyle = d.tc || d.color || DCOL[0]; ctx.textAlign = hz;
   ctx.textBaseline = v === 'top' ? 'bottom' : v === 'bottom' ? 'top' : 'middle';
@@ -1271,7 +1350,7 @@ function tag(ctx, x, y, txt, bg, fg = '#fff', align = 'left') {
 function chanOff(a, b, c) { const yOn = b[0] !== a[0] ? a[1] + (b[1] - a[1]) * (c[0] - a[0]) / (b[0] - a[0]) : a[1]; return c[1] - yOn; }
 function posInfo(sym, d) {
   const pv = INSTR[sym].pv, e = d.pts[0].p, sl = d.pts[1].p, tp = d.pts[2].p, risk = Math.abs(e - sl), rew = Math.abs(tp - e);
-  const qty = risk > 0 ? Math.max(1, Math.floor(balanceOf(S()) * riskPct() / 100 / (risk * pv))) : 1;
+  const qty = d.fq > 0 ? Math.floor(d.fq) : risk > 0 ? Math.max(1, Math.floor(balanceOf(S()) * (d.rp > 0 ? d.rp : riskPct()) / 100 / (risk * pv))) : 1;
   return { e, sl, tp, risk, rew, qty, rr: risk ? rew / risk : 0, lossUsd: risk * pv * qty, winUsd: rew * pv * qty };
 }
 const fmtSpan = (s) => s < 3600 ? Math.round(s / 60) + 'm' : s < 86400 ? Math.floor(s / 3600) + 'h ' + Math.round(s % 3600 / 60) + 'm' : Math.floor(s / 86400) + 'd ' + Math.round(s % 86400 / 3600) + 'h';
@@ -1323,12 +1402,15 @@ function renderD(P, ctx, d, isSel) {
     }
     case 'long': case 'short': {
       const L = Math.min(a[0], b[0]), Wd = Math.max(8, Math.abs(b[0] - a[0])), ye = a[1], ysl = b[1], ytp = c[1], cx = L + Wd / 2, k = posInfo(P.sym, d);
-      ctx.fillStyle = 'rgba(38,176,122,.2)'; ctx.fillRect(L, Math.min(ye, ytp), Wd, Math.abs(ytp - ye));
-      ctx.fillStyle = 'rgba(226,85,79,.2)'; ctx.fillRect(L, Math.min(ye, ysl), Wd, Math.abs(ysl - ye));
-      ctx.strokeStyle = '#d9e0e8'; seg(ctx, [L, ye], [L + Wd, ye]);
-      tag(ctx, cx, ytp + (ytp < ye ? -12 : 12), `Target ${k.rew.toFixed(2)} pts  +$${fmt0(k.winUsd)}`, '#1d8a60', '#fff', 'center');
-      tag(ctx, cx, ysl + (ysl > ye ? 12 : -12), `Stop ${k.risk.toFixed(2)} pts  -$${fmt0(k.lossUsd)}`, '#b8423d', '#fff', 'center');
-      tag(ctx, cx, ye, `${d.type === 'long' ? 'Long' : 'Short'} ${k.qty} ${P.sym} · R:R ${k.rr.toFixed(2)}`, '#19212a', '#d9e0e8', 'center');
+      const pc = d.pc || '#26b07a', lc = d.lc || '#e2554f';
+      ctx.globalAlpha = 1; ctx.fillStyle = alpha(pc, d.po ?? .2); ctx.fillRect(L, Math.min(ye, ytp), Wd, Math.abs(ytp - ye));
+      ctx.fillStyle = alpha(lc, d.lo ?? .2); ctx.fillRect(L, Math.min(ye, ysl), Wd, Math.abs(ysl - ye));
+      ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = d.color || '#d9e0e8'; seg(ctx, [L, ye], [L + Wd, ye]); ctx.globalAlpha = 1;
+      if (d.lab !== false) {
+        tag(ctx, cx, ytp + (ytp < ye ? -12 : 12), `Target ${k.rew.toFixed(2)} pts  +$${fmt0(k.winUsd)}`, mixHex(pc, '#000000', .25), '#fff', 'center');
+        tag(ctx, cx, ysl + (ysl > ye ? 12 : -12), `Stop ${k.risk.toFixed(2)} pts  -$${fmt0(k.lossUsd)}`, mixHex(lc, '#000000', .2), '#fff', 'center');
+        tag(ctx, cx, ye, `${d.type === 'long' ? 'Long' : 'Short'} ${k.qty} ${P.sym} · R:R ${k.rr.toFixed(2)}`, '#19212a', '#d9e0e8', 'center');
+      }
       break;
     }
     case 'text': {
@@ -1406,7 +1488,7 @@ function renderSelbars() {
   const d = selD(), bar = $('#editbar'), P = d ? PANES[draw.sel.pane] : null;
   if (!d || draw.hidden || !P || P.sym !== d.sym || view !== 'chart') { bar.hidden = true; return; }
   const hasColor = !['long', 'short', 'measure'].includes(d.type), hasStroke = !['text', 'long', 'short', 'measure'].includes(d.type);
-  let h = `<span class="grip" data-grip="editPos" title="Drag to move this bar">${GRIP}</span>`;
+  let h = `<span class="grip" data-grip="editPos" title="Drag to move this bar">${GRIP}</span><button data-e="tpl" title="Templates: save this style and text, or apply a saved one" aria-label="Templates">${svg('tpl')}</button>`;
   if (hasColor) h += `<button data-e="color" title="Colour"><span class="swatch" style="background:${d.color || DCOL[0]};opacity:${d.op ?? 1}"></span></button>`;
   if (hasStroke) h += `<button data-e="width" title="Line thickness">${d.w || 2}px</button><button data-e="style" class="dash" title="Line style">${dashSvg(d.ls)}</button>`;
   if (LINEISH.includes(d.type)) h += `<button data-e="flat" title="Make the line perfectly flat">${svg('hline')}Make flat</button>`;
@@ -1557,6 +1639,38 @@ function buildCustom(el) {
     if (e.target.closest('#cp-eye') && window.EyeDropper) { try { const r = await new EyeDropper().open(); [cp.h, cp.s, cp.v] = rgbHsv(...hexRgb(r.sRGBHex)); renderCustom(); } catch (_) { /* cancelled */ } }
   });
 }
+/* Remembered style per drawing tool, and saved templates (style + text) per tool */
+const STYLE_KEYS = ['color', 'op', 'w', 'ls', 'ext', 'fill', 'fc', 'fo', 'plab', 'tc', 'fs', 'bold', 'it', 'tv', 'th', 'pc', 'po', 'lc', 'lo', 'lab'];
+const pickStyle = (d, withText) => { const o = {}; for (const k of STYLE_KEYS) if (d[k] !== undefined && d[k] !== null) o[k] = d[k]; if (withText) { if (d.label) o.label = d.label; if (d.type === 'text' && d.text) o.text = d.text; } return o; };
+function rememberStyle(d) { if (!d) return; SET().toolStyle = SET().toolStyle || {}; SET().toolStyle[d.type] = pickStyle(d, false); save(); }
+function applyStyle(d, st) { for (const k of STYLE_KEYS) delete d[k]; delete d.label; if (d.type === 'text') d.text = d.text || ''; Object.assign(d, JSON.parse(JSON.stringify(st))); }
+const tplList = (type) => { SET().templates = SET().templates || {}; return (SET().templates[type] = SET().templates[type] || []); };
+function tplPop(d) {
+  const list = tplList(d.type), esc2 = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  return `<div class="mh">${TOOLDEF[d.type] ? TOOLDEF[d.type].n : 'Drawing'} templates</div>
+    ${list.length ? `<div class="opts tpls">${list.map((t, i) => `<div class="tplrow"><button data-tpl="${i}">${t.st.color ? `<i class="tsw" style="background:${t.st.color}"></i>` : ''}<span>${esc2(t.name)}</span></button><button class="qx" data-tplx="${i}" title="Delete this template" aria-label="Delete template ${esc2(t.name)}">×</button></div>`).join('')}</div>` : '<p class="hint" style="margin:0 0 6px">No templates yet. Style this drawing and add any text, then save it here.</p>'}
+    <div class="tplsave"><input class="ctl" id="tpl-name" placeholder="Name, e.g. 4H FVG" value="${esc2(d.label || (d.type === 'text' ? d.text || '' : ''))}" aria-label="Template name"><button class="btn primary" id="tpl-save">Save</button></div>
+    <button class="cp-new" data-tpldef="1"><span>↺</span> Reset to default style</button>`;
+}
+function openTplPop(btn, d, after) {
+  if (!$('#epop').hidden && popFn === 'tpl' && $('#epop')._btn === btn) { closePop(); return; }
+  openPop(btn, tplPop(d), (p) => {
+    popFn = 'tpl'; p._btn = btn; p.style.minWidth = '260px';
+    const r = btn.getBoundingClientRect(); p.style.left = Math.max(6, Math.min(r.left, innerWidth - p.offsetWidth - 6)) + 'px';
+    p.style.top = (r.bottom + 6 + p.offsetHeight > innerHeight - 6 ? Math.max(6, r.top - p.offsetHeight - 6) : r.bottom + 6) + 'px';
+    p.oninput = p.onchange = null;
+    p.onclick = (ev) => {
+      const list = tplList(d.type), b = ev.target.closest('button'); if (!b) return;
+      if (b.dataset.tpl != null) { const t = list[+b.dataset.tpl]; if (t) { applyStyle(d, t.st); rememberStyle(d); closePop(); after(); toast('Applied "' + t.name + '".'); } return; }
+      if (b.dataset.tplx != null) { list.splice(+b.dataset.tplx, 1); save(); p.innerHTML = tplPop(d); return; }
+      if (b.dataset.tpldef) { applyStyle(d, {}); if (d.type !== 'text') d.color = ['long', 'short', 'measure'].includes(d.type) ? null : DCOL[0]; rememberStyle(d); closePop(); after(); return; }
+      if (b.id === 'tpl-save') { const name = p.querySelector('#tpl-name').value.trim(); if (!name) { p.querySelector('#tpl-name').focus(); return; }
+        const st = pickStyle(d, true); const i = list.findIndex(t => t.name.toLowerCase() === name.toLowerCase());
+        if (i >= 0) list[i] = { name, st }; else list.push({ name, st }); save(); p.innerHTML = tplPop(d); toast('Saved template "' + name + '". Pick it from the templates button on any ' + (TOOLDEF[d.type] ? TOOLDEF[d.type].n.toLowerCase() : 'drawing') + '.'); }
+    };
+    p.onkeydown = (ev) => { if (ev.key === 'Enter' && ev.target.id === 'tpl-name') p.querySelector('#tpl-save').click(); };
+  });
+}
 function optsPop(items, cur) { return '<div class="opts">' + items.map(([v, html]) => `<button data-opt="${v}" aria-pressed="${String(v) === String(cur)}">${html}</button>`).join('') + '</div>'; }
 function flatten(d) {
   if (LINEISH.includes(d.type)) { d.pts[1].p = d.pts[0].p; toast('The line is now perfectly flat at ' + fmtPx(d.pts[0].p) + '.'); }
@@ -1573,6 +1687,7 @@ function lockChart(P, on) { P.chart.applyOptions({ handleScroll: !on, handleScal
 function startMk(P, x, y) {
   const type = draw.tool, q = fromXY(P, x, y, true);
   const d = { id: uid(), type, sym: P.sym, color: ['long', 'short', 'measure'].includes(type) ? null : draw.color, pts: [q] };
+  const rs = SET().toolStyle && SET().toolStyle[type]; if (rs) Object.assign(d, JSON.parse(JSON.stringify(rs)));
   if (type === 'long' || type === 'short') {
     const tick = INSTR[P.sym].tick, vis = Math.abs(P.candles.coordinateToPrice(0) - P.candles.coordinateToPrice(P.ph)), risk = Math.max(tick * 4, rt(vis * 0.06, tick)), s = type === 'long' ? 1 : -1;
     const t2 = lToT(P, tToL(P, q.t) + 20);
@@ -1772,12 +1887,12 @@ function renderAll() { layoutPanes(); renderToolbar(); renderTools(); renderLive
 
 /* ---------- Stats ---------- */
 function stats(trades, start) {
-  const n = trades.length, wins = trades.filter(t => t.pnl > 0), losses = trades.filter(t => t.pnl < 0);
-  const gp = wins.reduce((a, t) => a + t.pnl, 0), gl = -losses.reduce((a, t) => a + t.pnl, 0), net = gp - gl;
+  const th = Math.max(0, +SET().beTh || 0), n = trades.length, wins = trades.filter(t => t.pnl > th), losses = trades.filter(t => t.pnl < -th);
+  const gp = wins.reduce((a, t) => a + t.pnl, 0), gl = -losses.reduce((a, t) => a + t.pnl, 0), net = trades.reduce((a, t) => a + t.pnl, 0);
   let eq = start, peak = start, mdd = 0, mddPct = 0, cw = 0, cl = 0, mcw = 0, mcl = 0;
   const sorted = [...trades].sort((a, b) => a.closeT - b.closeT);
   for (const t of sorted) { eq += t.pnl; if (eq > peak) peak = eq; const dd = peak - eq; if (dd > mdd) { mdd = dd; mddPct = dd / peak; }
-    if (t.pnl > 0) { cw++; cl = 0; } else if (t.pnl < 0) { cl++; cw = 0; } mcw = Math.max(mcw, cw); mcl = Math.max(mcl, cl); }
+    if (t.pnl > th) { cw++; cl = 0; } else if (t.pnl < -th) { cl++; cw = 0; } mcw = Math.max(mcw, cw); mcl = Math.max(mcl, cl); }
   const rs = trades.filter(t => t.r != null).map(t => t.r);
   return { n, wins: wins.length, losses: losses.length, be: n - wins.length - losses.length, winRate: n ? wins.length / n : 0, net, gp, gl,
     pf: gl ? gp / gl : (gp ? Infinity : 0), avgWin: wins.length ? gp / wins.length : 0, avgLoss: losses.length ? gl / losses.length : 0,
@@ -1810,11 +1925,16 @@ function barRows(el, rows) {
   el.innerHTML = rows.map(r => { const w = Math.abs(r.v) / max * 50; return `<div class="bar-row"><span>${r.k}<span class="mut" style="font-size:10px"> ${r.sub || ''}</span></span><div class="track"><div class="fill" style="${r.v >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${r.v >= 0 ? C.long : C.short}"></div></div><span class="val ${cls(r.v)}">${r.fmt ? r.fmt(r.v) : fmtUsd(r.v)}</span></div>`; }).join('') || '<div class="empty">No trades yet.</div>';
 }
 function renderAnalytics() {
+  renderAnFilters();
   const scope = $('#an-scope').value, sess = S();
-  const list = scope === 'all' ? store.sessions : [sess];
-  const trades = list.flatMap(s => s.trades), start = list.reduce((a, s) => a + s.balance0, 0);
-  const st = stats(trades, start);
-  $('#an-title').textContent = scope === 'all' ? 'Analytics · all sessions' : 'Analytics · ' + sess.name;
+  const list = anSessions(), all = list.flatMap(s => s.trades);
+  const trades = anFilter(all), start = list.reduce((a, s) => a + s.balance0, 0);
+  const st = stats(trades, start), nf = anActive();
+  $('#an-title').textContent = scope === 'all' ? 'Analytics · all sessions' : 'Analytics · ' + list[0].name;
+  $('#af-n').textContent = nf ? `${trades.length} of ${all.length} trades match` : `${all.length} closed trade${all.length === 1 ? '' : 's'}`;
+  if (anTab === 'dd') { renderDD(trades, start); return; }
+  if (anTab === 'sim') { renderSim(trades); return; }
+  renderRR(trades);
   const pct = (v) => start ? (v >= 0 ? '+' : '') + (v / start * 100).toFixed(2) + '%' : '';
   const wr = (a) => a.length ? (a.filter(t => t.pnl > 0).length / a.length * 100).toFixed(0) + '%' : '–';
   const kp = (k, v, s, c) => `<div><span class="k">${k}</span><span class="v ${c || ''}">${v}</span><span class="s ${c || ''}">${s || '&nbsp;'}</span></div>`;
@@ -1854,7 +1974,7 @@ function renderAnalytics() {
   // winners and losers
   const runs = (pred) => { const r = []; let c = 0; for (const t of st.sorted) { if (pred(t)) c++; else if (c) { r.push(c); c = 0; } } if (c) r.push(c); return r; };
   const avgRun = (a) => a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1) : '–';
-  const W = trades.filter(t => t.pnl > 0), Ls = trades.filter(t => t.pnl < 0);
+  const W = trades.filter(t => t.pnl > beTh()), Ls = trades.filter(t => t.pnl < -beTh());
   const dur = (a) => a.length ? fmtDur(a.reduce((x, t) => x + t.closeT - t.openT, 0) / a.length) : '–';
   const kvs = (rows) => '<div class="kv">' + rows.map(([k, v, c]) => `<span>${k}</span><span class="${c || ''}">${v}</span>`).join('') + '</div>';
   $('#wl').innerHTML = `<div class="card wl win"><h3>Winners</h3>${kvs([['Total winners', W.length], ['Best win', W.length ? fmtUsd(st.best) + '  ' + pct(st.best) : '–', 'pos'], ['Average win', W.length ? fmtUsd(st.avgWin) + '  ' + pct(st.avgWin) : '–', 'pos'], ['Average time in trade', dur(W)], ['Most wins in a row', st.mcw], ['Average wins in a row', avgRun(runs(t => t.pnl > 0))]])}</div>
@@ -1896,6 +2016,133 @@ function renderAnalytics() {
   $('#freq').innerHTML = [['Trades per day you traded', dayN], ['Trades per week', weekN], ['Trades per month', monN]]
     .map(([k, n]) => `<div class="stat"><span class="k">${k}</span><div class="v">${n ? (trades.length / n).toFixed(1) : '–'}</div></div>`).join('');
 }
+/* ---------- Analytics: filters, Drawdown and Simulation tabs (FX Replay style) ---------- */
+let anTab = 'perf';
+const riskPts = (t) => t.sl != null ? Math.abs(t.entry - t.sl) : 0;
+const beTh = () => Math.max(0, +SET().beTh || 0);
+function anSessions() {
+  const v = $('#an-scope').value;
+  if (v === 'all') return store.sessions;
+  if (v.startsWith('s:')) { const s = store.sessions.find(x => x.id === v.slice(2)); if (s) return [s]; }
+  return [S()];
+}
+function renderAnFilters() {
+  const cur = $('#an-scope').value || 'cur';
+  $('#an-scope').innerHTML = `<option value="cur">This session</option><option value="all">All sessions</option>${store.sessions.map(s => `<option value="s:${s.id}">${esc(s.name)}</option>`).join('')}`;
+  $('#an-scope').value = [...$('#an-scope').options].some(o => o.value === cur) ? cur : 'cur';
+  const syms = [...new Set(store.sessions.flatMap(s => s.trades.map(t => t.sym)).concat(SYMS))];
+  const a = $('#af-sym'), av = a.value; a.innerHTML = '<option value="">All assets</option>' + syms.map(x => `<option>${x}</option>`).join(''); a.value = av;
+  $('#af-be').value = beTh() || '';
+}
+function anFilter(trades) {
+  const sym = $('#af-sym').value, side = $('#af-side').value, out = $('#af-out').value, day = $('#af-day').value, tf = $('#af-from').value, tt = $('#af-to').value, tag = $('#af-tag').value.trim().toLowerCase(), th = beTh();
+  const mins = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+  return trades.filter(t => {
+    if (sym && t.sym !== sym) return false;
+    if (side && String(t.side) !== side) return false;
+    if (out === 'win' && !(t.pnl > th)) return false; if (out === 'loss' && !(t.pnl < -th)) return false; if (out === 'be' && Math.abs(t.pnl) > th) return false;
+    const d = new Date(t.openT * 1000);
+    if (day !== '' && d.getUTCDay() !== +day) return false;
+    if (tf || tt) { const m = d.getUTCHours() * 60 + d.getUTCMinutes(), a = tf ? mins(tf) : 0, b = tt ? mins(tt) : 1440; if (a <= b ? (m < a || m > b) : (m < a && m > b)) return false; }
+    if (tag && !((t.tags || '') + ' ' + (t.notes || '')).toLowerCase().includes(tag)) return false;
+    return true;
+  });
+}
+function anActive() { return ['#af-sym', '#af-side', '#af-out', '#af-day', '#af-from', '#af-to', '#af-tag'].filter(id => $(id).value !== '').length; }
+function setAnTab(t) { anTab = t; for (const b of $$('#an-tabs button')) b.setAttribute('aria-pressed', b.dataset.at === t); $('#an-perf').hidden = t !== 'perf'; $('#an-dd').hidden = t !== 'dd'; $('#an-sim').hidden = t !== 'sim'; renderAnalytics(); }
+const stat = (k, v, s, c) => `<div class="card stat"><span class="k">${k}</span><div class="v ${c || ''}">${v}</div><span class="s mut">${s || '&nbsp;'}</span></div>`;
+
+function renderRR(trades) {
+  const th = beTh(), withR = trades.filter(t => riskPts(t) > 0), W = withR.filter(t => t.pnl > th), L = withR.filter(t => t.pnl < -th);
+  const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null, f2 = (v) => v == null ? '–' : v.toFixed(2);
+  const rr = W.map(t => t.r).filter(v => v != null), ideal = withR.map(t => t.mfe / riskPts(t));
+  const could = L.filter(t => t.mfe >= riskPts(t)).length, couldBe = L.filter(t => t.mfe > 0 && t.mfe < riskPts(t)).length;
+  $('#rr2').innerHTML = stat('Average RR on winners', f2(avg(rr)), 'profit ÷ risk on winning trades')
+    + stat('Max RR', rr.length ? f2(Math.max(...rr)) : '–', 'your best winner in R')
+    + stat('Ideal average RR', f2(avg(ideal)), 'best price reached ÷ risk')
+    + stat('Max ideal RR', ideal.length ? f2(Math.max(...ideal)) : '–', 'most a trade ever ran')
+    + stat('Could have profited', could, `losers that were 1R+ in profit first${couldBe ? ` · ${couldBe} more could have been breakeven` : ''}`);
+}
+
+let ddChart = null, ddSeries = null;
+function renderDD(trades, start) {
+  const sorted = [...trades].sort((a, b) => a.closeT - b.closeT), pct = $('#dd-unit').value === 'pct';
+  let eq = start, peak = start, peakT = sorted.length ? sorted[0].openT : 0, ep = null; const eps = [], pts = [];
+  if (sorted.length) pts.push({ time: sorted[0].openT - 60, value: 0 });
+  let last = pts.length ? pts[0].time : 0;
+  for (const t of sorted) {
+    eq += t.pnl;
+    if (eq >= peak) { if (ep) { ep.rec = t.closeT; eps.push(ep); ep = null; } peak = eq; peakT = t.closeT; }
+    else { const dd = peak - eq; if (!ep) ep = { start: peakT, depth: 0, pct: 0 }; if (dd > ep.depth) { ep.depth = dd; ep.pct = dd / peak; } }
+    const tt = Math.max(t.closeT, last + 1); last = tt; pts.push({ time: tt, value: pct ? -(peak - eq) / peak * 100 : -(peak - eq) });
+  }
+  if (ep) eps.push(ep);
+  if (!ddChart) {
+    ddChart = LWC.createChart($('#dd-chart'), { autoSize: true, layout: { background: { color: 'transparent' }, textColor: C.muted, fontFamily: 'IBM Plex Mono, monospace', fontSize: 11 },
+      grid: { vertLines: { visible: false }, horzLines: { color: 'rgba(36,46,57,.6)' } }, rightPriceScale: { borderColor: C.line }, timeScale: { borderColor: C.line, timeVisible: true }, handleScroll: false, handleScale: false });
+    ddSeries = ddChart.addAreaSeries({ lineColor: C.short, topColor: 'rgba(226,85,79,0)', bottomColor: 'rgba(226,85,79,.35)', lineWidth: 2, invertFilledArea: true });
+  }
+  ddSeries.applyOptions({ priceFormat: pct ? { type: 'custom', formatter: (v) => v.toFixed(2) + '%' } : { type: 'price', precision: 0, minMove: 1 } });
+  ddSeries.setData(pts); ddChart.timeScale().fitContent();
+  const rec = eps.filter(e => e.rec), days = rec.map(e => (e.rec - e.start) / 86400), mx = eps.length ? eps.reduce((a, e) => e.depth > a.depth ? e : a) : null;
+  const span = sorted.length ? Math.max(1, (sorted[sorted.length - 1].closeT - sorted[0].openT) / (30 * 86400)) : 1;
+  $('#dd-kpis').innerHTML = stat('Max drawdown', mx ? '-' + fmtUsd(mx.depth, false) : '$0.00', mx ? (mx.pct * 100).toFixed(2) + '% from the peak' : 'no drawdown yet', mx ? 'neg' : '')
+    + stat('Average drawdown', eps.length ? '-' + fmtUsd(eps.reduce((a, e) => a + e.depth, 0) / eps.length, false) : '–', eps.length ? (eps.reduce((a, e) => a + e.pct, 0) / eps.length * 100).toFixed(2) + '% on average' : '', eps.length ? 'neg' : '')
+    + stat('Time to recovery', days.length ? (days.reduce((a, b) => a + b, 0) / days.length).toFixed(1) + ' days' : '–', days.length ? 'longest ' + Math.max(...days).toFixed(1) + ' days' + (eps.length > rec.length ? ' · still in one now' : '') : (eps.length ? 'not recovered yet' : ''))
+    + stat('Drawdown frequency', eps.length, eps.length ? (eps.length / span).toFixed(1) + ' per month of replay' : 'drawdown periods');
+  // MAE in R
+  const th = beTh(), withR = trades.filter(t => riskPts(t) > 0), B = [[0, .25], [.25, .5], [.5, .75], [.75, 1], [1, Infinity]];
+  const cnt = B.map(([a, b]) => { const g = withR.filter(t => { const r = t.mae / riskPts(t); return r >= a && r < b; }); return { w: g.filter(t => t.pnl > th).length, l: g.filter(t => t.pnl <= th).length }; });
+  const mxc = Math.max(1, ...cnt.map(c => c.w + c.l));
+  $('#mae-hist').innerHTML = withR.length ? `<div class="hist">${cnt.map((c, i) => `<div class="hcol" title="${c.w} winners, ${c.l} others"><div class="hbar"><i style="height:${c.l / mxc * 100}%;background:var(--short)"></i><i style="height:${c.w / mxc * 100}%;background:var(--long)"></i></div><span class="hn">${c.w + c.l}</span><span class="hk">${B[i][1] === Infinity ? '1R+' : B[i][0] + '–' + B[i][1] + 'R'}</span></div>`).join('')}</div><p class="hint">How far price went against you before each trade closed, measured in R (1R = your stop). Green part = winners.</p>`
+    : '<div class="empty">Trades with a stop loss show here.</div>';
+  const wr = withR.filter(t => t.pnl > th).map(t => t.mae / riskPts(t));
+  $('#dd-win').innerHTML = wr.length ? '<div class="kv">' + [['Average', wr.reduce((a, b) => a + b, 0) / wr.length], ['Smallest', Math.min(...wr)], ['Largest', Math.max(...wr)]].map(([k, v]) => `<span>${k}</span><span>${v.toFixed(2)}R</span>`).join('') + '</div><p class="hint">How deep your winning trades went against you first. If this is usually small, a tighter stop may work.</p>' : '<div class="empty">No winning trades with a stop yet.</div>';
+}
+
+function simOutcome(trades, fn) {
+  const th = beTh(); let net = 0, w = 0, gp = 0, gl = 0;
+  for (const t of trades) { const p = fn(t); net += p; if (p > th) { w++; gp += p; } else if (p < -th) gl -= p; }
+  return { net, wr: trades.length ? w / trades.length : 0, pf: gl ? gp / gl : (gp ? Infinity : 0) };
+}
+const pfTxt = (v) => v === Infinity ? '∞' : v ? v.toFixed(2) : '–';
+function renderSim(trades) {
+  const withR = trades.filter(t => riskPts(t) > 0), pv = (t) => INSTR[t.sym] ? INSTR[t.sym].pv : 1, base = simOutcome(withR, t => t.pnl);
+  const row = (label, o, hl) => `<tr${hl ? ' class="hl"' : ''}><td>${label}</td><td class="num ${cls(o.net)}">${fmtUsd(o.net)}</td><td class="num ${cls(o.net - base.net)}">${fmtUsd(o.net - base.net)}</td><td class="num">${(o.wr * 100).toFixed(0)}%</td><td class="num">${pfTxt(o.pf)}</td></tr>`;
+  const head = '<table class="grid"><thead><tr><th></th><th class="num">Net P&amp;L</th><th class="num">vs actual</th><th class="num">Win rate</th><th class="num">Profit factor</th></tr></thead><tbody>';
+  if (!withR.length) { $('#sim-sl').innerHTML = $('#sim-rr').innerHTML = '<div class="empty">Close some trades that had a stop loss to use the simulators.</div>'; }
+  else {
+    const f = +$('#sl-f').value / 100; $('#sl-fv').textContent = Math.round(f * 100) + '%';
+    const slSim = (k) => simOutcome(withR, t => { const nr = riskPts(t) * k; return t.mae >= nr ? -nr * t.qty * pv(t) - t.fees : t.pnl; });
+    $('#sim-sl').innerHTML = head + row('Your actual trades', base) + [.25, .5, .75].map(k => row(`Stop at ${k * 100}% of the distance`, slSim(k))).join('') + row(`Your pick: ${Math.round(f * 100)}%`, slSim(f), true) + '</tbody></table>';
+    const rrSim = (k) => simOutcome(withR, t => t.mfe >= riskPts(t) * k ? riskPts(t) * k * t.qty * pv(t) - t.fees : t.pnl);
+    const kk = +$('#rr-k').value || 2;
+    $('#sim-rr').innerHTML = head + row('Your actual trades', base) + [1, 1.5, 2, 3, 4].map(k => row(`Target at ${k}R`, rrSim(k))).join('') + row(`Your pick: ${kk}R`, rrSim(kk), true) + '</tbody></table>';
+  }
+  // prefill Monte Carlo from the filtered trades the first time
+  const mc = $('#mc-form');
+  if (!mc.dataset.filled) { const st = stats(trades, 0); mc.dataset.filled = '1';
+    $('#mc-bal').value = Math.round(anSessions().reduce((a, s) => a + s.balance0, 0) / Math.max(1, anSessions().length)) || 25000;
+    $('#mc-win').value = st.n ? +(st.winRate * 100).toFixed(1) : 50; $('#mc-gain').value = st.wins ? Math.round(st.avgWin) : 200; $('#mc-loss').value = st.losses ? Math.round(st.avgLoss) : 100; }
+}
+function runMC() {
+  const N = Math.min(2000, Math.max(1, +$('#mc-n').value || 100)), M = Math.min(2000, Math.max(1, +$('#mc-t').value || 100)), bal = +$('#mc-bal').value || 0,
+    g = Math.abs(+$('#mc-gain').value || 0), l = Math.abs(+$('#mc-loss').value || 0), p = Math.min(100, Math.max(0, +$('#mc-win').value || 0)) / 100;
+  const ends = [], paths = []; let pfs = 0, mcw = 0, mcl = 0, tw = 0, tl = 0, ruin = 0;
+  for (let s = 0; s < N; s++) {
+    let b = bal, cw = 0, cl = 0, w = 0, ls = 0; const path = s < 60 ? [b] : null;
+    for (let i = 0; i < M; i++) { if (Math.random() < p) { b += g; w++; cw++; cl = 0; } else { b -= l; ls++; cl++; cw = 0; } mcw = Math.max(mcw, cw); mcl = Math.max(mcl, cl); if (path) path.push(b); }
+    if (b <= 0) ruin++; ends.push(b); tw += w; tl += ls; pfs += ls ? (w * g) / (ls * l) : (w ? 0 : 0); if (path) paths.push(path);
+  }
+  const avg = ends.reduce((a, b) => a + b, 0) / N, mn = Math.min(...ends), mx = Math.max(...ends);
+  $('#mc-out').innerHTML = '<div class="grid4">' + stat('Average ending balance', fmtUsd(avg, false), (avg >= bal ? '+' : '') + fmtUsd(avg - bal) + ' on average', cls(avg - bal))
+    + stat('Best run', fmtUsd(mx, false), 'highest ending balance', 'pos') + stat('Worst run', fmtUsd(mn, false), ruin ? ruin + ' of ' + N + ' runs went to zero' : 'lowest ending balance', mn < bal ? 'neg' : '')
+    + stat('Average profit factor', (pfs / N).toFixed(2), 'across all runs') + stat('Most wins in a row', mcw, 'in any run') + stat('Most losses in a row', mcl, 'in any run')
+    + stat('Total wins', tw.toLocaleString(), (tw / (tw + tl) * 100).toFixed(1) + '% of all trades') + stat('Total losses', tl.toLocaleString(), 'across all runs') + '</div>';
+  const W = 900, H = 240, lo = Math.min(mn, ...paths.flat()), hi = Math.max(mx, ...paths.flat()), sx = (i) => i / M * W, sy = (v) => H - (v - lo) / ((hi - lo) || 1) * (H - 10) - 5;
+  const avgPath = Array.from({ length: M + 1 }, (_, i) => bal + i * (p * g - (1 - p) * l));
+  $('#mc-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" class="mcsvg" role="img" aria-label="Monte Carlo balance paths">${lo < bal && hi > bal ? `<line x1="0" x2="${W}" y1="${sy(bal)}" y2="${sy(bal)}" stroke="var(--muted)" stroke-dasharray="4 4" stroke-width="1" vector-effect="non-scaling-stroke"/>` : ''}${paths.map(pt => `<polyline fill="none" stroke="${pt[pt.length - 1] >= bal ? 'rgba(38,176,122,.35)' : 'rgba(226,85,79,.35)'}" stroke-width="1" vector-effect="non-scaling-stroke" points="${pt.map((v, i) => sx(i).toFixed(1) + ',' + sy(v).toFixed(1)).join(' ')}"/>`).join('')}<polyline fill="none" stroke="#fff" stroke-width="2" vector-effect="non-scaling-stroke" points="${avgPath.map((v, i) => sx(i).toFixed(1) + ',' + sy(v).toFixed(1)).join(' ')}"/></svg><p class="hint">Each thin line is one simulated run (up to 60 shown). The white line is the expected path.</p>`;
+}
 function shiftCal(d) { const [y, m] = calMonth.split('-').map(Number), x = new Date(Date.UTC(y, m - 1 + d, 1)); calMonth = x.toISOString().slice(0, 7); renderAnalytics(); }
 
 /* ---------- Sessions view ---------- */
@@ -1924,7 +2171,7 @@ function applySettings() {
   const s = SET();
   document.documentElement.style.setProperty('--chart-bg', s.bg);
   for (const P of PANES) {
-    P.chart.applyOptions({ layout: { background: { color: s.bg }, textColor: s.text },
+    P.chart.applyOptions({ layout: { background: { color: s.bg }, textColor: s.text, fontSize: +s.fontSize || 12 }, rightPriceScale: { textColor: s.scaleText || s.text },
       grid: { vertLines: { visible: s.grid, color: s.gridColor }, horzLines: { visible: s.grid, color: s.gridColor } } });
     P.candles.applyOptions({ upColor: s.up, downColor: s.down, borderUpColor: s.upBorder, borderDownColor: s.downBorder, wickUpColor: s.upWick, wickDownColor: s.downWick, priceLineVisible: s.priceLine, lastValueVisible: true });
     P.volume.applyOptions({ visible: s.volume });
@@ -1945,7 +2192,9 @@ function renderSettings() {
     canvas: `<h4>Background and grid</h4>
       <div class="srow"><span>Background</span>${col('bg')}</div>
       <div class="srow"><span>Grid lines</span>${sw('grid')}${col('gridColor')}</div>
-      <div class="srow"><span>Price and time text</span>${col('text')}</div>`,
+      <div class="srow"><span>Price scale text (right side)</span>${col('scaleText')}</div>
+      <div class="srow"><span>Time scale text (bottom)</span>${col('text')}</div>
+      <div class="srow"><span>Text size</span><select class="ctl" data-set="fontSize">${[11, 12, 13, 14, 16].map(n => `<option value="${n}" ${+s.fontSize === n ? 'selected' : ''}>${n}px</option>`).join('')}</select></div>`,
     trading: `<h4>Trading</h4>
       <div class="srow"><span>Show trade arrows and P&amp;L numbers on the chart</span>${sw('markers')}</div>
       <p class="hint" style="margin-top:10px">Your open positions and orders always show as lines on the chart, with their P&amp;L.</p>`,
@@ -1970,7 +2219,7 @@ $('#set-main').addEventListener('click', e => { const b = e.target.closest('butt
   openColorPop(b, SET()[k], null, (c) => { b.querySelector('i').style.background = c; setSetting(k, c); }); });
 $('#settings').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
 $('#set-reset').addEventListener('click', () => {
-  const keep = { favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, tools: SET().tools, customColors: SET().customColors };
+  const keep = { toolStyle: SET().toolStyle, templates: SET().templates, qtyPresets: SET().qtyPresets, favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, tools: SET().tools, customColors: SET().customColors };
   store.settings = Object.assign({}, DEF_SET, keep); applySettings(); renderSettings(); save(); toast('Chart colours reset to default.');
 });
 
@@ -1979,7 +2228,7 @@ const VIS_UNITS = [['s', 'Seconds', 1, 59], ['m', 'Minutes', 1, 59], ['h', 'Hour
 function tfUnit(tf) { return tf < 60 ? ['s', tf] : tf < 3600 ? ['m', tf / 60] : tf < 86400 ? ['h', tf / 3600] : tf < 604800 ? ['D', tf / 86400] : tf < 2592000 ? ['W', tf / 604800] : ['M', tf / 2592000]; }
 function visibleOn(d, tf) { if (!d.vis) return true; const [u, n] = tfUnit(tf), v = d.vis[u]; return !v || (v[0] && n >= v[1] && n <= v[2]); }
 const dFont = (d) => `${d.it ? 'italic ' : ''}${d.bold ? '600 ' : ''}${d.fs || 14}px "IBM Plex Sans", system-ui, sans-serif`;
-const HAS_TEXT = (t) => !['long', 'short', 'measure'].includes(t);
+const HAS_TEXT = (t) => t !== 'measure';
 const HAS_FILL = ['rect', 'ellipse', 'channel'];
 const PT_NAMES = { long: ['Entry', 'Stop', 'Target'], short: ['Entry', 'Stop', 'Target'] };
 const ds = { d: null, snap: null, tab: 'style' };
@@ -1991,7 +2240,7 @@ function openDrawSettings(d, tab) {
 }
 function dsTabs(d) {
   const t = [];
-  if (!['text', 'long', 'short', 'measure'].includes(d.type)) t.push('style');
+  if (!['text', 'measure'].includes(d.type)) t.push('style');
   if (HAS_TEXT(d.type)) t.push('text');
   t.push('coords', 'vis'); return t;
 }
@@ -2003,7 +2252,14 @@ function renderDrawSettings() {
   const d = ds.d, tabs = dsTabs(d);
   $('#ds-tabs').innerHTML = tabs.map(t => `<button data-tab="${t}" aria-current="${t === ds.tab}">${TABN[t]}</button>`).join('');
   let h = '';
-  if (ds.tab === 'style') {
+  if (ds.tab === 'style' && (d.type === 'long' || d.type === 'short')) {
+    h += `<div class="drow"><span>Profit area</span>${swBtn('pc', d.pc || '#26b07a', d.po ?? .2)}</div>
+      <div class="drow"><span>Stop area</span>${swBtn('lc', d.lc || '#e2554f', d.lo ?? .2)}</div>
+      <div class="drow"><span>Entry line</span>${swBtn('color', d.color || '#d9e0e8', d.op)}</div>
+      <div class="drow"><span>Show price and P&amp;L labels</span>${chk('lab', d.lab !== false)}</div>
+      <div class="drow"><span>Risk % of balance <span class="mut">(empty = your session risk)</span></span><input type="number" class="ctl num" data-dk="rp" min="0.05" step="0.05" value="${d.rp || ''}" placeholder="${riskPct()}"></div>
+      <div class="drow"><span>Or a fixed number of contracts</span><input type="number" class="ctl num" data-dk="fq" min="1" step="1" value="${d.fq || ''}" placeholder="auto"></div>`;
+  } else if (ds.tab === 'style') {
     const stroke = d.type !== 'text';
     h += `<div class="drow"><span>${HAS_FILL.includes(d.type) ? 'Border' : 'Line'}</span>${swBtn('color', d.color || DCOL[0], d.op)}${stroke ? selHtml('w', [1, 2, 3, 4].map(w => [w, w + 'px']), d.w || 2) + selHtml('ls', [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']], d.ls || 'solid') : ''}</div>`;
     if (HAS_FILL.includes(d.type)) h += `<div class="drow"><span>Background</span>${chk('fill', d.fill !== false)}${swBtn('fc', d.fc || d.color || DCOL[0], d.fo ?? .12)}</div>`;
@@ -2030,16 +2286,18 @@ function renderDrawSettings() {
   }
   $('#ds-main').innerHTML = h;
 }
-function dsChanged() { bump(); renderSelbars(); }
+function dsChanged() { bump(); renderSelbars(); if (ds.d) rememberStyle(ds.d); }
 $('#ds-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { closePop(); ds.tab = b.dataset.tab; renderDrawSettings(); } });
 $('#ds-main').addEventListener('click', e => {
   const d = ds.d; if (!d) return;
   const s = e.target.closest('button[data-dc]');
   if (s) { const k = s.dataset.dc;
-    const cur = k === 'fc' ? (d.fc || d.color || DCOL[0]) : k === 'tc' && d.type !== 'text' ? (d.tc || d.color || DCOL[0]) : (d.color || DCOL[0]);
-    const op = k === 'fc' ? (d.fo ?? .12) : k === 'tc' && d.type !== 'text' ? null : (d.op ?? 1);
+    const LS = d.type === 'long' || d.type === 'short';
+    const cur = k === 'pc' ? (d.pc || '#26b07a') : k === 'lc' ? (d.lc || '#e2554f') : k === 'fc' ? (d.fc || d.color || DCOL[0]) : k === 'tc' && d.type !== 'text' ? (d.tc || d.color || (LS ? '#d9e0e8' : DCOL[0])) : (d.color || (LS ? '#d9e0e8' : DCOL[0]));
+    const op = k === 'pc' ? (d.po ?? .2) : k === 'lc' ? (d.lo ?? .2) : k === 'fc' ? (d.fo ?? .12) : k === 'tc' && d.type !== 'text' ? null : (d.op ?? 1);
     openColorPop(s, cur, op, (c, o) => {
-      if (k === 'fc') { d.fc = c; d.fo = o; } else if (k === 'tc' && d.type !== 'text') d.tc = c; else { d.color = c; d.op = o; draw.color = c; }
+      if (k === 'pc') { d.pc = c; d.po = o; } else if (k === 'lc') { d.lc = c; d.lo = o; }
+      else if (k === 'fc') { d.fc = c; d.fo = o; } else if (k === 'tc' && d.type !== 'text') d.tc = c; else { d.color = c; d.op = o; if (!LS) draw.color = c; }
       const i = s.querySelector('i'); i.style.background = c; if (o != null) i.style.opacity = o; dsChanged(); });
     return; }
   const t = e.target.closest('button.tbtn'); if (t) { d[t.dataset.dk] = !d[t.dataset.dk]; t.setAttribute('aria-pressed', !!d[t.dataset.dk]); dsChanged(); return; }
@@ -2051,6 +2309,7 @@ $('#ds-main').addEventListener('input', e => {
     if (k === 'txt') { if (d.type === 'text') d.text = el.value; else d.label = el.value; }
     else if (el.type === 'checkbox') d[k] = el.checked;
     else if (k === 'w' || k === 'fs') d[k] = +el.value;
+    else if (k === 'rp' || k === 'fq') d[k] = el.value === '' ? undefined : +el.value;
     else d[k] = el.value;
   } else if (el.dataset.cp != null) { const v = parseFloat(el.value); if (!isFinite(v)) return; const i = +el.dataset.cp; setPt(d, i, { t: d.pts[i].t, p: rt(v, INSTR[d.sym] ? INSTR[d.sym].tick : 0.25) }); }
   else if (el.dataset.ct != null) { const t = Date.parse(el.value + ':00Z') / 1000; if (!isFinite(t)) return; const i = +el.dataset.ct; setPt(d, i, { t, p: d.pts[i].p }); }
@@ -2061,10 +2320,11 @@ $('#ds-main').addEventListener('input', e => {
 });
 function closeDrawSettings(keep) {
   const d = ds.d; closePop(); $('#dset').hidden = true; if (!d) return;
-  if (!keep) { const o = JSON.parse(ds.snap); for (const k of Object.keys(d)) delete d[k]; Object.assign(d, o); }
+  if (!keep) { const o = JSON.parse(ds.snap); for (const k of Object.keys(d)) delete d[k]; Object.assign(d, o); rememberStyle(d); }
   ds.d = null; dsChanged(); save();
 }
 $('#ds-ok').addEventListener('click', () => closeDrawSettings(true));
+$('#ds-tpl').addEventListener('click', (e) => { if (ds.d) openTplPop(e.currentTarget, ds.d, () => { dsChanged(); renderDrawSettings(); }); });
 $('#ds-cancel').addEventListener('click', () => closeDrawSettings(false));
 $('#ds-x').addEventListener('click', () => closeDrawSettings(false));
 
@@ -2094,7 +2354,7 @@ $('#q-pop').addEventListener('click', e => {
   if (b.dataset.qpx) { pr.splice(pr.indexOf(+b.dataset.qpx), 1); save(); renderQPresets(); return; }
   if (b.dataset.qsave) { const n = Math.max(1, Math.floor(+$('#q-qty').value || 1)); if (!pr.includes(n)) { pr.push(n); pr.sort((a, c) => a - c); } save(); renderQPresets(); }
 });
-$('#dset').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
+$('#dset').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw, #ds-tpl')) closePop(); }, true);
 
 /* ---------- Views ---------- */
 let view = 'chart';
@@ -2199,7 +2459,8 @@ for (const id of ['#favbar', '#editbar']) $(id).addEventListener('pointerdown', 
 $('#editbar').addEventListener('click', e => {
   const b = e.target.closest('button[data-e]'); if (!b) return;
   const d = selD(); if (!d) return; const k = b.dataset.e;
-  const done = () => { save(); bump(); renderSelbars(); };
+  const done = () => { rememberStyle(d); save(); bump(); renderSelbars(); };
+  if (k === 'tpl') { openTplPop(b, d, () => { save(); bump(); renderSelbars(); }); return; }
   if (k === 'color') { openColorPop(b, d.color || DCOL[0], d.op ?? 1, (c, o) => { d.color = c; d.op = o; draw.color = c; done(); }); return; }
   if (k === 'width' || k === 'style') {
     const items = k === 'width' ? [1, 2, 3, 4].map(w => [w, `<svg viewBox="0 0 40 10"><path d="M2 5h36" stroke-width="${w}"/></svg>${w}px`]) : [['solid', dashSvg('solid') + 'Solid'], ['dashed', dashSvg('dashed') + 'Dashed'], ['dotted', dashSvg('dotted') + 'Dotted']];
@@ -2279,7 +2540,15 @@ document.addEventListener('change', e => {
   if (el.dataset.note) { const t = sess.trades.find(x => x.id === el.dataset.note); if (t) { t.notes = el.value; save(); } }
   if (el.dataset.tags) { const t = sess.trades.find(x => x.id === el.dataset.tags); if (t) { t.tags = el.value; save(); } }
 });
-$('#an-scope').addEventListener('change', () => { calMonth = null; renderAnalytics(); });
+$('#an-scope').addEventListener('change', () => { calMonth = null; $('#mc-form').dataset.filled = ''; renderAnalytics(); });
+$('#an-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-at]'); if (b) setAnTab(b.dataset.at); });
+for (const id of ['#af-sym', '#af-side', '#af-out', '#af-day', '#af-from', '#af-to', '#af-tag']) $(id).addEventListener('input', () => { calMonth = null; $('#mc-form').dataset.filled = ''; renderAnalytics(); });
+$('#af-be').addEventListener('input', () => { SET().beTh = Math.max(0, +$('#af-be').value || 0); save(); renderAnalytics(); });
+$('#af-clear').addEventListener('click', () => { for (const id of ['#af-sym', '#af-side', '#af-out', '#af-day', '#af-from', '#af-to', '#af-tag']) $(id).value = ''; calMonth = null; $('#mc-form').dataset.filled = ''; renderAnalytics(); });
+$('#dd-unit').addEventListener('change', renderAnalytics);
+$('#sl-f').addEventListener('input', renderAnalytics);
+$('#rr-k').addEventListener('input', renderAnalytics);
+$('#mc-form').addEventListener('submit', e => { e.preventDefault(); runMC(); });
 $('#ns-form').addEventListener('submit', e => {
   e.preventDefault();
   const syms = $$('#ns-syms input:checked').map(i => i.value); if (!syms.length) { toast('Pick at least one instrument.'); return; }
