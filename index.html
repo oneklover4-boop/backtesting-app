@@ -2393,9 +2393,9 @@ async function takeTradeShot(t) {
     const X = (tt) => ts.timeToCoordinate(P.agg[iOf(tt)].time), Y = (px) => P.candles.priceToCoordinate(px);
     const x0 = X(t.openT), x1 = Math.max(X(t.closeT), x0 + 6), ye = Y(t.entry);
     const zone = (px, col) => { const y = Y(px); if (y == null || ye == null) return; g.fillStyle = col; g.fillRect(x0, Math.min(y, ye), x1 - x0, Math.abs(y - ye)); };
-    if (t.tp != null) zone(t.tp, 'rgba(34,171,148,.22)'); if (t.sl != null) zone(t.sl, 'rgba(242,54,69,.22)');
+
     const hl = (px, col, dash) => { const y = Y(px); if (y == null) return; g.strokeStyle = col; g.lineWidth = 1.5; g.setLineDash(dash || []); g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]); };
-    hl(t.entry, t.side > 0 ? C.buy : C.sell); if (t.sl != null) hl(t.sl, C.slc, [5, 4]); if (t.tp != null) hl(t.tp, C.tpc, [5, 4]);
+    hl(t.entry, t.side > 0 ? C.buy : C.sell); if (t.sl != null) hl(t.sl, 'rgba(90,90,100,.7)', [5, 4]); if (t.tp != null) hl(t.tp, 'rgba(90,90,100,.7)', [5, 4]);
     const yx = Y(t.exit); if (yx != null && ye != null) { g.strokeStyle = t.pnl >= 0 ? '#22ab94' : '#f23645'; g.lineWidth = 2; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x0, ye); g.lineTo(x1, yx); g.stroke(); g.setLineDash([]); g.fillStyle = g.strokeStyle; g.beginPath(); g.arc(x1, yx, 4, 0, 7); g.fill(); }
     if (ye != null) { g.fillStyle = t.side > 0 ? C.buy : C.sell; g.beginPath(); g.arc(x0, ye, 4, 0, 7); g.fill(); }
     const lab = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym}  ${fmtUsd(t.pnl)}${t.r != null ? '  ' + t.r.toFixed(2) + 'R' : ''}`;
@@ -3881,6 +3881,7 @@ let tjTrade = null, rec = null, recText = '', calTrades = [];
 const anyTrade = (id) => S().trades.find(x => x.id === id) || store.sessions.flatMap(s => s.trades).find(x => x.id === id);
 async function openDay(day) {
   const list = calTrades.filter(t => new Date(t.closeT * 1000).toISOString().slice(0, 10) === day).sort((a, b) => a.openT - b.openT);
+  for (const t of list) if (t.said && t.notes && !/\n• /.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
   const net = list.reduce((a, t) => a + t.pnl, 0), d = new Date(day + 'T12:00:00Z');
   $('#dj-title').innerHTML = `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]} ${d.getUTCFullYear()} <span class="${cls(net)} num" style="font-weight:500;margin-left:8px">${fmtUsd(net)} · ${list.length} trade${list.length > 1 ? 's' : ''}</span>`;
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">Edit notes</button></h3>
@@ -3896,6 +3897,7 @@ async function openJournal(id) {
   const t = anyTrade(id); if (!t) return; tjTrade = t;
   $('#tj-title').textContent = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
   $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
+  if (t.said && t.notes && !/\n• /.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
   $('#tj-notes').value = t.notes || ''; $('#tj-live').textContent = '';
   $('#tj-said').hidden = !t.said; $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
@@ -3904,7 +3906,7 @@ async function openJournal(id) {
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-15-24';
+const BUILD = '2026-11-15-25';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -3985,39 +3987,46 @@ const TERMS = [
   [/\b(one|five|fifteen|thirty|1|5|15|30)\s?(?:minute|min|m)\b/gi, (m, n) => ({ one: 1, five: 5, fifteen: 15, thirty: 30 }[n.toLowerCase()] || n) + 'm'],
   [/\b(?:four|4)\s?(?:hour|h|hr)\b/gi, '4H'], [/\b(?:one|1)\s?(?:hour|h|hr)\b/gi, '1H'],
   [/\b(?:equal highs)\b/gi, 'equal highs'], [/\b(?:equal lows)\b/gi, 'equal lows'],
-  [/\b(?:liquidity|liquidy)\b/gi, 'liquidity'],
+  [/\b(?:liquidity|liquidy)\b/gi, 'liquidity'], [/\b(?:by|bye|buy) side\b/gi, 'buy-side'], [/\bsell side\b/gi, 'sell-side'], [/\b(London|Asia|New York|session|daily|weekly) heights\b/gi, '$1 highs'], [/\bheights\b/gi, 'highs'], [/\bun ?filled\b/gi, 'unfilled'],
   [/\b(?:asia|asian) (?:session|high|low|range)\b/gi, (m) => m.replace(/^asian?/i, 'Asia')], [/\blondon\b/gi, 'London'], [/\bnew york\b/gi, 'New York'],
 ];
 const fixTerms = (txt) => TERMS.reduce((acc, [re, to]) => acc.replace(re, to), txt);
 /* What goes in the notes, checked in this order; anything that fits none of these is left out */
+/* What goes in the notes, checked in this order; anything that fits none of these is left out */
 const SECTIONS = [
-  ['Lesson', /\b(next time|lesson|learn\w*|should have|shouldn'?t have|mistake|improve|remember to|need to|won'?t do)\b/i],
-  ['Mindset', /\b(felt|feel\w*|emotion\w*|nervous|scared|fomo|confident|greedy|impatient|calm|tilt\w*|frustrat\w*|happy|anxious|revenge|patient)\b/i],
-  ['Result', /\b(won|lost|hit (?:my )?(?:TP|target|SL|stop)|stopped out|winner|loser|full TP|closed (?:it|the trade|for))\b/i],
-  ['Break even and management', /\b(break even|trail\w*|partial\w*|scal(?:ed|ing|e) out|moved? (?:my )?stop|manag\w*|took some off|runner)\b/i],
-  ['Stop loss', /\b(SL|stop loss|stop|invalidat\w*)\b/i],
-  ['Take profit', /\b(TP|take profit|target\w*|draw on liquidity|DOL|aiming for|objective)\b/i],
-  ['Entry', /\b(enter\w*|entry|got in|took (?:it|the trade|a (?:long|short))|went (?:long|short)|bought|sold|limit order|market order|filled)\b/i],
-  ['Confirmation', /\b(confirm\w*|BOS|CHoCH|MSS|SMT|break of structure|change of character|market structure shift|displacement|retest\w*|engulf\w*|rejection|rejected|reclaim\w*|candle close|closed (?:above|below)|divergence)\b/i],
-  ['PD array', /\b(iFVG|FVG|PD array|order blocks?|breaker\w*|mitigation block|BPR|balanced price range|premium|discount|OTE|volume imbalance|NWOG|NDOG|rejection block|propulsion block|VWAP)\b/i],
-  ['Trade idea', /\b(idea|bias|bull\w*|bear\w*|expect\w*|looking for|looked for|liquidity|sweep\w*|swept|raid\w*|PDH|PDL|previous day|session (?:high|low)|Asia|London|New York|equal (?:highs|lows)|BSL|SSL|HTF|higher time ?frame|daily|weekly|4H|1H|narrative|killzone|silver bullet|turtle soup|run on|high|low|level|support|resistance)\b/i],
+  ['Lesson', /\b(next time|lesson|learn\w*|should have|shouldn'?t have|mistake|improve|remember to|won'?t do)\b/i],
+  ['Mindset', /\b(felt|feel\w*|emotion\w*|nervous|scared|fomo|confident|greedy|impatient|calm|tilt\w*|frustrat\w*|anxious|revenge|patient)\b/i],
+  ['Result', /\b(won|lost|hit (?:my )?(?:TP|target|SL|stop)|stopped out|winner|loser|full TP)\b/i],
+  ['Management', /\b(break even|trail\w*|partial\w*|scal(?:ed|ing|e) out|move (?:it|my stop|my stuff)|moved? (?:my )?(?:stop|stuff)|manag\w*|took some off|runner|hold (?:at least|for|it))\b/i],
+  ['Stop loss', /\b(SL|stop loss|my stop|stop (?:is|was|at|under|above|below)|invalidat\w*)\b/i],
+  ['Take profit', /\b(TP|take profit|profit target|\d(?:\.\d)?R\b|one[- ]to[- ]\w+)\b/i],
+  ['Draw on liquidity (DOL)', /\b(DOL|draw on liquidity|target\w*|going for|aiming|heading (?:for|to)|towards?|trade (?:up )?(?:in)?to|reach for|run (?:to|on)|pull to)\b/i],
+  ['Manipulation', /\b(swept|sweep\w*|re-?swept|raid\w*|took out|taken out|taken (?:the|like)|took (?:the|like)|ran (?:the|stops)|stop hunt|grabbed|manipulat\w*|inducement|judas|fake ?out|dump\w*|trading into|traded into)\b/i],
+  ['Entry', /\b(enter\w*|entry|got in|took (?:it|the trade|a (?:long|short))|went (?:long|short)|bought|sold|filled)\b/i],
+  ['Confirmation', /\b(confirm\w*|BOS|CHoCH|MSS|SMT|iFVG|break of structure|change of character|market structure shift|displacement|retest\w*|engulf\w*|rejection|rejected|reclaim\w*|candle close|closed (?:above|below)|divergence|LTF|low time ?frame)\b/i],
+  ['Entry', /\b(enter\w*|entry|got in|took (?:it|the trade|a (?:long|short))|went (?:long|short)|we are (?:long|short)|we'?re (?:long|short)|bought|sold|limit order|market order|filled|FVG|order blocks?|breaker\w*|OTE|PD array|BPR|premium|discount)\b/i],
+  ['Trade idea', /\b(idea|bias|bull\w*|bear\w*|expect\w*|looking for|narrative|model|HTF|higher time ?frame|daily|weekly|4H|1H|London|Asia|New York|session|PDH|PDL|equal (?:highs|lows)|BSL|SSL|liquidity|killzone|silver bullet|high|low)\b/i],
 ];
-const NOTE_ORDER = ['Trade idea', 'PD array', 'Confirmation', 'Entry', 'Stop loss', 'Take profit', 'Break even and management', 'Result', 'Mindset', 'Lesson'];
+const NOTE_ORDER = ['Trade idea', 'Manipulation', 'Draw on liquidity (DOL)', 'Confirmation', 'Entry', 'Stop loss', 'Take profit', 'Management', 'Result', 'Mindset', 'Lesson'];
+const FILLER = /\b(um+|uh+|erm*|hmm+|you know|i mean|basically|literally|obviously|kind of|sort of|like|yeah|yep|okay|ok|alright|let me see|let me think|let'?s see|to be honest|honestly|innit|just|actually|really|definitely|pretty much|wow|so yes|I guess|probably|at the end of the day)\b[,]?/gi;
+function tidyClause(c) {
+  let x = c.replace(FILLER, ' ').replace(/\b(\w+) \1\b/gi, '$1').replace(/\bgonna\b/gi, 'going to').replace(/\bwanna\b/gi, 'want to').replace(/\s+/g, ' ').trim()
+    .replace(/^(and|so|but|then|now|well|because|which|as|we could|I think|I'?m thinking)\s+/i, '').replace(/^(and|so|but|then|now)\s+/i, '').replace(/[,.\s]+$/, '');
+  const w = x.split(' '); if (w.length > 22) x = w.slice(0, 22).join(' ') + '…';
+  return x ? x.charAt(0).toUpperCase() + x.slice(1).replace(/\bi\b/g, 'I') : '';
+}
 function tidyNotes(raw, t) {
-  let s = ' ' + fixTerms(raw).replace(/\s+/g, ' ') + ' ';
-  s = s.replace(/\b(um+|uh+|erm*|hmm+|you know|i mean|basically|literally|kind of|sort of|like,|yeah|yep|okay so|ok so|alright|let me see|let me think|to be honest|honestly|innit)\b[,]?\s/gi, ' ').replace(/\s+/g, ' ').trim();
-  const clauses = s.split(/(?<=[.!?])\s+|,\s*|;\s*|\s+(?:and then|then|also|after that|plus|and I|and my|but then|so then)\s+/i)
-    .map(x => x.replace(/^(and|so|but|okay|ok|right|well|now|like)\s+/i, '').replace(/^(what I did was|I'?m going to|I'?m gonna|I was like)\s+/i, '').trim()).filter(x => x.split(' ').length >= 3);
+  const s = ' ' + fixTerms(raw).replace(/\s+/g, ' ') + ' ';
+  const clauses = s.split(/(?<=[.!?])\s+|[,;]\s*|\s+(?=(?:so|but|because|actually|and now|now|and then|then|which|I think|after that|also|okay|yeah|as well as|plus|if we|we'?ve (?:got|just)|we have|we enter\w*|I entered|I'?ll|I'?m going|I am going|I'?m gonna|I am gonna|we are (?:long|short)|we'?re (?:long|short)|(?:NQ|ES|MNQ|MES) has)\b)/i)
+    .map(tidyClause).filter(x => x.split(' ').length >= 3);
   const out = new Map(NOTE_ORDER.map(n => [n, []]));
-  for (const c of clauses) {
-    const hit = SECTIONS.find(([, re]) => re.test(c)); if (!hit) continue;
-    let x = c.charAt(0).toUpperCase() + c.slice(1); if (!/[.!?]$/.test(x)) x += '.'; x = x.replace(/\bi\b/g, 'I');
-    if (!out.get(hit[0]).includes(x)) out.get(hit[0]).push(x);
-  }
-  const head = t ? `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET\nEntry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${t.reason}) · ${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}` : '';
-  const body = [...out].filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.join(' ')}`).join('\n');
+  for (const c of clauses) { const hit = SECTIONS.find(([, re]) => re.test(c)); if (!hit) continue; const L = out.get(hit[0]); if (!L.some(y => y.toLowerCase() === c.toLowerCase()) && L.length < 5) L.push(c); }
+  const head = t ? `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET\nEntry ${fmtPx(t.entry)}${t.sl != null ? ' · Stop ' + fmtPx(t.sl) : ''}${t.tp != null ? ' · Target ' + fmtPx(t.tp) : ''} · Exit ${fmtPx(t.exit)} (${t.reason}) · ${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}` : '';
+  const body = [...out].filter(([, v]) => v.length).map(([k, v]) => `${k.toUpperCase()}\n${v.map(x => '• ' + x).join('\n')}`).join('\n\n');
   return (head ? head + '\n\n' : '') + (body || 'Nothing trade-related was picked up. Your full words are under "Everything you said".');
 }
+/* Text of the notes without the header, headings and bullets, for re-tidying typed notes */
+const notesPlain = (v) => v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][A-Z ()]+$/gm, '').replace(/^[A-Z][a-z ]+: /gm, '').replace(/^• /gm, '').replace(/\n+/g, '. ');
 function stopRec() { if (rec) { const r = rec; rec = null; try { r.stop(); } catch (e) {} } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
 $('#tj-mic').addEventListener('click', () => {
   if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(tjTrade.said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
@@ -4030,7 +4039,7 @@ $('#tj-mic').addEventListener('click', () => {
   r.onend = () => { if (rec === r) { recText = done; try { r.start(); } catch (e) {} } };
   try { r.start(); $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.'; } catch (e) { rec = null; $('#tj-live').textContent = 'Could not start the microphone.'; }
 });
-$('#tj-tidy').addEventListener('click', () => { const v = $('#tj-notes').value.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][a-z ]+: /gm, ''); $('#tj-notes').value = tidyNotes(v, tjTrade); });
+$('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; const v = tjTrade.said || notesPlain($('#tj-notes').value); $('#tj-notes').value = tidyNotes(v, tjTrade); });
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
 $('#cal-next').addEventListener('click', () => shiftCal(1));
 document.addEventListener('change', e => {
