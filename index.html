@@ -940,7 +940,7 @@ function setBackAdj(X, on) {
 }
 const MAGIC = 'TAPEDATA1\n', KEYS6 = ['t', 'o', 'h', 'l', 'c', 'v'];
 async function dataFileBlob(syms) {
-  const head = { syms: syms.map(s => { const X = DATA[s]; return { sym: s, n: X.t.length, base: X.base, rolls: X.rolls || [], contracts: X.contracts || 1, utc: !!X.convertedFromUtc }; }) };
+  const head = { syms: syms.map(s => { const X = DATA[s]; return { sym: s, n: X.t.length, base: X.base, rolls: X.rolls || [], rule: X.rule, contracts: X.contracts || 1, utc: !!X.convertedFromUtc }; }) };
   const hj = new TextEncoder().encode(JSON.stringify(head)), parts = [new TextEncoder().encode(MAGIC), new Uint32Array([hj.length]), hj];
   for (const s of syms) { const X = DATA[s], a = X.adj; setBackAdj(X, false); for (const k of KEYS6) parts.push(k === 't' ? new Float64Array(X.t) : new Float32Array(X[k])); setBackAdj(X, a); }
   return await new Response(new Blob(parts).stream().pipeThrough(new CompressionStream('gzip'))).blob();
@@ -951,7 +951,7 @@ async function readDataFile(file) {
   if (new TextDecoder().decode(buf.slice(0, MAGIC.length)) !== MAGIC) throw new Error('That is not a Tape Replay data file. On your Mac, press Save data file and send that file.');
   let p = MAGIC.length; const hl = new DataView(buf).getUint32(p, true); p += 4;
   const head = JSON.parse(new TextDecoder().decode(buf.slice(p, p + hl))); p += hl; const out = {};
-  for (const m of head.syms) { const X = { base: m.base, rolls: m.rolls, contracts: m.contracts, convertedFromUtc: m.utc };
+  for (const m of head.syms) { const X = { base: m.base, rolls: m.rolls, rule: m.rule, contracts: m.contracts, convertedFromUtc: m.utc };
     for (const k of KEYS6) { const sz = k === 't' ? 8 : 4, A = k === 't' ? Float64Array : Float32Array; X[k] = new A(buf.slice(p, p + m.n * sz)); p += m.n * sz; }
     out[m.sym] = X; }
   return out;
@@ -1025,7 +1025,7 @@ async function importFiles(files, tzMode, onProgress, want) {
   files = list.sort((a, b) => a.name.localeCompare(b.name));
   const wantRe = want ? new RegExp('^' + want + '([FGHJKMNQUVXZ]\\d{1,2}|\\..*)?$') : null; const otherRoots = new Set();
   const G = { t: new Grow(Float64Array), o: new Grow(Float32Array), h: new Grow(Float32Array), l: new Grow(Float32Array), c: new Grow(Float32Array), v: new Grow(Float32Array), s: new Grow(Uint16Array) };
-  const symIds = new Map(), symNames = [];
+  const symIds = new Map(), symNames = [], symFirst = [];
   let anyUtc = false, sawText = false, total = files.reduce((a, f) => a + f.size, 0), done = 0;
   for (const f of files) {
     let col = null, rest = '', bytes = 0, lineNo = 0;
@@ -1050,7 +1050,7 @@ async function importFiles(files, tzMode, onProgress, want) {
       let sid = 0;
       if (col.s >= 0) { const name = (p[col.s] || '').replace(/"/g, '').trim(); if (name.includes('-') || name.includes(':')) return; // skip calendar spreads
         if (wantRe && name && !wantRe.test(name)) { otherRoots.add(name.replace(/[FGHJKMNQUVXZ]\d{1,2}$/, '')); return; } // other instruments in the same file
-        sid = symIds.get(name); if (sid === undefined) { sid = symNames.length; symIds.set(name, sid); symNames.push(name); } }
+        sid = symIds.get(name); if (sid === undefined) { sid = symNames.length; symIds.set(name, sid); symNames.push(name); symFirst.push(t); } }
       if (utc) anyUtc = true; sawText = true;
       G.t.push(t); G.o.push(o); G.h.push(h); G.l.push(l); G.c.push(c); G.v.push(col.v >= 0 ? +p[col.v] || 0 : 0); G.s.push(sid);
     };
@@ -1067,7 +1067,7 @@ async function importFiles(files, tzMode, onProgress, want) {
   const T = G.t.get(), O = G.o.get(), H = G.h.get(), L = G.l.get(), Cc = G.c.get(), V = G.v.get(), SI = G.s.get();
   const toEt = tzMode === 'utc' || (tzMode === 'auto' && anyUtc);
   if (toEt) for (let i = 0; i < n; i++) T[i] = utcToEt(T[i]);
-  // Several contracts in one file: keep the most traded contract per trading day
+  // Several contracts in one file: keep the most traded contract per trading day (TradingView's MNQ1! switches on the same days)
   let keep = null; const rolls = [];
   if (symNames.length > 1) {
     const vol = new Map();
@@ -1080,8 +1080,9 @@ async function importFiles(files, tzMode, onProgress, want) {
     for (let j = 1; j < days.length; j++) { const a = best.get(days[j - 1])[0], b = best.get(days[j])[0]; if (a === b) continue; const r = { a, b, day: days[j], A: new Map(), B: new Map() }; rolls.push(r); add(days[j - 1], r); add(days[j], r); }
     if (rolls.length) for (let i = 0; i < n; i++) { const L = look.get(Math.floor((T[i] + 21600) / 86400)); if (L) for (const r of L) { if (SI[i] === r.a) r.A.set(T[i], Cc[i]); else if (SI[i] === r.b) r.B.set(T[i], Cc[i]); } }
     for (const r of rolls) { const t0 = r.day * 86400 - 21600; let before = -Infinity, after = Infinity;
-      for (const t of r.A.keys()) if (r.B.has(t)) { if (t < t0) before = Math.max(before, t); else after = Math.min(after, t); }
-      const tt = before > -Infinity ? before : after; r.t = t0; r.gap = isFinite(tt) ? r.B.get(tt) - r.A.get(tt) : 0; delete r.A; delete r.B; delete r.a; delete r.b; delete r.day; }
+      let settle = -Infinity; // TradingView measures the gap at the settlement (16:00 ET) the day before the switch
+      for (const t of r.A.keys()) if (r.B.has(t)) { if (t < t0) { before = Math.max(before, t); if (t % 86400 < 57600 && t > t0 - 86400) settle = Math.max(settle, t); } else after = Math.min(after, t); }
+      const tt = settle > -Infinity ? settle : before > -Infinity ? before : after; r.t = t0; r.gap = isFinite(tt) ? r.B.get(tt) - r.A.get(tt) : 0; delete r.A; delete r.B; delete r.a; delete r.b; delete r.day; }
   }
   let idx = []; for (let i = 0; i < n; i++) if (!keep || keep[i]) idx.push(i);
   let sorted = true; for (let i = 1; i < idx.length; i++) if (T[idx[i]] < T[idx[i - 1]]) { sorted = false; break; }
@@ -1098,7 +1099,7 @@ async function importFiles(files, tzMode, onProgress, want) {
     k++; X.t[k] = b; X.o[k] = O[i]; X.h[k] = H[i]; X.l[k] = L[i]; X.c[k] = Cc[i]; X.v[k] = V[i];
   }
   for (const key of ['t', 'o', 'h', 'l', 'c', 'v']) X[key] = X[key].slice(0, k + 1);
-  X.contracts = symNames.length; X.convertedFromUtc = toEt; X.rolls = rolls.filter(r => r.gap);
+  X.contracts = symNames.length; X.convertedFromUtc = toEt; X.rolls = rolls.filter(r => r.gap); X.rule = 'tv2';
   return X;
 }
 
@@ -1110,7 +1111,7 @@ const THEMES = {
   dark: { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350', _upBorder: false, _downBorder: false, _upWick: false, _downWick: false,
     bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', scaleText: '#e6e6ea', scaleLine: '#27272d', volUp: '#26a69a', volDown: '#ef5350' },
 };
-const DEF_SET = { ...THEMES.fxr, themeV: 5, backAdj: true, volume: true, priceLine: true, markers: false,
+const DEF_SET = { ...THEMES.fxr, themeV: 5, backAdj: true, settle: true, volume: true, priceLine: true, markers: false,
   favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, fontSize: 12 };
 const SET = () => store.settings;
 function initSettings() {
@@ -1245,7 +1246,9 @@ const cBar = (b) => ({ time: b.time, open: b.open, high: b.high, low: b.low, clo
 const vBar = (b) => ({ time: b.time, value: b.value, color: alpha(b.close >= b.open ? (SET().volUp || SET().up) : (SET().volDown || SET().down), isLightCol(SET().bg) ? .55 : .32) });
 function mergeInto(a, D, i, tf) {
   const b = bucket(D.t[i], tf), last = a[a.length - 1];
-  if (last && last.time === b) { if (D.h[i] > last.high) last.high = D.h[i]; if (D.l[i] < last.low) last.low = D.l[i]; last.close = D.c[i]; last.value += D.v[i]; }
+  if (last && last.time === b) { if (D.h[i] > last.high) last.high = D.h[i]; if (D.l[i] < last.low) last.low = D.l[i]; last.value += D.v[i];
+    // Like TradingView: a daily candle closes at the 16:00 ET settlement, not the last trade before 17:00
+    if (!(tf >= 86400 && SET().settle && !D.sample && D.t[i] % 86400 >= 57600 && D.t[i] % 86400 < 64800)) last.close = D.c[i]; }
   else a.push(aggBar(D, i, b));
 }
 function rebuildPane(P, fit) {
@@ -3031,7 +3034,7 @@ function renderSessions() {
   const D = DATA.MNQ, mn = new Date(lo * 1000).toISOString().slice(0, 10), mx = new Date(hi * 1000).toISOString().slice(0, 10);
   const di = $('#ns-date'); di.min = mn; di.max = mx; if (!di.value || di.value < mn || di.value > mx) di.value = new Date((lo + 86400 * 2) * 1000).toISOString().slice(0, 10);
   $('#imp-sym').innerHTML = SYMS.map(s => `<option>${s}</option>`).join('');
-  $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : 'your imported data' + (X.rolls && X.rolls.length ? (X.adj ? ', back-adjusted for ' + X.rolls.length + ' contract roll' + (X.rolls.length > 1 ? 's' : '') : ', real contract prices') : '')}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
+  $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : 'your imported data' + (X.rolls && X.rolls.length ? (X.rule !== 'tv2' ? ', <b>import again to match TradingView</b>' : '') + (X.adj ? ', back-adjusted for ' + X.rolls.length + ' contract roll' + (X.rolls.length > 1 ? 's' : '') : ', real contract prices') : '')}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
     + '<br><span>The sample is generated, realistic-looking price action for practice. It is not real market history. Import real data below to backtest for real.</span>';
 }
 
@@ -3073,7 +3076,8 @@ function renderSettings() {
     trading: `<h4>Trading</h4>
       <div class="srow"><span>Show trade arrows and P&amp;L numbers on the chart</span>${sw('markers')}</div>
       <div class="srow"><span>Back-adjust contract rolls, like TradingView's continuous futures</span>${sw('backAdj')}</div>
-      <p class="hint" style="margin-top:4px">On, older prices match TradingView charts like MNQ1! (B-ADJ). Off, you see the real price each contract traded at. Data imported before this option needs one new import for it to work.</p>
+      <div class="srow"><span>Use settlement as close on daily candles, like TradingView</span>${sw('settle')}</div>
+      <p class="hint" style="margin-top:4px">On, older prices match TradingView charts like MNQ1! (B-ADJ). Off, you see the real price each contract traded at. Data imported before 15 November needs one new import.</p>
       <p class="hint" style="margin-top:10px">Your open positions and orders always show as lines on the chart, with their P&amp;L.</p>`,
   };
   $('#set-main').innerHTML = secs[setSec];
@@ -3090,6 +3094,7 @@ function setSetting(k, v) {
   if (k === 'up' || k === 'down') for (const part of ['Border', 'Wick']) if (!SET()['_' + k + part]) { SET()[k + part] = v; const o = $(`#set-main [data-setcol="${k + part}"] i`); if (o) o.style.background = v; }
   if (/Border$|Wick$/.test(k)) SET()['_' + k] = true;
   if (k === 'backAdj') { for (const s of SYMS) setBackAdj(DATA[s], v); rebuildAll(false); renderAll(); }
+  if (k === 'settle') { rebuildAll(false); renderAll(); }
   applySettings(); save();
 }
 $('#set-main').addEventListener('input', e => { const el = e.target, k = el.dataset.set; if (k) setSetting(k, el.type === 'checkbox' ? el.checked : el.value); });
