@@ -55,6 +55,7 @@ html.app-mode #b-full { display: none; }
 .tj-body { padding: 14px 18px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
 .tj-shot img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; }
 .tj-shot .empty { padding: 20px; }
+.tj-said { margin-top: 8px; color: var(--muted); font-size: 13px; } .tj-said summary { cursor: pointer; } .tj-said p { margin: 6px 0 0; line-height: 1.5; }
 .tj-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tj-mic { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
 .tj-mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
@@ -860,7 +861,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <textarea class="io" id="tj-notes" rows="9" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+      <textarea class="io" id="tj-notes" rows="9" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -1172,13 +1173,14 @@ const THEMES = {
 const DEF_SET = { ...THEMES.fxr, themeV: 5, backAdj: true, settle: true, volume: true, priceLine: true, markers: false,
   favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, fontSize: 12,
   colorPrev: false, bodyVis: true, borderVis: true, wickVis: true, tz: 'America/New_York', dow: true, h12: false, slTitle: true, slValues: true, slChange: true, slVol: false,
-  scaleMode: 0, invert: false, lastLabel: true, xMode: 0, xColor: '', xStyle: 3, bgType: 'solid', bg2: '#8f8d8d', wmark: false, wmColor: 'rgba(0,0,0,.08)', mTop: 10, mBot: 8, rOff: 12, posLines: true, tradeShots: true };
+  scaleMode: 0, invert: false, lastLabel: true, xMode: 0, xColor: '#9c9c9c', xStyle: 2, bgType: 'solid', bg2: '#8f8d8d', wmark: false, wmColor: 'rgba(0,0,0,.08)', mTop: 10, mBot: 8, rOff: 12, posLines: true, tradeShots: true };
 const SET = () => store.settings;
 function initSettings() {
   const o = store.settings || {};
   // Charts still on the old dark default switch once to the FX Replay look; a custom background is left alone.
   if (!o.themeV) { if (!o.bg || o.bg === '#0a0a0b') for (const k of Object.keys(THEMES.fxr)) delete o[k]; o.themeV = 5; }
   store.settings = Object.assign({}, DEF_SET, o);
+  if (!store.settings.tvLook) { store.settings.tvLook = 1; store.settings.xColor = '#9c9c9c'; store.settings.xStyle = 2; }
 }
 function isLightCol(h) { try { const n = parseInt(String(h).slice(1, 7), 16); return .299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255) > 140; } catch (e) { return false; } }
 let store = null;
@@ -1210,7 +1212,7 @@ function closePos(sess, p, px, t, reason) {
   const pnl = gross - fees;
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
     openT: p.openT, closeT: t, pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
-  if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.notes = tidyNotes(p.notes, tr); }
+  if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.notes; tr.notes = tidyNotes(p.notes, tr); }
   sess.positions = sess.positions.filter(x => x !== p);
   if (store && SET().tradeShots !== false) SHOTQ.push(sess.trades[sess.trades.length - 1]);
 }
@@ -1446,6 +1448,9 @@ function openTicket(on) {
 }
 
 /* ---------- Drawings ---------- */
+/* Starting look for new drawings, taken from the user's TradingView defaults (Nov 2026) */
+const TV_DEF = { trend: { color: '#000000', w: 1, ls: 'dashed' }, hline: { color: '#000000', w: 1 }, hray: { color: '#000000', w: 1 }, rect: { color: '#b8b8b8', w: 1, fc: '#464646', fo: .2 },
+  long: { color: '#808080', w: 1, pc: '#376b89', lc: '#434651' }, short: { color: '#808080', w: 1, pc: '#376b89', lc: '#434651' } };
 const DCOL = ['#4c8dff', '#e4a640', '#26b07a', '#e2554f', '#b07cf0', '#d9e0e8'];
 const TOOLDEF = {
   cursor: { n: 'Cross cursor', pts: 0 },
@@ -1965,8 +1970,9 @@ function rPos(P, ctx, d, q, col, hs, isSel) {
     if (y2 != null && x2 > x1) { ctx.fillStyle = alpha(up ? pc : lc, Math.min(.85, (up ? d.po ?? .2 : d.lo ?? .2) + .3)); ctx.fillRect(x1, Math.min(ye, y2), x2 - x1, Math.abs(y2 - ye)); } }
   ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = d.w || 2; ctx.setLineDash([]); seg(ctx, [L, ye], [L + Wd, ye]); ctx.globalAlpha = 1;
   if (d.lab !== false && isSel) {
-    tag(ctx, cx, ytp + (ytp < ye ? -12 : 12), cmp ? `${k.rew.toFixed(2)} +$${fmt0(k.winUsd)}` : `Target ${k.rew.toFixed(2)} pts  +$${fmt0(k.winUsd)}`, mixHex(pc, '#000000', .25), tc, 'center');
-    tag(ctx, cx, ysl + (ysl > ye ? 12 : -12), cmp ? `${k.risk.toFixed(2)} -$${fmt0(k.lossUsd)}` : `Stop ${k.risk.toFixed(2)} pts  -$${fmt0(k.lossUsd)}`, mixHex(lc, '#000000', .2), tc, 'center');
+    const yT = ytp < ye ? Math.min(ytp - 12, ye - 20) : Math.max(ytp + 12, ye + 20), yS = ysl > ye ? Math.max(ysl + 12, ye + 20) : Math.min(ysl - 12, ye - 20);
+    tag(ctx, cx, yT, cmp ? `${k.rew.toFixed(2)} +$${fmt0(k.winUsd)}` : `Target ${k.rew.toFixed(2)} pts  +$${fmt0(k.winUsd)}`, mixHex(pc, '#000000', .25), tc, 'center');
+    tag(ctx, cx, yS, cmp ? `${k.risk.toFixed(2)} -$${fmt0(k.lossUsd)}` : `Stop ${k.risk.toFixed(2)} pts  -$${fmt0(k.lossUsd)}`, mixHex(lc, '#000000', .2), tc, 'center');
     tag(ctx, cx, ye, cmp ? `${k.qty} · ${k.rr.toFixed(2)}R` : `${d.type === 'long' ? 'Long' : 'Short'} ${k.qty} ${P.sym} · R:R ${k.rr.toFixed(2)}`, '#19212a', '#d9e0e8', 'center');
   }
   if (opt(d, 'plab')) { const R = L + Wd + 4; tag(ctx, R, ytp, fmtPx(k.tp), pc, fgOf(pc)); tag(ctx, R, ye, fmtPx(k.e), '#363a45', '#fff'); tag(ctx, R, ysl, fmtPx(k.sl), lc, fgOf(lc)); }
@@ -2312,8 +2318,8 @@ function renderD(P, ctx, d, isSel) {
   postD(P, ctx, d, q, col);
   if (d.label && HAS_TEXT(d.type) && d.type !== 'text' && !OWN_LABEL.has(d.type)) drawLabel(P, ctx, d, q);
   ctx.globalAlpha = 1;
-  if (isSel && LSD(d)) { const big = COARSE ? 1.5 : 1; lsHandles(q).forEach(([hx, hy], i) => { const w = (i === 1 || i === 2 ? 14 : 8) * big, h = 8 * big; ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2962ff'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.rect(Math.round(hx - w / 2) + .5, Math.round(hy - h / 2) + .5, w, h); ctx.fill(); ctx.stroke(); }); } else
-  if (isSel && d.type !== 'text') for (const [hx, hy] of (FREE.has(d.type) ? [q[0], q[q.length - 1]] : q)) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, COARSE ? 7 : 5, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (isSel && LSD(d)) { const big = COARSE ? 1.5 : 1; lsHandles(q).forEach(([hx, hy], i) => { const w = (i === 1 || i === 2 ? 16 : 10) * big, h = 10 * big; ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2962ff'; ctx.lineWidth = 2; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(Math.round(hx - w / 2), Math.round(hy - h / 2), w, h, 3 * big); else ctx.rect(Math.round(hx - w / 2), Math.round(hy - h / 2), w, h); ctx.fill(); ctx.stroke(); }); } else
+  if (isSel && d.type !== 'text') for (const [hx, hy] of (FREE.has(d.type) ? [q[0], q[q.length - 1]] : q)) { ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#2962ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hx, hy, COARSE ? 7.5 : 5.5, 0, 7); ctx.fill(); ctx.stroke(); }
 }
 const COARSE = matchMedia('(pointer: coarse)').matches;
 const LSD = (d) => d.type === 'long' || d.type === 'short';
@@ -2627,11 +2633,19 @@ function cloneD(d) {
 }
 
 /* Creating drawings */
+/* A second finger means pinch zoom: put back whatever the first finger started moving and let the chart zoom */
+const snapD = (d) => ({ pts: d.pts ? d.pts.map(p => ({ ...p })) : null, fx: d.fx, fy: d.fy });
+function cancelFinger(P) {
+  const A = draw.act; if (A && A.P === P) { if (A.back && A.d) { if (A.back.pts) A.d.pts = A.back.pts; A.d.fx = A.back.fx; A.d.fy = A.back.fy; } draw.act = null; }
+  if (tcur.down && tcur.P === P) { tcur.down = false; tcur.x = tcur.ox; tcur.y = tcur.oy; }
+  lockChart(P, false); P.el.style.cursor = ''; bump();
+}
 function lockChart(P, on) { P.chart.applyOptions({ handleScroll: !on, handleScale: !on }); }
 function startMk(P, x, y) {
   const type = draw.tool, q = fromXY(P, x, y, true);
   const d = { id: uid(), type, sym: P.sym, color: ['long', 'short', 'measure'].includes(type) ? null : draw.color, pts: [q] };
   const rs = SET().toolStyle && SET().toolStyle[type]; if (rs) Object.assign(d, JSON.parse(JSON.stringify(rs)));
+  if (!rs && TV_DEF[type]) Object.assign(d, TV_DEF[type]);
   if (!rs && type === 'hilite') d.color = '#ffeb3b';
   if (!rs && (type === 'arrup' || type === 'arrdn')) d.color = type === 'arrup' ? '#26b07a' : '#e2554f';
   if (type === 'atext') { d.fx = x / P.pw; d.fy = y / P.ph; }
@@ -2709,6 +2723,7 @@ function bindPane(P) {
   el.addEventListener('pointerdown', e => {
     if (e.target.closest('.selbar, .txtin, .ptag button')) return;
     const touch = e.pointerType === 'touch'; HT = touch ? 14 : 6;
+    if (touch) { (P.fingers = P.fingers || new Set()).add(e.pointerId); if (P.fingers.size >= 2) { cancelFinger(P); return; } }
     if (tcur.down) { e.preventDefault(); e.stopPropagation(); return; }
     if (P.i < nPanes() && LAY().active !== P.i) { LAY().active = P.i; layoutPanes(); renderToolbar(); renderTicket(); renderLive(); save(); }
     closeMenus();
@@ -2732,10 +2747,10 @@ function bindPane(P) {
       if (s && draw.sel.pane === P.i && s.sym === P.sym && s.type !== 'text' && !s.locked) {
         const hs = LSD(s) ? lsHandles(qOf(P, s)) : qOf(P, s), R = touch ? 22 : 9;
         let best = -1, bd = R; for (let i = 0; i < hs.length; i++) if (hs[i][1] != null) { const dd = Math.hypot(hs[i][0] - x, hs[i][1] - y); if (dd < bd) { bd = dd; best = i; } }
-        if (best >= 0) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i: best, ox: hs[best][0] - x, oy: hs[best][1] - y }; return; }
+        if (best >= 0) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i: best, ox: hs[best][0] - x, oy: hs[best][1] - y, back: snapD(s) }; return; }
       }
       const list = dList(P.sym);
-      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]), slop: touch ? 8 : 0 }; return; }
+      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]), slop: touch ? 8 : 0, back: snapD(list[k]) }; return; }
     }
     if (draw.sel) select(null);
   }, true);
@@ -2789,6 +2804,8 @@ function bindPane(P) {
   };
   el.addEventListener('pointerup', up, true);
   el.addEventListener('pointercancel', up, true);
+  const lift = (e) => { if (P.fingers) P.fingers.delete(e.pointerId); };
+  for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) el.addEventListener(ev, lift, false);
 }
 
 /* ---------- Replay controls ---------- */
@@ -3558,7 +3575,7 @@ function renderMkbar() {
 }
 function drawTcur(P, ctx) {
   const x = P.x0 + Math.round((tcur.x - P.x0) / P.dx) * P.dx, y = tcur.y, lt = isLightCol(SET().bg); ctx.save(); ctx.globalAlpha = 1;
-  ctx.strokeStyle = lt ? '#131722' : '#d1d4dc'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); seg(ctx, [0, y], [P.pw, y]); seg(ctx, [x, 0], [x, P.ph]); ctx.setLineDash([]);
+  ctx.strokeStyle = SET().xColor || (lt ? '#131722' : '#d1d4dc'); ctx.lineWidth = 1; ctx.setLineDash([4, 4]); seg(ctx, [0, y], [P.pw, y]); seg(ctx, [x, 0], [x, P.ph]); ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(41,98,255,.18)'; ctx.strokeStyle = '#2962ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 10, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#2962ff'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill();
   const q = fromXY(P, x, y, true); tag(ctx, P.pw - 4, y, fmtPx(q.p), '#131722', '#fff', 'right'); tag(ctx, x, P.ph - 11, shortT(q.t), '#131722', '#fff', 'center');
@@ -3841,6 +3858,7 @@ async function openJournal(id) {
   $('#tj-title').textContent = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
   $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
   $('#tj-notes').value = t.notes || ''; $('#tj-live').textContent = '';
+  $('#tj-said').hidden = !t.said; $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
   const img = await shotGet(t.id);
   $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
@@ -3853,7 +3871,7 @@ function voiceStart() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
   vText = ''; let done = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
-  r.onresult = (e) => { let live = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) done += x[0].transcript + ' '; else live += x[0].transcript; } vText = done + live; $('#vp-txt').textContent = '“' + vText.trim().slice(-70) + '”'; };
+  r.onresult = (e) => { let live = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) done += x[0].transcript + ' '; else live += x[0].transcript; } vText = done + live; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
   r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { voiceStop(false); toast('The microphone isn\'t allowed. Allow it for this site in Settings, then try again.'); } };
   r.onend = () => { if (vrec === r) { vText = done; try { r.start(); } catch (e) {} } };
   try { r.start(); } catch (e) { vrec = null; toast('Could not start the microphone.'); return; }
@@ -3867,7 +3885,7 @@ function voiceStop(keep) {
   if (!said) { toast('I didn\'t hear anything, so nothing was saved.'); return; }
   const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
   if (tg.kind === 'pos') { tg.x.notes = ((tg.x.notes || '') + ' ' + said).trim(); toast(`Notes saved. They go with your ${nm(tg.x)} trade when it closes.`); }
-  else if (tg.kind === 'trade') { const t = tg.x, prev = (t.notes || '').replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][a-z ]+: /gm, ''); t.notes = tidyNotes((prev ? prev + ' ' : '') + said, t); toast(`Notes saved to your ${nm(t)} trade. See them in Trades, then Open.`); if (view === 'trades') renderTrades(); }
+  else if (tg.kind === 'trade') { const t = tg.x; t.said = ((t.said || '') + ' ' + said).trim(); t.notes = tidyNotes(t.said, t); toast(`Notes saved to your ${nm(t)} trade. See them in Trades, then Open.`); if (view === 'trades') renderTrades(); }
   else { sess.idea = ((sess.idea || '') + ' ' + said).trim(); toast('Notes saved. They go with the next trade you take.'); }
   save();
 }
@@ -3875,28 +3893,69 @@ $('#b-voice').addEventListener('click', () => { if (vrec) voiceStop(true); else 
 $('#vp-done').addEventListener('click', () => voiceStop(true)); $('#vp-cancel').addEventListener('click', () => voiceStop(false));
 $('#tj-close').addEventListener('click', closeJournal); $('#tj-done').addEventListener('click', closeJournal);
 $('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
-const SECTIONS = [
-  ['Key level', /\b(level|support|resistance|liquidity|high|low|vwap|fvg|fair value|gap|order block|supply|demand|zone|range|open|pdh|pdl|previous day|session high|session low|equal highs|equal lows)\b/i],
-  ['Confirmation', /\b(confirm\w*|break of structure|bos|choch|change of character|retest|engulf\w*|rejection|rejected|wick|displacement|sweep|swept|reclaim\w*|divergence|signal)\b/i],
-  ['Entry', /\b(enter\w*|entry|got in|took (it|the trade)|went (long|short)|bought|sold|limit order|market order)\b/i],
-  ['Management and exit', /\b(stop|target|take profit|tp|sl|break ?even|trail\w*|moved|exit\w*|closed|partial\w*|scaled)\b/i],
-  ['Mindset', /\b(felt|feel\w*|emotion\w*|nervous|scared|fomo|confident|greedy|impatient|calm|tilt\w*|frustrat\w*|happy)\b/i],
-  ['Lesson', /\b(next time|lesson|learn\w*|should have|shouldn'?t have|mistake|improve|remember to|need to)\b/i],
+/* Speech engines don't know trading words, so common mishearings are fixed here */
+const TERMS = [
+  [/\b(?:i|inverse|inverted)\s*(?:f\.?\s*v\.?\s*g|fvg)s?\b/gi, 'iFVG'],
+  [/\b(?:f\.?\s?v\.?\s?g|fbg|fpg|svg|fvd|f\s?b\s?g|ef\s?v\s?g|eff\s?v\s?g|f\s?v\s?gs)\b/gi, 'FVG'],
+  [/\b(?:fair value gaps?)\b/gi, 'FVG'],
+  [/\b(?:p\.?\s?d\.?\s?(?:a\s?ray|arrays?|arrey|array's)|pd array's|petty arrays?|pede arrays?|p\.d\. arrays?|pda)\b/gi, 'PD array'],
+  [/\b(?:b\.?\s?o\.?\s?s\.?|boss|bos)\b/gi, 'BOS'],
+  [/\b(?:choch|choc|chalk|chock|chuck|cho ch|c\s?h\s?o\s?c\s?h)\b/gi, 'CHoCH'],
+  [/\b(?:m\.?\s?s\.?\s?s\.?|mss)\b/gi, 'MSS'],
+  [/\b(?:s\.?\s?m\.?\s?t\.?|smt)\b/gi, 'SMT'],
+  [/\b(?:o\.?\s?t\.?\s?e\.?|ote)\b/gi, 'OTE'],
+  [/\b(?:b\.?\s?p\.?\s?r\.?|bpr)\b/gi, 'BPR'],
+  [/\b(?:n\.?\s?w\.?\s?o\.?\s?g|n\s?wog|nwog|new wag)\b/gi, 'NWOG'],
+  [/\b(?:n\.?\s?d\.?\s?o\.?\s?g|ndog)\b/gi, 'NDOG'],
+  [/\b(?:p\.?\s?d\.?\s?h|pdh)\b/gi, 'PDH'], [/\b(?:p\.?\s?d\.?\s?l|pdl)\b/gi, 'PDL'],
+  [/\b(?:b\.?\s?s\.?\s?l|bsl)\b/gi, 'BSL'], [/\b(?:s\.?\s?s\.?\s?l|ssl)\b/gi, 'SSL'],
+  [/\b(?:v\s?wap|vee\s?wap|the wop|v wop)\b/gi, 'VWAP'],
+  [/\b(?:order blocks?|o\.?\s?b\.?)\b/gi, (m) => /s$/i.test(m) ? 'order blocks' : 'order block'],
+  [/\b(?:m\.?\s?n\.?\s?q|mnq|mmq|m and q|em and q)\b/gi, 'MNQ'], [/\b(?:m\.?\s?e\.?\s?s\.?|mes)\b(?=\s|$|[.,])/g, 'MES'],
+  [/\b(?:n\.?\s?q|nq)\b/gi, 'NQ'],
+  [/\b(?:breakeven|break-even|\bb\.e\.(?=\s|$|,))/gi, 'break even'],
+  [/\b(?:t\.?\s?p\.?|tp)\b/gi, 'TP'], [/\b(?:s\.?\s?l\.?|sl)\b/gi, 'SL'],
+  [/\b(?:kill\s?zones?)\b/gi, 'killzone'], [/\b(?:h\.?\s?t\.?\s?f|htf)\b/gi, 'HTF'], [/\b(?:l\.?\s?t\.?\s?f|ltf)\b/gi, 'LTF'],
+  [/\b(one|two|three|four|five|1|2|3|4|5)\s?r\b(?=\s|$|[.,])/gi, (m, n) => ({ one: 1, two: 2, three: 3, four: 4, five: 5 }[n.toLowerCase()] || n) + 'R'],
+  [/\b(one|five|fifteen|thirty|1|5|15|30)\s?(?:minute|min|m)\b/gi, (m, n) => ({ one: 1, five: 5, fifteen: 15, thirty: 30 }[n.toLowerCase()] || n) + 'm'],
+  [/\b(?:four|4)\s?(?:hour|h|hr)\b/gi, '4H'], [/\b(?:one|1)\s?(?:hour|h|hr)\b/gi, '1H'],
+  [/\b(?:equal highs)\b/gi, 'equal highs'], [/\b(?:equal lows)\b/gi, 'equal lows'],
+  [/\b(?:liquidity|liquidy)\b/gi, 'liquidity'],
+  [/\b(?:asia|asian) (?:session|high|low|range)\b/gi, (m) => m.replace(/^asian?/i, 'Asia')], [/\blondon\b/gi, 'London'], [/\bnew york\b/gi, 'New York'],
 ];
+const fixTerms = (txt) => TERMS.reduce((acc, [re, to]) => acc.replace(re, to), txt);
+/* What goes in the notes, checked in this order; anything that fits none of these is left out */
+const SECTIONS = [
+  ['Lesson', /\b(next time|lesson|learn\w*|should have|shouldn'?t have|mistake|improve|remember to|need to|won'?t do)\b/i],
+  ['Mindset', /\b(felt|feel\w*|emotion\w*|nervous|scared|fomo|confident|greedy|impatient|calm|tilt\w*|frustrat\w*|happy|anxious|revenge|patient)\b/i],
+  ['Result', /\b(won|lost|hit (?:my )?(?:TP|target|SL|stop)|stopped out|winner|loser|full TP|closed (?:it|the trade|for))\b/i],
+  ['Break even and management', /\b(break even|trail\w*|partial\w*|scal(?:ed|ing|e) out|moved? (?:my )?stop|manag\w*|took some off|runner)\b/i],
+  ['Stop loss', /\b(SL|stop loss|stop|invalidat\w*)\b/i],
+  ['Take profit', /\b(TP|take profit|target\w*|draw on liquidity|DOL|aiming for|objective)\b/i],
+  ['Entry', /\b(enter\w*|entry|got in|took (?:it|the trade|a (?:long|short))|went (?:long|short)|bought|sold|limit order|market order|filled)\b/i],
+  ['Confirmation', /\b(confirm\w*|BOS|CHoCH|MSS|SMT|break of structure|change of character|market structure shift|displacement|retest\w*|engulf\w*|rejection|rejected|reclaim\w*|candle close|closed (?:above|below)|divergence)\b/i],
+  ['PD array', /\b(iFVG|FVG|PD array|order blocks?|breaker\w*|mitigation block|BPR|balanced price range|premium|discount|OTE|volume imbalance|NWOG|NDOG|rejection block|propulsion block|VWAP)\b/i],
+  ['Trade idea', /\b(idea|bias|bull\w*|bear\w*|expect\w*|looking for|looked for|liquidity|sweep\w*|swept|raid\w*|PDH|PDL|previous day|session (?:high|low)|Asia|London|New York|equal (?:highs|lows)|BSL|SSL|HTF|higher time ?frame|daily|weekly|4H|1H|narrative|killzone|silver bullet|turtle soup|run on|high|low|level|support|resistance)\b/i],
+];
+const NOTE_ORDER = ['Trade idea', 'PD array', 'Confirmation', 'Entry', 'Stop loss', 'Take profit', 'Break even and management', 'Result', 'Mindset', 'Lesson'];
 function tidyNotes(raw, t) {
-  let s = ' ' + raw.replace(/\s+/g, ' ') + ' ';
-  s = s.replace(/\b(um+|uh+|erm*|you know|i mean|basically|literally|kind of|sort of|like,)\s/gi, ' ').replace(/\s+/g, ' ').trim();
-  const clauses = s.split(/(?<=[.!?])\s+|,\s*|\s+(?:and then|then|also|after that|plus|and I|and my)\s+/i).map(x => x.replace(/^(and|so|but|okay|ok|right)\s+/i, '').trim()).filter(x => x.length > 2);
-  const out = new Map(SECTIONS.map(([n]) => [n, []])); out.set('Other', []);
-  const ORDER = ['Lesson', 'Mindset', 'Entry', 'Management and exit', 'Key level', 'Confirmation'];
-  for (const c of clauses) { const hit = ORDER.map(n => SECTIONS.find(x => x[0] === n)).find(([, re]) => re.test(c)); let x = c.charAt(0).toUpperCase() + c.slice(1); if (!/[.!?]$/.test(x)) x += '.'; out.get(hit ? hit[0] : 'Other').push(x.replace(/\bi\b/g, 'I')); }
+  let s = ' ' + fixTerms(raw).replace(/\s+/g, ' ') + ' ';
+  s = s.replace(/\b(um+|uh+|erm*|hmm+|you know|i mean|basically|literally|kind of|sort of|like,|yeah|yep|okay so|ok so|alright|let me see|let me think|to be honest|honestly|innit)\b[,]?\s/gi, ' ').replace(/\s+/g, ' ').trim();
+  const clauses = s.split(/(?<=[.!?])\s+|,\s*|;\s*|\s+(?:and then|then|also|after that|plus|and I|and my|but then|so then)\s+/i)
+    .map(x => x.replace(/^(and|so|but|okay|ok|right|well|now|like)\s+/i, '').replace(/^(what I did was|I'?m going to|I'?m gonna|I was like)\s+/i, '').trim()).filter(x => x.split(' ').length >= 3);
+  const out = new Map(NOTE_ORDER.map(n => [n, []]));
+  for (const c of clauses) {
+    const hit = SECTIONS.find(([, re]) => re.test(c)); if (!hit) continue;
+    let x = c.charAt(0).toUpperCase() + c.slice(1); if (!/[.!?]$/.test(x)) x += '.'; x = x.replace(/\bi\b/g, 'I');
+    if (!out.get(hit[0]).includes(x)) out.get(hit[0]).push(x);
+  }
   const head = t ? `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET\nEntry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${t.reason}) · ${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}` : '';
   const body = [...out].filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.join(' ')}`).join('\n');
-  return (head ? head + '\n\n' : '') + body;
+  return (head ? head + '\n\n' : '') + (body || 'Nothing trade-related was picked up. Your full words are under "Everything you said".');
 }
 function stopRec() { if (rec) { const r = rec; rec = null; try { r.stop(); } catch (e) {} } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
 $('#tj-mic').addEventListener('click', () => {
-  if (rec) { stopRec(); const said = recText.trim(); if (said) { const prev = $('#tj-notes').value.replace(/^(Long|Short) [\s\S]*?\n\n/, ''); $('#tj-notes').value = tidyNotes((prev ? prev.replace(/^[A-Z][a-z ]+: /gm, '') + ' ' : '') + said, tjTrade); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
+  if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(tjTrade.said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
