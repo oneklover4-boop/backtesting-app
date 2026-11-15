@@ -1815,13 +1815,28 @@ function rRange(P, ctx, d, q, col, hs) {
   BB.set(d, [x1, y1, x2, y2]);
 }
 /* Long and short position */
-function rPos(P, ctx, d, q, col, hs) {
+/* Once price trades into a long/short box, shade the part it has covered darker (like TradingView and FX Replay) */
+function posTrade(P, d) {
+  const e = d.pts[0].p, sl = d.pts[1].p, tp = d.pts[2].p, s = d.type === 'long' ? 1 : -1, tS = Math.min(d.pts[0].t, d.pts[1].t), tE = Math.max(d.pts[0].t, d.pts[1].t), A = P.agg;
+  let i0 = Math.max(0, Math.ceil(tToL(P, tS) - 1e-6)), fi = -1;
+  for (let i = i0; i < A.length && A[i].time <= tE; i++) { const b = A[i];
+    if (fi < 0) { if (b.low <= e && b.high >= e) fi = i; else continue; }
+    const hitSl = s > 0 ? b.low <= sl : b.high >= sl, hitTp = s > 0 ? b.high >= tp : b.low <= tp;
+    if (hitSl) return { fi, xi: i, px: sl, done: 'stop' }; if (hitTp) return { fi, xi: i, px: tp, done: 'target' };
+    if (i + 1 >= A.length || A[i + 1].time > tE) return { fi, xi: i, px: b.close, done: null };
+  }
+  return fi >= 0 ? { fi, xi: fi, px: A[fi].close, done: null } : null;
+}
+function rPos(P, ctx, d, q, col, hs, isSel) {
   const [a, b, c] = q, L = Math.min(a[0], b[0]), Wd = Math.max(8, Math.abs(b[0] - a[0])), ye = a[1], ysl = b[1], ytp = c[1], cx = L + Wd / 2, k = posInfo(P.sym, d);
   const pc = d.pc || '#26b07a', lc = d.lc || '#e2554f', tc = opt(d, 'tc'), cmp = opt(d, 'cmp');
   ctx.globalAlpha = 1; ctx.fillStyle = alpha(pc, d.po ?? .2); ctx.fillRect(L, Math.min(ye, ytp), Wd, Math.abs(ytp - ye));
   ctx.fillStyle = alpha(lc, d.lo ?? .2); ctx.fillRect(L, Math.min(ye, ysl), Wd, Math.abs(ysl - ye));
+  const tr = posTrade(P, d);
+  if (tr) { const x1 = Math.max(L, P.x0 + tr.fi * P.dx), x2 = Math.min(L + Wd, P.x0 + tr.xi * P.dx + P.dx / 2), y2 = P.candles.priceToCoordinate(tr.px), up = (tr.px - k.e) * (d.type === 'long' ? 1 : -1) >= 0;
+    if (y2 != null && x2 > x1) { ctx.fillStyle = alpha(up ? pc : lc, Math.min(.85, (up ? d.po ?? .2 : d.lo ?? .2) + .3)); ctx.fillRect(x1, Math.min(ye, y2), x2 - x1, Math.abs(y2 - ye)); } }
   ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = d.w || 2; ctx.setLineDash([]); seg(ctx, [L, ye], [L + Wd, ye]); ctx.globalAlpha = 1;
-  if (d.lab !== false) {
+  if (d.lab !== false && isSel) {
     tag(ctx, cx, ytp + (ytp < ye ? -12 : 12), cmp ? `${k.rew.toFixed(2)} +$${fmt0(k.winUsd)}` : `Target ${k.rew.toFixed(2)} pts  +$${fmt0(k.winUsd)}`, mixHex(pc, '#000000', .25), tc, 'center');
     tag(ctx, cx, ysl + (ysl > ye ? 12 : -12), cmp ? `${k.risk.toFixed(2)} -$${fmt0(k.lossUsd)}` : `Stop ${k.risk.toFixed(2)} pts  -$${fmt0(k.lossUsd)}`, mixHex(lc, '#000000', .2), tc, 'center');
     tag(ctx, cx, ye, cmp ? `${k.qty} · ${k.rr.toFixed(2)}R` : `${d.type === 'long' ? 'Long' : 'Short'} ${k.qty} ${P.sym} · R:R ${k.rr.toFixed(2)}`, '#19212a', '#d9e0e8', 'center');
@@ -2564,7 +2579,7 @@ function bindPane(P) {
       if (A.kind === 'line') { dragLine(P, A, y); return; }
       if (A.kind === 'handle') { const hx = x + A.ox, hy = y + A.oy; if (A.d.type === 'atext') { A.d.fx = hx / P.pw; A.d.fy = hy / P.ph; } else setPt(A.d, A.i, fromXY(P, hx, hy, true)); bump(); return; }
       if (A.kind === 'move') { const dx = x - A.x, dy = y - A.y; if (A.slop && Math.hypot(dx, dy) < A.slop) return; A.slop = 0;
-        if (A.d.type === 'atext') { A.d.fx = (A.orig[0][0] + dx) / P.pw; A.d.fy = (A.orig[0][1] + dy) / P.ph; } else A.d.pts = A.orig.map(([px, py]) => fromXY(P, px + dx, py + dy, false)); bump(); return; }
+        if (A.d.type === 'atext') { A.d.fx = (A.orig[0][0] + dx) / P.pw; A.d.fy = (A.orig[0][1] + dy) / P.ph; } else { const dxs = Math.round(dx / P.dx) * P.dx; A.d.pts = A.orig.map(([px, py]) => fromXY(P, px + dxs, py + dy, false)); } bump(); return; }
     }
     if (e.pointerType === 'touch') return;
     if (draw.tool !== 'cursor') { el.style.cursor = 'crosshair'; return; }
@@ -3406,9 +3421,17 @@ $('#tools').addEventListener('click', e => {
 document.addEventListener('pointerdown', e => { if (!e.target.closest('#fly, #tools, #tf-menu, #b-tf, #epop, #cpick, #editbar, #jump-pop, #b-jump, #q-pop, #q-pre, #dset .dsw, .srow .dsw')) closeMenus(); });
 $('#b-order').addEventListener('click', () => openTicket(!ticket.open));
 $('#tk-close').addEventListener('click', () => openTicket(false));
-$('#b-full').addEventListener('click', () => {
-  const d = document, el = d.documentElement, fs = d.fullscreenElement || d.webkitFullscreenElement;
-  if (fs) { (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+let wantFull = false;
+const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+/* In full screen, finger drags on the chart must never reach Safari, which treats a downward drag as "leave full screen" */
+document.addEventListener('touchmove', e => { if ((isFull() || wantFull) && e.target.closest && e.target.closest('.pane, #ws-mid, .ws-bot')) e.preventDefault(); }, { passive: false });
+/* If iPad Safari still drops out of full screen, go back in on the next tap. Only the button leaves full screen */
+function reFull(e) { if (!wantFull || isFull() || (e && e.target.closest && e.target.closest('#b-full'))) return; const el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; try { const r = f && f.call(el); if (r && r.catch) r.catch(() => {}); } catch (_) { /* not allowed */ } }
+document.addEventListener('touchend', reFull, true); document.addEventListener('click', reFull, true);
+$('#b-full').addEventListener('click', (ev) => {
+  ev.stopPropagation(); const d = document, el = d.documentElement, fs = isFull();
+  if (fs || wantFull) { wantFull = false; if (fs) (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+  wantFull = COARSE;
   const f = el.requestFullscreen || el.webkitRequestFullscreen;
   if (!f) { toast('Full screen is not available in this browser.'); return; }
   try { Promise.resolve(f.call(el)).catch(() => toast('The browser did not allow full screen.')); } catch (e) { toast('The browser did not allow full screen.'); }
@@ -3525,7 +3548,7 @@ function place() {
   }
   const r = placeOrder(sess, { sym: k.sym, side: ticket.side, type: ticket.type, price: k.entry, qty: k.qty, sl: k.sl, tp: k.tp });
   toast(r === 'filled' ? `${ticket.side > 0 ? 'Bought' : 'Sold'} ${k.qty} ${k.sym} at ${fmtPx(px)}` : `${ticket.type} order working at ${fmtPx(k.entry)}`);
-  drawOverlays(); renderLive(); save();
+  openTicket(false); drawOverlays(); renderLive(); save();
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const sess = S(), d = b.dataset;
