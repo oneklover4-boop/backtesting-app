@@ -880,6 +880,13 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
     <div class="tj-body" id="dj-body"></div>
   </div>
 </div>
+<div class="modal" id="michelp" hidden role="dialog" aria-modal="true" aria-labelledby="mh-title">
+  <div class="dlg" style="width:min(460px,100%)">
+    <div class="dlg-head"><h2 id="mh-title">Allow the microphone</h2><button class="x" id="mh-close" aria-label="Close">×</button></div>
+    <div class="tj-body"><p class="note" style="margin:0">The microphone is blocked for Tape Replay. A website can't switch it on by itself, but you can allow it once and it stays allowed:</p><ol id="mh-steps" style="margin:0;padding-left:20px;line-height:1.7"></ol></div>
+    <div class="dlg-foot"><button class="btn primary" id="mh-try">I've allowed it, try again</button></div>
+  </div>
+</div>
 <div class="modal" id="fullhelp" hidden role="dialog" aria-modal="true" aria-labelledby="fh-title">
   <div class="dlg">
     <div class="dlg-head"><h2 id="fh-title">Full screen on iPad</h2><button class="x" id="fh-close" aria-label="Close">×</button></div>
@@ -3897,7 +3904,7 @@ async function openJournal(id) {
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-15-23';
+const BUILD = '2026-11-15-24';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -3918,7 +3925,7 @@ function voiceStart() {
   if (!SR) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
   vText = ''; let done = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
   r.onresult = (e) => { let live = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) done += x[0].transcript + ' '; else live += x[0].transcript; } vText = done + live; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
-  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { voiceStop(false); toast('The microphone isn\'t allowed. Allow it for this site in Settings, then try again.'); } };
+  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { voiceStop(false); micBlocked = true; micHelp(); } };
   r.onend = () => { if (vrec === r) { vText = done; try { r.start(); } catch (e) {} } };
   try { r.start(); } catch (e) { vrec = null; toast('Could not start the microphone.'); return; }
   const tg = voiceTarget(); $('#vp-txt').textContent = tg.kind === 'pos' ? 'Listening… talk about this trade' : tg.kind === 'trade' ? 'Listening… talk about your last trade' : 'Listening… talk about your trade idea';
@@ -3935,7 +3942,19 @@ function voiceStop(keep) {
   else { sess.idea = ((sess.idea || '') + ' ' + said).trim(); toast('Notes saved. They go with the next trade you take.'); }
   save();
 }
-$('#b-voice').addEventListener('click', () => { if (vrec) voiceStop(true); else voiceStart(); });
+$('#b-voice').addEventListener('click', () => { if (vrec) voiceStop(true); else if (micBlocked) micHelp(); else voiceStart(); });
+/* When the browser blocks the microphone, show how to allow it for good instead of asking again and again */
+let micBlocked = false;
+function micHelp() {
+  const ipad = /iPad|iPhone/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1), chrome = /Chrome\//.test(navigator.userAgent) && !/Edg\//.test(navigator.userAgent);
+  $('#mh-steps').innerHTML = ipad
+    ? '<li>Open the <b>Settings</b> app (the grey gear).</li><li>Tap <b>Apps</b>, then <b>Safari</b>.</li><li>Scroll to <b>Settings for Websites</b> and tap <b>Microphone</b>.</li><li>Tap <b>Allow</b>.</li><li>Close Tape Replay (swipe it away) and open it again.</li>'
+    : chrome ? '<li>Click the small icon just left of the web address at the top.</li><li>Next to <b>Microphone</b>, choose <b>Allow</b>.</li><li>Reload the page.</li>'
+    : '<li>In the menu bar, click <b>Safari</b>, then <b>Settings for This Website</b>.</li><li>Next to <b>Microphone</b>, choose <b>Allow</b>.</li><li>Reload the page.</li>';
+  $('#michelp').hidden = false;
+}
+$('#mh-close').addEventListener('click', () => { $('#michelp').hidden = true; });
+$('#mh-try').addEventListener('click', () => { $('#michelp').hidden = true; micBlocked = false; voiceStart(); });
 $('#vp-done').addEventListener('click', () => voiceStop(true)); $('#vp-cancel').addEventListener('click', () => voiceStop(false));
 $('#tj-close').addEventListener('click', closeJournal); $('#tj-done').addEventListener('click', closeJournal);
 $('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
