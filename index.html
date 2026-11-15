@@ -1198,7 +1198,7 @@ function rebuildPane(P, fit) {
   P.sym = c.sym; P.tf = tf; P.lastIdx = end;
   P.candles.setData(P.agg.map(cBar)); P.volume.setData(P.agg.map(vBar));
   P.chart.timeScale().applyOptions({ secondsVisible: tf < 60 });
-  if (fit) { const n = P.agg.length; P.chart.timeScale().setVisibleLogicalRange({ from: n - 140, to: n + 12 }); }
+  if (fit) { const n = P.agg.length; P.chart.priceScale('right').applyOptions({ autoScale: true }); P.chart.timeScale().setVisibleLogicalRange({ from: n - 140, to: n + 12 }); }
   P.sig = ''; drawPaneOverlays(P); renderLegend(P);
 }
 function extendPane(P) {
@@ -2645,7 +2645,8 @@ function renderHeader() {
 function renderToolbar() {
   const sess = S(), c = cfgOf(AP()), base = DATA[c.sym].base, favs = SET().favTfs;
   $('#ws-sess').textContent = sess.name; $('#ws-sess').title = sess.name;
-  $('#sym').innerHTML = SYMS.map(s => `<option value="${s}" ${s === c.sym ? 'selected' : ''}>${s}${DATA[s].sample ? ' (sample data)' : ''}</option>`).join('');
+  const real = SYMS.filter(x => !DATA[x].sample), shown = real.length ? SYMS.filter(x => !DATA[x].sample || x === c.sym) : SYMS;
+  $('#sym').innerHTML = shown.map(s => `<option value="${s}" ${s === c.sym ? 'selected' : ''}>${s}${DATA[s].sample ? ' (sample data)' : ''}</option>`).join('');
   $('#b-tf').textContent = tfLabel(c.tf);
   const dis = (sec) => sec < base ? `disabled title="Your ${c.sym} data is ${tfLabel(base)} bars"` : '';
   $('#tf-fav').innerHTML = favs.map(sec => `<button data-tf="${sec}" aria-pressed="${sec === c.tf}" ${dis(sec)}>${tfLabel(sec)}</button>`).join('');
