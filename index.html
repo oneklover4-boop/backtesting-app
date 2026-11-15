@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Tape Replay</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tape Replay">
+<meta name="theme-color" content="#121214">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <script src="vendor/lightweight-charts-4.1.3.standalone.js"></script>
@@ -42,7 +49,10 @@ button { cursor: pointer; }
 .num { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
 .pos { color: var(--long); } .neg { color: var(--short); } .mut { color: var(--muted); }
 
-#app { height: 100%; display: flex; flex-direction: column; }
+#app { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+html.app-mode #b-full { display: none; }
+#fullhelp ol { margin: 0 0 12px; padding-left: 20px; line-height: 1.7; }
+#fullhelp .dlg { width: min(480px, 100%); }
 header.top {
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
   background: var(--panel); border-bottom: 1px solid var(--line);
@@ -788,6 +798,8 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
             <input type="file" id="imp-file" accept=".csv,.txt,.zip" multiple aria-label="CSV files">
           </div>
           <p class="note" id="imp-progress" style="margin-top:8px" hidden></p>
+          <div class="headrow" style="margin-top:12px"><button class="btn" id="b-data-save">Save data file</button><button class="btn" id="b-data-open">Open data file</button><input type="file" id="data-file" hidden></div>
+          <p class="note" style="margin-top:8px">To use your imported data on another device, like your iPad: press Save data file here, send the file to the other device (AirDrop works), then press Open data file there and pick it.</p>
           <p class="note" style="margin-top:8px">Works with Databento downloads (the .zip as it arrives, or the CSV files inside it; OHLCV-1m or OHLCV-1s), FirstRate Data, and any CSV with <span class="num">time,open,high,low,close,volume</span> columns. You can pick several files at once, like one per year. 1-second files are combined into 15-second bars. If a file holds several contract months, the app keeps the most active contract each day. Imported data replaces the sample for that instrument and stays in this browser only. Don't upload market data files to your public GitHub repo, because data licenses don't allow sharing them.</p>
         </div>
         <div class="card">
@@ -810,6 +822,21 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
     <nav class="ds-tabs" id="ds-tabs"></nav>
     <div class="dlg-main" id="ds-main"></div>
     <div class="dlg-foot"><button class="btn tplb" id="ds-tpl">Template ▾</button><button class="btn" id="ds-cancel">Cancel</button><button class="btn primary" id="ds-ok">Ok</button></div>
+  </div>
+</div>
+<div class="modal" id="fullhelp" hidden role="dialog" aria-modal="true" aria-labelledby="fh-title">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="fh-title">Full screen on iPad</h2><button class="x" id="fh-close" aria-label="Close">×</button></div>
+    <div class="dlg-main" style="padding:16px 20px">
+      <p class="note" style="margin:0 0 10px">Safari leaves full screen when you drag down, and a website can't stop that. Add Tape Replay to your Home Screen instead. It then opens like an app, with no Safari bars, and stays full screen.</p>
+      <ol>
+        <li>Tap the Share button at the top of Safari (a square with an arrow). If you don't see it, tap the <b>•••</b> button first.</li>
+        <li>Tap <b>Add to Home Screen</b>, then tap <b>Add</b>.</li>
+        <li>Close Safari and open <b>Tape Replay</b> from your Home Screen.</li>
+      </ol>
+      <p class="note" style="margin:0">The Home Screen app keeps its own data, separate from Safari. Open your data file in it once (Sessions, then Market data, then Open data file).</p>
+    </div>
+    <div class="dlg-foot"><button class="btn" id="fh-anyway">Use Safari full screen anyway</button><button class="btn primary" id="fh-ok">Ok</button></div>
   </div>
 </div>
 <div class="modal" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="set-title">
@@ -904,6 +931,31 @@ function idxAtOrBefore(sym, t) { const T = DATA[sym].t; let lo = 0, hi = T.lengt
 /* ---------- Imported data (IndexedDB, best effort) ---------- */
 function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open('tape-replay', 1); r.onupgradeneeded = () => r.result.createObjectStore('series'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
 async function idbPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('series', 'readwrite'); tx.objectStore('series').put(val, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) { console.warn(e); } }
+/* Back-adjust: add every later roll gap to older bars, the way TradingView's continuous futures (B-ADJ) do. Saved data always stays unadjusted */
+function setBackAdj(X, on) {
+  if (!X || !X.rolls || !X.rolls.length) return; const want = on ? 1 : 0; if ((X.adj || 0) === want) return;
+  const R = [...X.rolls].sort((a, b) => a.t - b.t), sg = want ? 1 : -1; let k = R.length - 1, off = 0;
+  for (let i = X.t.length - 1; i >= 0; i--) { while (k >= 0 && X.t[i] < R[k].t) { off += R[k].gap; k--; } if (off) { const d = sg * off; X.o[i] += d; X.h[i] += d; X.l[i] += d; X.c[i] += d; } }
+  X.adj = want;
+}
+const MAGIC = 'TAPEDATA1\n', KEYS6 = ['t', 'o', 'h', 'l', 'c', 'v'];
+async function dataFileBlob(syms) {
+  const head = { syms: syms.map(s => { const X = DATA[s]; return { sym: s, n: X.t.length, base: X.base, rolls: X.rolls || [], contracts: X.contracts || 1, utc: !!X.convertedFromUtc }; }) };
+  const hj = new TextEncoder().encode(JSON.stringify(head)), parts = [new TextEncoder().encode(MAGIC), new Uint32Array([hj.length]), hj];
+  for (const s of syms) { const X = DATA[s], a = X.adj; setBackAdj(X, false); for (const k of KEYS6) parts.push(k === 't' ? new Float64Array(X.t) : new Float32Array(X[k])); setBackAdj(X, a); }
+  return await new Response(new Blob(parts).stream().pipeThrough(new CompressionStream('gzip'))).blob();
+}
+async function readDataFile(file) {
+  let buf = await file.arrayBuffer(); const u8 = new Uint8Array(buf, 0, 2);
+  if (u8[0] === 0x1f && u8[1] === 0x8b) buf = await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+  if (new TextDecoder().decode(buf.slice(0, MAGIC.length)) !== MAGIC) throw new Error('That is not a Tape Replay data file. On your Mac, press Save data file and send that file.');
+  let p = MAGIC.length; const hl = new DataView(buf).getUint32(p, true); p += 4;
+  const head = JSON.parse(new TextDecoder().decode(buf.slice(p, p + hl))); p += hl; const out = {};
+  for (const m of head.syms) { const X = { base: m.base, rolls: m.rolls, contracts: m.contracts, convertedFromUtc: m.utc };
+    for (const k of KEYS6) { const sz = k === 't' ? 8 : 4, A = k === 't' ? Float64Array : Float32Array; X[k] = new A(buf.slice(p, p + m.n * sz)); p += m.n * sz; }
+    out[m.sym] = X; }
+  return out;
+}
 async function idbAll() { try { const db = await idb(); return await new Promise((res) => { const out = {}; const tx = db.transaction('series'); const st = tx.objectStore('series'); const rq = st.openCursor(); rq.onsuccess = () => { const c = rq.result; if (c) { out[c.key] = c.value; c.continue(); } else res(out); }; rq.onerror = () => res({}); }); } catch (e) { return {}; } }
 const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 const offCache = new Map();
@@ -1016,13 +1068,20 @@ async function importFiles(files, tzMode, onProgress, want) {
   const toEt = tzMode === 'utc' || (tzMode === 'auto' && anyUtc);
   if (toEt) for (let i = 0; i < n; i++) T[i] = utcToEt(T[i]);
   // Several contracts in one file: keep the most traded contract per trading day
-  let keep = null;
+  let keep = null; const rolls = [];
   if (symNames.length > 1) {
     const vol = new Map();
     for (let i = 0; i < n; i++) { const k = Math.floor((T[i] + 21600) / 86400) * 65536 + SI[i]; vol.set(k, (vol.get(k) || 0) + V[i]); }
     const best = new Map();
     for (const [k, v] of vol) { const day = Math.floor(k / 65536), sid = k % 65536; const b = best.get(day); if (!b || v > b[1]) best.set(day, [sid, v]); }
     keep = new Uint8Array(n); for (let i = 0; i < n; i++) keep[i] = best.get(Math.floor((T[i] + 21600) / 86400))[0] === SI[i] ? 1 : 0;
+    // Roll gaps: new contract minus old contract at the roll, so older bars can be back-adjusted like TradingView's continuous charts
+    const days = [...best.keys()].sort((a, b) => a - b), look = new Map(), add = (d, r) => { if (!look.has(d)) look.set(d, []); look.get(d).push(r); };
+    for (let j = 1; j < days.length; j++) { const a = best.get(days[j - 1])[0], b = best.get(days[j])[0]; if (a === b) continue; const r = { a, b, day: days[j], A: new Map(), B: new Map() }; rolls.push(r); add(days[j - 1], r); add(days[j], r); }
+    if (rolls.length) for (let i = 0; i < n; i++) { const L = look.get(Math.floor((T[i] + 21600) / 86400)); if (L) for (const r of L) { if (SI[i] === r.a) r.A.set(T[i], Cc[i]); else if (SI[i] === r.b) r.B.set(T[i], Cc[i]); } }
+    for (const r of rolls) { const t0 = r.day * 86400 - 21600; let before = -Infinity, after = Infinity;
+      for (const t of r.A.keys()) if (r.B.has(t)) { if (t < t0) before = Math.max(before, t); else after = Math.min(after, t); }
+      const tt = before > -Infinity ? before : after; r.t = t0; r.gap = isFinite(tt) ? r.B.get(tt) - r.A.get(tt) : 0; delete r.A; delete r.B; delete r.a; delete r.b; delete r.day; }
   }
   let idx = []; for (let i = 0; i < n; i++) if (!keep || keep[i]) idx.push(i);
   let sorted = true; for (let i = 1; i < idx.length; i++) if (T[idx[i]] < T[idx[i - 1]]) { sorted = false; break; }
@@ -1039,7 +1098,7 @@ async function importFiles(files, tzMode, onProgress, want) {
     k++; X.t[k] = b; X.o[k] = O[i]; X.h[k] = H[i]; X.l[k] = L[i]; X.c[k] = Cc[i]; X.v[k] = V[i];
   }
   for (const key of ['t', 'o', 'h', 'l', 'c', 'v']) X[key] = X[key].slice(0, k + 1);
-  X.contracts = symNames.length; X.convertedFromUtc = toEt;
+  X.contracts = symNames.length; X.convertedFromUtc = toEt; X.rolls = rolls.filter(r => r.gap);
   return X;
 }
 
@@ -1051,7 +1110,7 @@ const THEMES = {
   dark: { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350', _upBorder: false, _downBorder: false, _upWick: false, _downWick: false,
     bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', scaleText: '#e6e6ea', scaleLine: '#27272d', volUp: '#26a69a', volDown: '#ef5350' },
 };
-const DEF_SET = { ...THEMES.fxr, themeV: 5, volume: true, priceLine: true, markers: false,
+const DEF_SET = { ...THEMES.fxr, themeV: 5, backAdj: true, volume: true, priceLine: true, markers: false,
   favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, fontSize: 12 };
 const SET = () => store.settings;
 function initSettings() {
@@ -2972,7 +3031,7 @@ function renderSessions() {
   const D = DATA.MNQ, mn = new Date(lo * 1000).toISOString().slice(0, 10), mx = new Date(hi * 1000).toISOString().slice(0, 10);
   const di = $('#ns-date'); di.min = mn; di.max = mx; if (!di.value || di.value < mn || di.value > mx) di.value = new Date((lo + 86400 * 2) * 1000).toISOString().slice(0, 10);
   $('#imp-sym').innerHTML = SYMS.map(s => `<option>${s}</option>`).join('');
-  $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : 'your imported data'}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
+  $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : 'your imported data' + (X.rolls && X.rolls.length ? (X.adj ? ', back-adjusted for ' + X.rolls.length + ' contract roll' + (X.rolls.length > 1 ? 's' : '') : ', real contract prices') : '')}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
     + '<br><span>The sample is generated, realistic-looking price action for practice. It is not real market history. Import real data below to backtest for real.</span>';
 }
 
@@ -3013,6 +3072,8 @@ function renderSettings() {
       <div class="srow"><span>Text size</span><select class="ctl" data-set="fontSize">${[11, 12, 13, 14, 16].map(n => `<option value="${n}" ${+s.fontSize === n ? 'selected' : ''}>${n}px</option>`).join('')}</select></div>`,
     trading: `<h4>Trading</h4>
       <div class="srow"><span>Show trade arrows and P&amp;L numbers on the chart</span>${sw('markers')}</div>
+      <div class="srow"><span>Back-adjust contract rolls, like TradingView's continuous futures</span>${sw('backAdj')}</div>
+      <p class="hint" style="margin-top:4px">On, older prices match TradingView charts like MNQ1! (B-ADJ). Off, you see the real price each contract traded at. Data imported before this option needs one new import for it to work.</p>
       <p class="hint" style="margin-top:10px">Your open positions and orders always show as lines on the chart, with their P&amp;L.</p>`,
   };
   $('#set-main').innerHTML = secs[setSec];
@@ -3028,6 +3089,7 @@ function setSetting(k, v) {
   // one colour for body, border and wick until the border or wick is set on its own
   if (k === 'up' || k === 'down') for (const part of ['Border', 'Wick']) if (!SET()['_' + k + part]) { SET()[k + part] = v; const o = $(`#set-main [data-setcol="${k + part}"] i`); if (o) o.style.background = v; }
   if (/Border$|Wick$/.test(k)) SET()['_' + k] = true;
+  if (k === 'backAdj') { for (const s of SYMS) setBackAdj(DATA[s], v); rebuildAll(false); renderAll(); }
   applySettings(); save();
 }
 $('#set-main').addEventListener('input', e => { const el = e.target, k = el.dataset.set; if (k) setSetting(k, el.type === 'checkbox' ? el.checked : el.value); });
@@ -3426,15 +3488,27 @@ const isFull = () => !!(document.fullscreenElement || document.webkitFullscreenE
 /* In full screen, finger drags on the chart must never reach Safari, which treats a downward drag as "leave full screen" */
 document.addEventListener('touchmove', e => { if ((isFull() || wantFull) && e.target.closest && e.target.closest('.pane, #ws-mid, .ws-bot')) e.preventDefault(); }, { passive: false });
 /* If iPad Safari still drops out of full screen, go back in on the next tap. Only the button leaves full screen */
-function reFull(e) { if (!wantFull || isFull() || (e && e.target.closest && e.target.closest('#b-full'))) return; const el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; try { const r = f && f.call(el); if (r && r.catch) r.catch(() => {}); } catch (_) { /* not allowed */ } }
+function reFull(e) { if (e && e.target.closest && e.target.closest('#fullhelp')) return; if (!wantFull || isFull() || (e && e.target.closest && e.target.closest('#b-full'))) return; const el = document.documentElement, f = el.requestFullscreen || el.webkitRequestFullscreen; try { const r = f && f.call(el); if (r && r.catch) r.catch(() => {}); } catch (_) { /* not allowed */ } }
 document.addEventListener('touchend', reFull, true); document.addEventListener('click', reFull, true);
-$('#b-full').addEventListener('click', (ev) => {
-  ev.stopPropagation(); const d = document, el = d.documentElement, fs = isFull();
-  if (fs || wantFull) { wantFull = false; if (fs) (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
-  wantFull = COARSE;
+/* Opened from the Home Screen: already full screen, nothing for Safari to take away */
+const APP_MODE = !!(navigator.standalone || matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches);
+if (APP_MODE) document.documentElement.classList.add('app-mode');
+const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const closeFh = () => { $('#fullhelp').hidden = true; };
+$('#fh-close').addEventListener('click', closeFh); $('#fh-ok').addEventListener('click', closeFh);
+$('#fullhelp').addEventListener('pointerdown', e => { if (e.target.id === 'fullhelp') closeFh(); });
+$('#fh-anyway').addEventListener('click', () => { closeFh(); goFull(); });
+function goFull() {
+  const el = document.documentElement; wantFull = COARSE;
   const f = el.requestFullscreen || el.webkitRequestFullscreen;
   if (!f) { toast('Full screen is not available in this browser.'); return; }
   try { Promise.resolve(f.call(el)).catch(() => toast('The browser did not allow full screen.')); } catch (e) { toast('The browser did not allow full screen.'); }
+}
+$('#b-full').addEventListener('click', (ev) => {
+  ev.stopPropagation(); const d = document, fs = isFull();
+  if (fs || wantFull) { wantFull = false; if (fs) (d.exitFullscreen || d.webkitExitFullscreen).call(d); return; }
+  if (IOS && COARSE && !APP_MODE) { $('#fullhelp').hidden = false; return; }
+  goFull();
 });
 for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(ev, () => { $('#b-full').title = (document.fullscreenElement || document.webkitFullscreenElement) ? 'Exit full screen' : 'Full screen'; });
 $('#b-bal').addEventListener('click', () => { $('#drawer').hidden = !$('#drawer').hidden; renderBal(); });
@@ -3603,12 +3677,31 @@ $('#b-csv').addEventListener('click', async () => {
 });
 $('#b-export').addEventListener('click', async () => { const txt = JSON.stringify(store); $('#io').value = txt; try { await navigator.clipboard.writeText(txt); toast('Backup copied to your clipboard.'); } catch (e) { $('#io').select(); toast('Select the backup text and copy it.'); } });
 $('#b-import').addEventListener('click', () => { try { const s = JSON.parse($('#io').value); if (!s.sessions || !Array.isArray(s.sessions)) throw 0; store = s; initSettings(); applySettings(); openSession(store.activeId || store.sessions[0].id); renderSessions(); toast('Backup restored.'); } catch (e) { toast('That text is not a Tape Replay backup. Paste the whole backup and try again.'); } });
+$('#b-data-save').addEventListener('click', async () => {
+  const syms = SYMS.filter(s => !DATA[s].sample); if (!syms.length) { toast('There is no imported data in this browser yet.'); return; }
+  const pr = $('#imp-progress'); pr.hidden = false; pr.textContent = 'Packing ' + syms.join(' and ') + '…';
+  try { const b = await dataFileBlob(syms), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'tape-replay-data.tape'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    pr.textContent = `Saved tape-replay-data.tape (${Math.max(1, Math.round(b.size / 1048576))} MB) with ${syms.join(' and ')}. It is in your Downloads folder.`; }
+  catch (err) { pr.textContent = 'Could not save the data file: ' + (err.message || err); }
+});
+$('#b-data-open').addEventListener('click', () => $('#data-file').click());
+$('#data-file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return; const pr = $('#imp-progress'); pr.hidden = false; pr.textContent = 'Opening ' + f.name + '…';
+  try { const got = await readDataFile(f), syms = Object.keys(got).filter(s => INSTR[s]);
+    for (const s of syms) { const X = got[s]; DATA[s] = X; pr.textContent = 'Saving ' + s + ' to this device…'; await idbPut(s, X); setBackAdj(X, SET().backAdj);
+      for (const ss of store.sessions) if (ss.syms.includes(s) && (ss.cursorT < X.t[0] || ss.cursorT > X.t[X.t.length - 1])) ss.cursorT = X.t[Math.min(X.t.length - 1, 200)]; }
+    openSession(store.activeId); renderSessions(); save();
+    pr.textContent = 'Opened ' + syms.map(s => `${s} (${DATA[s].t.length.toLocaleString()} bars, ${fmtT(DATA[s].t[0]).slice(4, 14)} to ${fmtT(DATA[s].t[DATA[s].t.length - 1]).slice(4, 14)})`).join(' and ') + '.';
+    toast('Your data is on this device now. Create a new session to replay it.');
+  } catch (err) { pr.textContent = err.message || 'Could not open that file.'; }
+  e.target.value = '';
+});
 $('#imp-file').addEventListener('change', async e => {
   const files = Array.from(e.target.files || []); if (!files.length) return; const sym = $('#imp-sym').value, pr = $('#imp-progress');
   pr.hidden = false; pr.textContent = 'Reading ' + files.length + ' file' + (files.length > 1 ? 's' : '') + '…';
   try {
     const X = await importFiles(files, $('#imp-tz').value, (f, rows) => { pr.textContent = `Reading… ${Math.round(f * 100)}% · ${rows.toLocaleString()} rows`; }, sym);
-    DATA[sym] = X; pr.textContent = 'Saving to this browser…'; await idbPut(sym, X);
+    DATA[sym] = X; pr.textContent = 'Saving to this browser…'; await idbPut(sym, X); setBackAdj(X, SET().backAdj);
     for (const s of store.sessions) if (s.syms.includes(sym)) { if (s.cursorT < X.t[0] || s.cursorT > X.t[X.t.length - 1]) s.cursorT = X.t[Math.min(X.t.length - 1, 200)]; }
     openSession(store.activeId); renderSessions();
     pr.textContent = `Imported ${X.t.length.toLocaleString()} ${tfLabel(X.base)} bars for ${sym}, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}${X.convertedFromUtc ? ', times converted from UTC to New York time' : ''}${X.contracts > 1 ? ', most active of ' + X.contracts + ' contracts each day' : ''}.`;
@@ -3672,6 +3765,7 @@ async function boot() {
   store = load();
   if (!store || !store.sessions || !store.sessions.length) { const s = defaultSession(); store = { sessions: [s], activeId: s.id }; }
   initSettings();
+  for (const s of SYMS) setBackAdj(DATA[s], SET().backAdj);
   PANES.push(makePane(0), makePane(1));
   migrate(S()); syncPtrs(S());
   document.body.dataset.view = 'chart';
