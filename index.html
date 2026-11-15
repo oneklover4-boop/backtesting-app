@@ -102,6 +102,7 @@ main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .ibtn:hover { color: var(--fg); background: var(--panel-2); }
 .ibtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; min-width: 0; }
+@media (max-width: 1299px) { .clock { padding: 4px 8px; } .ws-top .ws-name { max-width: 110px; } .ws-top .grow { min-width: 0; } }
 .clock { font-family: var(--font-data); color: var(--muted); font-size: 12px; white-space: nowrap; background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; }
 .tfwrap { position: relative; }
 #b-tf { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-family: var(--font-data); font-weight: 600; }
@@ -279,6 +280,7 @@ aside.ticket { width: 320px; background: var(--panel); border-left: 1px solid va
 .dlg-main h4 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
 .srow { display: flex; align-items: center; gap: 10px; min-height: 40px; border-bottom: 1px solid var(--line); }
 .srow:last-child { border-bottom: 0; }
+.srow select.ctl { max-width: 200px; } .numu { display: inline-flex; align-items: center; gap: 6px; } .numu input { width: 70px; }
 .srow > span:first-child { flex: 1; }
 .srow input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line); border-radius: 6px; background: none; padding: 0; cursor: pointer; }
 .srow .cap { font-size: 11px; color: var(--muted); width: 44px; text-align: center; }
@@ -591,6 +593,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
         <span class="grow"></span>
         <span class="clock" id="clock">–</span>
         <button class="ibtn" id="b-draw" aria-pressed="true" title="Show or hide the drawing toolbar" aria-label="Show or hide the drawing toolbar"><svg viewBox="0 0 18 18"><path d="M3 15l1.5-4.5L12 3l3 3-7.5 7.5z"/><path d="M10.5 4.5l3 3"/></svg></button>
+        <button class="ibtn" id="b-voice" title="Voice notes for your last trade" aria-label="Voice notes for your last trade"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg></button>
         <button class="ibtn" id="b-settings" title="Chart settings" aria-label="Chart settings"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="2.5"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4"/></svg></button>
         <button class="ibtn" id="b-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 18 18"><path d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4"/></svg></button>
         <button id="b-order" aria-pressed="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v6M5 8h6"/></svg>Order</button>
@@ -872,7 +875,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
   <div class="dlg">
     <div class="dlg-head"><h2 id="set-title">Chart settings</h2><button class="x" id="set-close" aria-label="Close">×</button></div>
     <div class="dlg-body">
-      <nav class="dlg-nav" id="set-nav"><button data-sec="candles">Candles</button><button data-sec="canvas">Background, grid and scales</button><button data-sec="trading">Trading</button></nav>
+      <nav class="dlg-nav" id="set-nav"><button data-sec="candles">Symbol</button><button data-sec="status">Status line</button><button data-sec="scales">Scales and lines</button><button data-sec="canvas">Canvas</button><button data-sec="trading">Trading</button></nav>
       <div class="dlg-main" id="set-main"></div>
     </div>
     <div class="dlg-foot"><button class="btn" id="set-reset">Reset colours</button><button class="btn primary" id="set-done">Done</button></div>
@@ -997,6 +1000,20 @@ function utcToEt(t) { // DST changes happen on whole UTC hours, so cache the off
     off = Date.UTC(g.year, g.month - 1, g.day, g.hour % 24, g.minute) / 1000 - hk * 3600; offCache.set(hk, off); }
   return t + off;
 }
+/* Chart time labels in the time zone you pick (the data itself stays in New York time) */
+const etToUtc = (t) => { const a = t + 14400; return utcToEt(a) === t ? a : t + 18000; };
+const TZF = new Map();
+function tzParts(t) {
+  const z = SET().tz || 'America/New_York';
+  if (z === 'America/New_York') { const d = new Date(t * 1000); return { y: d.getUTCFullYear(), mo: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds(), wd: d.getUTCDay() }; }
+  let f = TZF.get(z); if (!f) { f = new Intl.DateTimeFormat('en-GB', { timeZone: z === 'local' ? undefined : z, year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', weekday: 'short', hourCycle: 'h23' }); TZF.set(z, f); }
+  const g = {}; for (const x of f.formatToParts(new Date(etToUtc(t) * 1000))) g[x.type] = x.value;
+  return { y: +g.year, mo: +g.month - 1, d: +g.day, h: +g.hour % 24, mi: +g.minute, s: +g.second, wd: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(g.weekday) };
+}
+const MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], DOW3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function hhmm(p, sec) { const s = SET(), z = (x) => String(x).padStart(2, '0'); let h = p.h, ap = ''; if (s.h12) { ap = h < 12 ? ' am' : ' pm'; h = h % 12 || 12; } return `${s.h12 ? h : z(h)}:${z(p.mi)}${sec ? ':' + z(p.s) : ''}${ap}`; }
+function chartTime(t) { const p = tzParts(t); return `${SET().dow !== false ? DOW3[p.wd] + ' ' : ''}${p.d} ${MON3[p.mo]} '${String(p.y).slice(2)}  ${hhmm(p)}`; }
+function chartTick(t, type) { const p = tzParts(t); return type === 0 ? String(p.y) : type === 1 ? MON3[p.mo] : type === 2 ? String(p.d) : hhmm(p, type === 4); }
 function parseTime(s) { // returns [seconds, isUtc]
   s = s.replace(/"/g, '').trim();
   if (/^\d+$/.test(s)) {
@@ -1144,7 +1161,9 @@ const THEMES = {
     bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', scaleText: '#e6e6ea', scaleLine: '#27272d', volUp: '#26a69a', volDown: '#ef5350' },
 };
 const DEF_SET = { ...THEMES.fxr, themeV: 5, backAdj: true, settle: true, volume: true, priceLine: true, markers: false,
-  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, fontSize: 12 };
+  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, fontSize: 12,
+  colorPrev: false, bodyVis: true, borderVis: true, wickVis: true, tz: 'America/New_York', dow: true, h12: false, slTitle: true, slValues: true, slChange: true, slVol: false,
+  scaleMode: 0, invert: false, lastLabel: true, xMode: 0, xColor: '', xStyle: 3, bgType: 'solid', bg2: '#8f8d8d', wmark: false, wmColor: 'rgba(0,0,0,.08)', mTop: 10, mBot: 8, rOff: 12, posLines: true, tradeShots: true };
 const SET = () => store.settings;
 function initSettings() {
   const o = store.settings || {};
@@ -1183,7 +1202,7 @@ function closePos(sess, p, px, t, reason) {
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
     openT: p.openT, closeT: t, pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
   sess.positions = sess.positions.filter(x => x !== p);
-  SHOTQ.push(sess.trades[sess.trades.length - 1]);
+  if (store && SET().tradeShots !== false) SHOTQ.push(sess.trades[sess.trades.length - 1]);
 }
 function openPos(sess, o, px, t) {
   const pv = INSTR[o.sym].pv;
@@ -1275,7 +1294,9 @@ function makePane(i) {
 }
 
 const aggBar = (D, i, b) => ({ time: b, open: D.o[i], high: D.h[i], low: D.l[i], close: D.c[i], value: D.v[i] });
-const cBar = (b) => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
+const cBar = (b, i, a) => { const o = { time: b.time, open: b.open, high: b.high, low: b.low, close: b.close }, s = SET();
+  if (s.colorPrev && a && i > 0) { const up = b.close >= a[i - 1].close; o.color = s.bodyVis === false ? 'rgba(0,0,0,0)' : up ? s.up : s.down; o.borderColor = up ? s.upBorder : s.downBorder; o.wickColor = up ? s.upWick : s.downWick; }
+  return o; };
 const vBar = (b) => ({ time: b.time, value: b.value, color: alpha(b.close >= b.open ? (SET().volUp || SET().up) : (SET().volDown || SET().down), isLightCol(SET().bg) ? .55 : .32) });
 function mergeInto(a, D, i, tf) {
   const b = bucket(D.t[i], tf), last = a[a.length - 1];
@@ -1292,7 +1313,7 @@ function rebuildPane(P, fit) {
   P.agg = a.length > MAXBARS ? a.slice(a.length - MAXBARS) : a;
   P.sym = c.sym; P.tf = tf; P.lastIdx = end;
   P.candles.setData(P.agg.map(cBar)); P.volume.setData(P.agg.map(vBar));
-  P.chart.timeScale().applyOptions({ secondsVisible: tf < 60 });
+  P.chart.timeScale().applyOptions({ secondsVisible: tf < 60 }); if (SET().wmark) P.chart.applyOptions({ watermark: { text: `${c.sym} · ${tfLabel(tf)}` } });
   if (fit) { const n = P.agg.length; P.chart.priceScale('right').applyOptions({ autoScale: true }); P.chart.timeScale().setVisibleLogicalRange({ from: n - 140, to: n + 12 }); }
   P.sig = ''; drawPaneOverlays(P); renderLegend(P);
 }
@@ -1306,7 +1327,7 @@ function extendPane(P) {
   for (let i = P.lastIdx + 1; i <= end; i++) mergeInto(a, D, i, P.tf);
   P.lastIdx = end;
   if (a.length - from > 300) { if (a.length > MAXBARS) P.agg = a.slice(a.length - MAXBARS); P.candles.setData(P.agg.map(cBar)); P.volume.setData(P.agg.map(vBar)); }
-  else for (let k = from; k < a.length; k++) { P.candles.update(cBar(a[k])); P.volume.update(vBar(a[k])); }
+  else for (let k = from; k < a.length; k++) { P.candles.update(cBar(a[k], k, a)); P.volume.update(vBar(a[k])); }
   P.sig = '';
 }
 function layoutPanes() {
@@ -1330,6 +1351,7 @@ const pnlAt = (p, px) => p.side * (px - p.entry) * p.qty * INSTR[p.sym].pv;
 function drawPaneOverlays(P) {
   const sess = S(), sym = P.sym; if (!sym) return;
   clearLines(P);
+  if (SET().posLines === false) { if (P.tags) P.tags.innerHTML = ''; return; }
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1), SLC = C.slc, TPC = C.tpc;
   const adds = (x, attr) => [x.tp == null ? { k: 'TP', c: TPC, at: `data-addtp="${attr}"`, t: 'Add a take profit' } : null, x.sl == null ? { k: 'SL', c: SLC, at: `data-addsl="${attr}"`, t: 'Add a stop loss' } : null].filter(Boolean);
   for (const p of sess.positions.filter(p => p.sym === sym)) {
@@ -2807,7 +2829,12 @@ function renderLegend(P) {
   if (!P.sym) return;
   const b = P.hover || P.agg[P.agg.length - 1]; if (!b) { P.legend.innerHTML = ''; return; }
   const ch = b.close - b.open;
-  P.legend.innerHTML = `<b>${P.sym}</b><span class="mut">${tfLabel(P.tf)}</span><span>O ${fmtPx(b.open)}</span><span>H ${fmtPx(b.high)}</span><span>L ${fmtPx(b.low)}</span><span class="${cls(ch)}">C ${fmtPx(b.close)}</span>${DATA[P.sym].sample ? '<span class="mut">sample data</span>' : ''}`;
+  const s = SET(), pct = b.open ? ch / b.open * 100 : 0;
+  P.legend.innerHTML = (s.slTitle !== false ? `<b>${P.sym}</b><span class="mut">${tfLabel(P.tf)}</span>` : '')
+    + (s.slValues !== false ? `<span>O ${fmtPx(b.open)}</span><span>H ${fmtPx(b.high)}</span><span>L ${fmtPx(b.low)}</span><span class="${cls(ch)}">C ${fmtPx(b.close)}</span>` : '')
+    + (s.slChange ? `<span class="${cls(ch)}">${ch >= 0 ? '+' : ''}${fmtPx(ch)} (${ch >= 0 ? '+' : ''}${pct.toFixed(2)}%)</span>` : '')
+    + (s.slVol ? `<span class="mut">Vol ${Math.round(b.value || 0).toLocaleString()}</span>` : '')
+    + (DATA[P.sym].sample ? '<span class="mut">sample data</span>' : '');
 }
 function renderPositions() {
   const sess = S();
@@ -2823,7 +2850,8 @@ function renderBal() {
   $('#b-bal').innerHTML = `<span>${fmtUsd(bal, false)}</span><span class="${cls(up)}">${fmtUsd(up)}</span><span class="cnt">${sess.positions.length} open${sess.orders.length ? ' · ' + sess.orders.length + ' working' : ''}</span>`;
   $('#b-bal').setAttribute('aria-expanded', !$('#drawer').hidden);
   const px = fmtPx(priceNow(sym)); $('#q-buy').title = 'Buy ' + sym + ' at market (' + px + ')'; $('#q-sell').title = 'Sell ' + sym + ' at market (' + px + ')';
-  $('#clock').textContent = fmtT(sess.cursorT, DATA[sym].base < 60) + ' ET';
+  const full = fmtT(sess.cursorT, DATA[sym].base < 60) + ' ET', ck = $('#clock'); ck.title = full;
+  if (innerWidth < 1300) { const d = new Date(sess.cursorT * 1000), p2 = (x) => String(x).padStart(2, '0'); ck.textContent = `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]} ${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}${DATA[sym].base < 60 ? ':' + p2(d.getUTCSeconds()) : ''}`; } else ck.textContent = full;
 }
 function renderLive() { renderHeader(); for (const P of visiblePanes()) renderLegend(P); renderPositions(); renderBal(); renderTicket(false); }
 function renderAll() { layoutPanes(); renderToolbar(); renderTools(); renderLive(); drawOverlays(); renderSelbars(); if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics(); if (view === 'sessions') renderSessions(); }
@@ -3116,17 +3144,28 @@ function applySettings() {
   const lt = isLightCol(s.bg), ch = { color: lt ? '#55555e' : '#758696', labelBackgroundColor: lt ? '#131316' : '#2a2a30' };
   document.documentElement.dataset.chartlight = lt ? '1' : '';
   for (const P of PANES) {
-    P.chart.applyOptions({ layout: { background: { color: s.bg }, textColor: s.text, fontSize: +s.fontSize || 12 }, rightPriceScale: { textColor: s.scaleText || s.text, borderColor: s.scaleLine || C.line },
-      timeScale: { borderColor: s.scaleLine || C.line }, crosshair: { vertLine: ch, horzLine: ch },
-      grid: { vertLines: { visible: s.grid, color: s.gridColor }, horzLines: { visible: s.grid, color: s.gridColor } } });
-    P.candles.applyOptions({ upColor: s.up, downColor: s.down, borderUpColor: s.upBorder, borderDownColor: s.downBorder, wickUpColor: s.upWick, wickDownColor: s.downWick, priceLineVisible: s.priceLine, lastValueVisible: true });
+    const xc = s.xColor ? { color: s.xColor, labelBackgroundColor: ch.labelBackgroundColor } : ch, xs = { ...xc, style: +s.xStyle, width: 1 };
+    P.chart.applyOptions({ layout: { background: s.bgType === 'gradient' ? { type: 'gradient', topColor: s.bg, bottomColor: s.bg2 || s.bg } : { type: 'solid', color: s.bg }, textColor: s.text, fontSize: +s.fontSize || 12 },
+      rightPriceScale: { textColor: s.scaleText || s.text, borderColor: s.scaleLine || C.line, mode: +s.scaleMode || 0, invertScale: !!s.invert, scaleMargins: { top: (+s.mTop || 0) / 100, bottom: (+s.mBot || 0) / 100 } },
+      timeScale: { borderColor: s.scaleLine || C.line, rightOffset: +s.rOff >= 0 ? +s.rOff : 12, tickMarkFormatter: (t, type) => chartTick(t, type) },
+      localization: { timeFormatter: (t) => chartTime(t) },
+      crosshair: { mode: +s.xMode || 0, vertLine: xs, horzLine: xs },
+      watermark: { visible: !!s.wmark, text: P.sym ? `${P.sym} · ${tfLabel(P.tf)}` : '', color: s.wmColor || 'rgba(0,0,0,.08)', fontSize: 64, horzAlign: 'center', vertAlign: 'center' },
+      grid: { vertLines: { visible: s.gridV ?? s.grid, color: s.gridColorV || s.gridColor }, horzLines: { visible: s.gridH ?? s.grid, color: s.gridColorH || s.gridColor } } });
+    const clear = 'rgba(0,0,0,0)';
+    P.candles.applyOptions({ upColor: s.bodyVis === false ? clear : s.up, downColor: s.bodyVis === false ? clear : s.down, borderVisible: s.borderVis !== false, wickVisible: s.wickVis !== false,
+      borderUpColor: s.upBorder, borderDownColor: s.downBorder, wickUpColor: s.upWick, wickDownColor: s.downWick, priceLineVisible: s.priceLine, lastValueVisible: s.lastLabel !== false });
+    if (P.sym) P.candles.setData(P.agg.map(cBar));
     P.volume.applyOptions({ visible: s.volume });
     if (P.sym) { P.volume.setData(P.agg.map(vBar)); drawPaneOverlays(P); }
   }
 }
 let setSec = 'candles';
 function renderSettings() {
-  const s = SET(), col = (k) => `<button class="dsw" data-setcol="${k}" title="Change colour" aria-label="Change ${k} colour"><i style="background:${s[k]}"></i></button>`, sw = (k) => `<input type="checkbox" class="switch" data-set="${k}" ${s[k] ? 'checked' : ''}>`;
+  const s = SET(), col = (k, fb) => `<button class="dsw" data-setcol="${k}" title="Change colour" aria-label="Change ${k} colour"><i style="background:${s[k] || (fb && s[fb]) || 'transparent'}"></i></button>`, sw = (k, fb) => `<input type="checkbox" class="switch" data-set="${k}" ${(s[k] ?? (fb ? s[fb] : false)) ? 'checked' : ''}>`;
+  const sel = (k, opts) => `<select class="ctl" data-set="${k}">${opts.map(([v, n]) => `<option value="${v}" ${String(s[k]) === String(v) ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
+  const num = (k, min, max, unit) => `<span class="numu"><input type="number" class="ctl num" data-set="${k}" data-num="1" min="${min}" max="${max}" step="1" value="${s[k]}">${unit ? `<span class="mut">${unit}</span>` : ''}</span>`;
+  const LS = [[0, 'Solid'], [2, 'Dashed'], [1, 'Dotted'], [3, 'Long dashes']];
   for (const b of $$('#set-nav button')) b.setAttribute('aria-current', b.dataset.sec === setSec);
   const secs = {
     candles: `<h4>Look</h4>
@@ -3136,20 +3175,51 @@ function renderSettings() {
       <div class="srow"><span>Up candles</span><span class="cap">${col('up')}</span><span class="cap">${col('upBorder')}</span><span class="cap">${col('upWick')}</span></div>
       <div class="srow"><span>Down candles</span><span class="cap">${col('down')}</span><span class="cap">${col('downBorder')}</span><span class="cap">${col('downWick')}</span></div>
       <div class="srow"><span>Volume bars</span>${sw('volume')}<span class="cap">${col('volUp')}</span><span class="cap">${col('volDown')}</span></div>
-      <div class="srow"><span>Last price line</span>${sw('priceLine')}</div>`,
-    canvas: `<h4>Background and grid</h4>
-      <div class="srow"><span>Background</span>${col('bg')}</div>
-      <div class="srow"><span>Grid lines</span>${sw('grid')}${col('gridColor')}</div>
+      <div class="srow"><span>Colour candles by previous close</span>${sw('colorPrev')}</div>
+      <div class="srow"><span>Show body</span>${sw('bodyVis')}</div>
+      <div class="srow"><span>Show borders</span>${sw('borderVis')}</div>
+      <div class="srow"><span>Show wicks</span>${sw('wickVis')}</div>
+      <h4 style="margin-top:20px">Time</h4>
+      <div class="srow"><span>Time zone for the chart's time labels</span>${sel('tz', [['America/New_York', 'New York (exchange)'], ['America/Chicago', 'Chicago'], ['Europe/London', 'London'], ['UTC', 'UTC'], ['local', 'This device']])}</div>
+      <p class="hint" style="margin-top:4px">Sessions, the replay clock and your journal stay in New York time.</p>`,
+    status: `<h4>Instrument</h4>
+      <div class="srow"><span>Symbol and timeframe</span>${sw('slTitle')}</div>
+      <div class="srow"><span>Chart values (open, high, low, close)</span>${sw('slValues')}</div>
+      <div class="srow"><span>Bar change values</span>${sw('slChange')}</div>
+      <div class="srow"><span>Volume</span>${sw('slVol')}</div>`,
+    scales: `<h4>Price scale</h4>
+      <div class="srow"><span>Scale mode</span>${sel('scaleMode', [[0, 'Regular'], [1, 'Logarithmic'], [2, 'Percent'], [3, 'Indexed to 100']])}</div>
+      <div class="srow"><span>Invert scale</span>${sw('invert')}</div>
+      <h4 style="margin-top:20px">Price labels and lines</h4>
+      <div class="srow"><span>Last price label on the scale</span>${sw('lastLabel')}</div>
+      <div class="srow"><span>Last price line</span>${sw('priceLine')}</div>
+      <h4 style="margin-top:20px">Time scale</h4>
+      <div class="srow"><span>Day of week on labels</span>${sw('dow')}</div>
+      <div class="srow"><span>Time hours format</span>${sel('h12', [['', '24-hours'], ['1', '12-hours']])}</div>
+      <h4 style="margin-top:20px">Margins</h4>
+      <div class="srow"><span>Top</span>${num('mTop', 0, 40, '%')}</div>
+      <div class="srow"><span>Bottom</span>${num('mBot', 0, 40, '%')}</div>
+      <div class="srow"><span>Right</span>${num('rOff', 0, 200, 'bars')}</div>`,
+    canvas: `<h4>Chart basic styles</h4>
+      <div class="srow"><span>Background</span>${sel('bgType', [['solid', 'Solid'], ['gradient', 'Gradient']])}${col('bg')}${s.bgType === 'gradient' ? col('bg2') : ''}</div>
+      <div class="srow"><span>Vertical grid lines</span>${sw('gridV', 'grid')}${col('gridColorV', 'gridColor')}</div>
+      <div class="srow"><span>Horizontal grid lines</span>${sw('gridH', 'grid')}${col('gridColorH', 'gridColor')}</div>
+      <div class="srow"><span>Crosshair</span>${sel('xMode', [[0, 'Free'], [1, 'Magnet to candles']])}${sel('xStyle', LS)}${col('xColor')}</div>
+      <div class="srow"><span>Watermark (symbol and timeframe)</span>${sw('wmark')}${col('wmColor')}</div>
+      <h4 style="margin-top:20px">Scales</h4>
       <div class="srow"><span>Price scale text (right side)</span>${col('scaleText')}</div>
-      <div class="srow"><span>Scale border lines</span>${col('scaleLine')}</div>
       <div class="srow"><span>Time scale text (bottom)</span>${col('text')}</div>
+      <div class="srow"><span>Scale lines</span>${col('scaleLine')}</div>
       <div class="srow"><span>Text size</span><select class="ctl" data-set="fontSize">${[11, 12, 13, 14, 16].map(n => `<option value="${n}" ${+s.fontSize === n ? 'selected' : ''}>${n}px</option>`).join('')}</select></div>`,
     trading: `<h4>Trading</h4>
-      <div class="srow"><span>Show trade arrows and P&amp;L numbers on the chart</span>${sw('markers')}</div>
+      <div class="srow"><span>Positions and orders on the chart</span>${sw('posLines')}</div>
+      <div class="srow"><span>Trade arrows and P&amp;L numbers on the chart</span>${sw('markers')}</div>
+      <div class="srow"><span>Take a chart picture of every closed trade</span>${sw('tradeShots')}</div>
+      <h4 style="margin-top:20px">Data</h4>
       <div class="srow"><span>Back-adjust contract rolls, like TradingView's continuous futures</span>${sw('backAdj')}</div>
       <div class="srow"><span>Use settlement as close on daily candles, like TradingView</span>${sw('settle')}</div>
       <p class="hint" style="margin-top:4px">On, older prices match TradingView charts like MNQ1! (B-ADJ). Off, you see the real price each contract traded at. Data imported before 15 November needs one new import.</p>
-      <p class="hint" style="margin-top:10px">Your open positions and orders always show as lines on the chart, with their P&amp;L.</p>`,
+      `,
   };
   $('#set-main').innerHTML = secs[setSec];
 }
@@ -3166,15 +3236,18 @@ function setSetting(k, v) {
   if (/Border$|Wick$/.test(k)) SET()['_' + k] = true;
   if (k === 'backAdj') { for (const s of SYMS) setBackAdj(DATA[s], v); rebuildAll(false); renderAll(); }
   if (k === 'settle') { rebuildAll(false); renderAll(); }
+  if (k === 'tz') TZF.clear();
+  if (['slTitle', 'slValues', 'slChange', 'slVol'].includes(k)) for (const P of PANES) renderLegend(P);
+  if (k === 'posLines') drawOverlays();
   applySettings(); save();
 }
-$('#set-main').addEventListener('input', e => { const el = e.target, k = el.dataset.set; if (k) setSetting(k, el.type === 'checkbox' ? el.checked : el.value); });
+$('#set-main').addEventListener('input', e => { const el = e.target, k = el.dataset.set; if (!k) return; let v = el.type === 'checkbox' ? el.checked : el.value; if (el.dataset.num || ['scaleMode', 'xMode', 'xStyle'].includes(k)) v = +v; if (k === 'h12') v = !!v; setSetting(k, v); if (k === 'bgType') renderSettings(); });
 $('#set-main').addEventListener('click', e => { const th = e.target.closest('button[data-theme]'); if (th) { Object.assign(SET(), THEMES[th.dataset.theme]); applySettings(); renderSettings(); save(); return; }
   const b = e.target.closest('button[data-setcol]'); if (!b) return; const k = b.dataset.setcol;
   openColorPop(b, SET()[k], null, (c) => { b.querySelector('i').style.background = c; setSetting(k, c); }); });
 $('#settings').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
 $('#set-reset').addEventListener('click', () => {
-  const keep = { toolStyle: SET().toolStyle, templates: SET().templates, qtyPresets: SET().qtyPresets, favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, replayPos: SET().replayPos, tools: SET().tools, customColors: SET().customColors };
+  const keep = { toolStyle: SET().toolStyle, templates: SET().templates, qtyPresets: SET().qtyPresets, favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, replayPos: SET().replayPos, tools: SET().tools, customColors: SET().customColors, tz: SET().tz, posLines: SET().posLines, tradeShots: SET().tradeShots, backAdj: SET().backAdj, settle: SET().settle };
   store.settings = Object.assign({}, DEF_SET, keep); applySettings(); renderSettings(); save(); toast('Chart colours reset to default.');
 });
 
@@ -3746,6 +3819,7 @@ async function openJournal(id) {
   $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; tjTrade = null; if (view === 'trades') renderTrades(); }
+$('#b-voice').addEventListener('click', () => { const tr = S().trades; if (!tr.length) { toast('Close a trade first, then tap the microphone to talk about it.'); return; } const last = tr.reduce((a, b) => (b.closeT >= a.closeT ? b : a)); openJournal(last.id); });
 $('#tj-close').addEventListener('click', closeJournal); $('#tj-done').addEventListener('click', closeJournal);
 $('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
 const SECTIONS = [
@@ -3907,7 +3981,7 @@ async function boot() {
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
   save();
 }
