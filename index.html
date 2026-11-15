@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Tape Replay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
@@ -27,7 +27,11 @@
   --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: dark;
 }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; }
+button, .ibtn, a, select, input, label { touch-action: manipulation; }
+.pane, .pane *, #mkbar, .fbar .grip, #splitter { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+@supports (-webkit-touch-callout: none) { body { position: fixed; inset: 0; width: 100%; } }
 body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 13px; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
 * { box-sizing: border-box; }
@@ -418,7 +422,8 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 .ds-tabs { display: flex; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line); }
 .ds-tabs button { background: none; border: 0; padding: 10px 0; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .ds-tabs button[aria-current="true"] { color: var(--fg); border-bottom-color: var(--buy); }
-#ds-main { min-height: 220px; }
+#ds-main { min-height: 120px; flex: 1 1 auto; }
+#dset .dlg { max-height: min(680px, calc(100vh - 32px)); max-height: min(680px, calc(100dvh - 32px)); }
 .drow { display: flex; align-items: center; gap: 8px; min-height: 44px; }
 .drow > span:first-child, .drow > label:first-child { flex: 1; }
 .drow .ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--fg); }
@@ -449,6 +454,24 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 .tplsave { display: flex; gap: 6px; }
 .tplsave .ctl { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--fg); }
 .dlg-foot .tplb { margin-right: auto; }
+.dhdr { margin: 14px 0 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+#ds-main .drow > label:first-child { flex: 1; }
+#ds-main .drow select.ctl { min-width: 0; }
+.dr { flex: 0 1 150px; accent-color: var(--buy); }
+.dpct { width: 38px; text-align: right; font-family: var(--font-data); }
+.lvgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; margin: 4px 0 6px; }
+.lvcell { display: flex; align-items: center; gap: 6px; }
+.lvn { width: 0; flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--fg); font-family: var(--font-data); }
+.lvlist { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+.lvrow { display: flex; align-items: center; gap: 8px; }
+.lvrow .lvv { flex: 1; font-family: var(--font-data); }
+.lvrow .ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--fg); }
+#mkbar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 14; display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 10px 28px rgba(0,0,0,.45); max-width: calc(100% - 24px); }
+#mkbar .mk-t { display: flex; flex-direction: column; padding: 0 8px; font-weight: 600; white-space: nowrap; }
+#mkbar .mk-t small { font-weight: 400; color: var(--muted); font-size: 11px; }
+#mkbar button { min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font-weight: 600; }
+#mkbar button.go { background: var(--buy); border-color: var(--buy); color: #fff; }
+@media (pointer: coarse) { .tools button { min-height: 40px; } .fbar button { min-width: 40px; min-height: 40px; } .ptag { height: 30px; top: -15px; } .ptag button { padding: 0 11px; font-size: 16px; } }
 .an-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 12px; }
 .an-filters label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); }
 .an-filters .ctl { min-width: 0; }
@@ -582,6 +605,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
         <button id="tools-open" hidden title="Show drawing tools" aria-label="Show drawing tools">›</button>
         <div class="fbar" id="favbar" hidden></div>
         <div class="fbar" id="editbar" hidden></div>
+        <div id="mkbar" hidden></div>
       </div>
       <div class="posdrawer" id="drawer" hidden>
         <h4>Open positions</h4>
@@ -1320,6 +1344,8 @@ const ICON = {
 };
 const svg = (k) => TOOLDEF[k] && TOOLDEF[k].ch ? `<span class="emo" aria-hidden="true">${TOOLDEF[k].ch}</span>` : `<svg viewBox="0 0 18 18" aria-hidden="true">${ICON[k]}</svg>`;
 const draw = { tool: 'cursor', color: DCOL[0], magnet: false, keep: false, locked: false, hidden: false, sel: null, mk: null, act: null, txt: null, ver: 0, last: {}, armed: 0 };
+const tcur = { on: false, down: false, moved: false, P: null, id: 0, x: 0, y: 0, sx: 0, sy: 0, ox: 0, oy: 0 };
+let HT = 6;
 const dList = (sym) => { const s = S(); s.drawings = s.drawings || {}; return (s.drawings[sym] = s.drawings[sym] || []); };
 const selD = () => draw.sel ? dList(draw.sel.sym).find(d => d.id === draw.sel.id) : null;
 const bump = () => { draw.ver++; };
@@ -1516,30 +1542,359 @@ function bubble(ctx, d, x, y, lines, border, place = 'tl') {
   ctx.save(); ctx.globalAlpha = 1; ctx.font = dFont({ ...d, fs: d.fs || 13 });
   const lh = (d.fs || 13) * 1.3, w = Math.max(30, ...lines.map(l => ctx.measureText(l).width)) + 16, h = lines.length * lh + 10;
   const x0 = place.includes('r') ? x - w : place.includes('c') ? x - w / 2 : x, y0 = place.includes('b') ? y - h : y;
-  ctx.fillStyle = d.fc || '#1e222d'; ctx.strokeStyle = border; ctx.lineWidth = 1; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, y0, w, h, 5); else ctx.rect(x0, y0, w, h); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = d.fc || '#1e222d'; ctx.strokeStyle = d.bdc || border; ctx.lineWidth = 1; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, y0, w, h, 5); else ctx.rect(x0, y0, w, h); if (d.fill !== false) ctx.fill(); if (d.bd !== false) ctx.stroke();
   ctx.fillStyle = d.tc || '#e6e6ea'; ctx.textBaseline = 'top'; lines.forEach((l, i) => ctx.fillText(l, x0 + 8, y0 + 5 + i * lh + (lh - (d.fs || 13)) / 2));
   ctx.restore(); return [x0, y0, x0 + w, y0 + h];
 }
 function arrowHead(ctx, from, to, size = 11) { const g = Math.atan2(to[1] - from[1], to[0] - from[0]); ctx.beginPath(); ctx.moveTo(to[0], to[1]); ctx.lineTo(to[0] - size * Math.cos(g - .4), to[1] - size * Math.sin(g - .4)); ctx.lineTo(to[0] - size * Math.cos(g + .4), to[1] - size * Math.sin(g + .4)); ctx.closePath(); ctx.fill(); }
+/* ---------- FX Replay drawing options: defaults, level tables, and renderers that follow them ---------- */
+const FXC = { g: '#787b86', r: '#f23645', o: '#ff9800', gr: '#4caf50', t: '#089981', c: '#00bcd4', b: '#2962ff', p: '#9c27b0', k: '#e91e63' };
+const LVx = (list) => list.map(([v, c, on = true, ls]) => ls ? [v, FXC[c] || c, on, ls] : [v, FXC[c] || c, on]);
+const FIB_LV = (onSet) => LVx([[0, 'g'], [.236, 'r'], [.382, 'o'], [.5, 'gr'], [.618, 't'], [.786, 'c'], [1, 'g'], [1.618, 'b'], [2.618, 'r'], [3.618, 'p'], [4.236, 'k'],
+  [1.272, 'o'], [1.414, 'r'], [2.272, 'o'], [2.414, 'gr'], [2, 't'], [3, 'c'], [3.272, 'g'], [3.414, 'b'], [4, 'r'], [4.272, 'p'], [4.414, 'k'], [4.618, 'o'], [4.764, 't']].map(l => [l[0], l[1], onSet.includes(l[0])]));
+const FIB_ON = [0, .236, .382, .5, .618, .786, 1, 1.618, 2.618, 3.618, 4.236];
+const PF_LV = LVx([[0, 'r', true, 'solid'], [.25, 'o', false, 'solid'], [.382, 'gr', false, 'solid'], [.5, 't', true, 'solid'], [.618, 'c', false, 'solid'], [.75, 'g', false, 'solid'], [1, 'b', true, 'solid'], [1.5, 'p', false, 'solid'], [1.75, 'k', false, 'solid'], [2, 'r', false, 'solid']]);
+const FAN_LV = LVx([[0, 'g'], [.236, 'r', false], [.25, 'o'], [.382, 'c'], [.5, 'gr'], [.618, 't'], [.75, 'b'], [.786, 'c', false], [1, 'g']]);
+const GBOX_LV = LVx([[0, 'g'], [.25, 'o'], [.382, 'c'], [.5, 'gr'], [.618, 't'], [.75, 'b'], [1, 'g']]);
+const LVDEF = {
+  fib: FIB_LV(FIB_ON), fibchan: FIB_LV(FIB_ON),
+  fibext: FIB_LV([0, .236, .382, .618, .786, 1, 1.272, 1.618, 2.618, 3.618, 4.236]),
+  fibtime: LVx([0, 1, 2, 3, 5, 8, 13, 21, 34, 55].map(v => [v, 'b']).concat([[89, 'b', false]])),
+  fibtimeext: LVx([[0, 'g'], [.382, 'r'], [.5, 'o'], [.618, 'gr'], [1, 't'], [1.382, 'c'], [1.618, 'b'], [2, 'p'], [2.382, 'k'], [2.618, 'r'], [3, 'o'], [3.618, 'gr', false], [4.236, 't', false]]),
+  fibfan: FAN_LV, fibfanT: FAN_LV,
+  fibcirc: LVx([[.236, 'r'], [.382, 'o'], [.5, 't'], [.618, 'gr'], [.786, 'c'], [1, 'g'], [1.618, 'b'], [2.618, 'k'], [3.618, 'b'], [4.236, 'k'], [4.618, 'r']]),
+  fibarcs: LVx([[.236, 'r'], [.382, 'o'], [.5, 'gr'], [.618, 't'], [.786, 'c'], [1, 'g'], [1.618, 'b', false], [2.618, 'r', false], [3.618, 'p', false], [4.236, 'k', false]]),
+  fibwedge: LVx([[.236, 'r'], [.382, 'o'], [.5, 'gr'], [.618, 't'], [.786, 'c'], [1, 'g']]),
+  pitchfan: PF_LV, pfork: PF_LV, ipfork: PF_LV,
+  channel: [[-.25, null, false, 'solid'], [0, null, true, 'solid'], [.25, null, false, 'solid'], [.5, null, true, 'dashed'], [.75, null, false, 'solid'], [1, null, true, 'solid'], [1.25, null, false, 'solid']],
+  gannbox: GBOX_LV, gannboxT: GBOX_LV,
+  gannfan: ['1/8', '1/4', '1/3', '1/2', '1/1', '2/1', '3/1', '4/1', '8/1'].map(v => [v, FXC.b, true, 'solid']),
+};
+/* Defaults per tool; anything not set here falls back to GEN */
+const GEN = { op: 1, w: 2, ls: 'solid', ext: '', fill: false, fo: .15, plab: false, tlab: false, fs: 12, lw: 1, lls: 'solid', tl: true, tlc: FXC.g, tlw: 1, tlls: 'dashed',
+  onec: false, oc: FXC.b, rev: false, prices: true, lvls: true, lfmt: 'val', lh: 'left', lvv: 'middle', le: 'normal', re: 'normal', mid: false, stats: false,
+  sp: true, sb: true, sd: false, sa: true, spos: 'right', sall: true, bd: true, lbg: true, lbc: '#363a45', tc: '#ffffff' };
+const DEFS = {
+  ray: { ext: 'right' }, ext: { ext: 'both' }, arrow: { re: 'arrow' }, info: { stats: true }, path: { re: 'arrow' },
+  hline: { plab: true }, hray: { plab: true }, vline: { tlab: true }, cross: { plab: true, tlab: true },
+  channel: { fill: true, fo: .2 }, rect: { fill: true, fo: .12, mc: FXC.b }, ellipse: { fill: true, fo: .12 }, circle: { fill: true }, triangle: { fill: true }, arc: { fill: true }, rrect: { fill: true },
+  fib: { fill: true }, fibext: { fill: true, ext: 'both' }, fibchan: { fill: true }, fibtime: { lh: 'right', lvv: 'top' }, fibtimeext: { lh: 'right', lvv: 'top' },
+  fibfan: { fill: true, ll: true, rl: true, tpl: true, btl: true, grid: false, gc: FXC.b }, fibcirc: { fill: true }, fibarcs: { fill: true }, fibwedge: { fill: true }, pitchfan: { fill: true },
+  pfork: { fill: true, fo: .2 }, ipfork: { fill: true, fo: .2 }, gannbox: { fill: true, ll: true, rl: true, tpl: true, btl: true, ang: true, ac: FXC.g }, gannsqf: { fill: true, fo: .1 }, gannsq: { fill: true, fo: .1 },
+  regr: { bon: true, bc: FXC.r, uon: true, uc: FXC.b, don: true, dc: FXC.b, udev: 2, ldev: -2, pr: true, fill: true, fo: .1, ext2: false },
+  xabcd: { fill: true }, cypher: { fill: true }, tripat: { fill: true }, ew12345: { wave: true, deg: 7 }, ewabc: { wave: true, deg: 7 }, ewabcde: { wave: true, deg: 7 }, ewwxy: { wave: true, deg: 7 }, ewwxyxz: { wave: true, deg: 7 },
+  timecyc: { fill: false }, long: { lab: true, cmp: false, plab: false, tc: '#ffffff' }, short: { lab: true, cmp: false, plab: false, tc: '#ffffff' },
+  prange: { fill: true, fo: .12, ipr: true, ipc: true, ipt: true }, drange: { fill: true, fo: .12, ibr: true, idr: true, ivol: true }, measure: { fill: true, fo: .15, ipr: true, ipc: true, ipt: true, ibr: true, idr: true },
+  avwap: { src: 'hlc3', b1: true, b1m: 1, b2: false, b2m: 2, b3: false, b3m: 3, b1c: FXC.gr, b2c: '#808000', b3c: '#00897b', b1f: true, b2f: true, b3f: true, plab: true },
+  frvp: { rows: 24, va: 70, vw: 30, vpl: 'left', vuc: '#4dd0e1', vdc: '#f06292', vauc: '#00bcd4', vadc: '#e91e63', vop: .5, poc: true, pocc: '#e0e0e0', vah: false, vahc: FXC.g, val: false, valc: FXC.g, fill: true, fc: FXC.g, fo: .06, vals: false },
+  brush: { fill: false }, text: { fill: false, fc: '#363a45', bd: false, bdc: FXC.b, wrap: false }, table: { fc: '#1e222d' },
+};
+for (const t of ['note', 'pnote', 'pin', 'comment', 'signpost', 'callout']) DEFS[t] = { fill: true, bd: true, fc: '#1e222d' };
+DEFS.avp = DEFS.frvp;
+const opt = (d, k) => { const v = d[k]; if (v !== undefined && v !== null) return v; const t = DEFS[d.type]; return t && k in t ? t[k] : GEN[k]; };
+const lvOf = (d, k = 'lv') => d[k] || LVDEF[d.type + (k === 'tlv' ? 'T' : '')] || LVDEF[d.type] || [];
+const lvOn = (d, k) => lvOf(d, k).filter(l => l[2]);
+const dashOf = (ls) => ls === 'dashed' ? [6, 4] : ls === 'dotted' ? [1.5, 3.5] : [];
+const fgOf = (c) => isLightCol(c) ? '#0c1015' : '#ffffff';
+const lvFont = (d) => `${opt(d, 'fs')}px "IBM Plex Sans", system-ui, sans-serif`;
+function pen(ctx, c, w, ls, a) { ctx.strokeStyle = c; ctx.fillStyle = c; ctx.lineWidth = w; ctx.setLineDash(dashOf(ls)); if (a != null) ctx.globalAlpha = a; }
+function lvText(d, v, p) { const s = []; if (opt(d, 'lvls')) s.push(opt(d, 'lfmt') === 'pct' ? +(v * 100).toFixed(1) + '%' : String(v)); if (opt(d, 'prices') && p != null) s.push(s.length ? `(${fmtPx(p)})` : fmtPx(p)); return s.join(' '); }
+function hText(ctx, d, s, x, y, col, align, base) { if (!s) return; ctx.save(); ctx.globalAlpha = 1; ctx.font = lvFont(d); ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = base; ctx.fillText(s, x, y); ctx.restore(); }
+const shortT = (t) => fmtT(t).slice(4);
+
+/* Lines: trend, ray, extended, arrow, info line */
+function rLine(P, ctx, d, q, col, hs) {
+  const [a, b] = q, e = opt(d, 'ext'); if (!b) return;
+  const p1 = e === 'left' || e === 'both' ? far(b, a) : a, p2 = e === 'right' || e === 'both' ? far(a, b) : b;
+  seg(ctx, p1, p2); hs.push([p1, p2]); ctx.setLineDash([]);
+  const hz = 6 + (d.w || 2) * 2;
+  if (opt(d, 'le') === 'arrow') arrowHead(ctx, b, a, hz); if (opt(d, 're') === 'arrow') arrowHead(ctx, a, b, hz);
+  if (opt(d, 'mid')) { const m = midp(a, b); ctx.beginPath(); ctx.arc(m[0], m[1], 3.5, 0, 7); ctx.fill(); }
+  if (opt(d, 'stats')) lineStats(P, ctx, d, a, b, col);
+}
+function lineStats(P, ctx, d, a, b, col) {
+  const pr = d.pts.map(p => p.p), dp = pr[1] - pr[0], tick = INSTR[P.sym] ? INSTR[P.sym].tick : .25, lines = [];
+  if (opt(d, 'sp')) lines.push(`${dp >= 0 ? '+' : ''}${dp.toFixed(2)} (${(dp / pr[0] * 100).toFixed(2)}%), ${Math.round(dp / tick)} ticks`);
+  if (opt(d, 'sb')) lines.push(`${Math.round(Math.abs(tToL(P, d.pts[1].t) - tToL(P, d.pts[0].t)))} bars, ${fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))}`);
+  if (opt(d, 'sd')) lines.push(`Distance: ${Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]))} px`);
+  if (opt(d, 'sa')) lines.push(`${(Math.atan2(a[1] - b[1], b[0] - a[0]) * 180 / Math.PI).toFixed(1)}°`);
+  if (!lines.length || (!opt(d, 'sall') && !(draw.sel && draw.sel.id === d.id))) return;
+  const pos = opt(d, 'spos'), p = pos === 'left' ? a : pos === 'center' ? midp(a, b) : b;
+  bubble(ctx, { fs: 12, fc: '#1e222d', tc: '#e6e6ea' }, p[0] + (pos === 'left' ? -8 : 8), p[1] + 8, lines, alpha(col, .6), pos === 'left' ? 'r' : pos === 'center' ? 'c' : 'l');
+}
+
+/* Fib retracement and trend-based fib extension */
+function rFib(P, ctx, d, q, col, hs) {
+  const isExt = d.type === 'fibext', [a, b, c] = q, pr = d.pts.map(p => p.p), W = P.pw, A = d.op ?? 1;
+  if (opt(d, 'tl')) { pen(ctx, opt(d, 'tlc'), opt(d, 'tlw'), opt(d, 'tlls'), A); for (let i = 0; i + 1 < q.length; i++) { seg(ctx, q[i], q[i + 1]); hs.push([q[i], q[i + 1]]); } }
+  if (isExt && !c) return;
+  let x1 = isExt ? Math.min(b[0], c[0]) : Math.min(a[0], b[0]), x2 = isExt ? Math.max(b[0], c[0], c[0] + Math.abs(b[0] - a[0])) : Math.max(a[0], b[0]);
+  const bx = [x1, x2], ex = opt(d, 'ext'); if (ex === 'left' || ex === 'both') x1 = 0; if (ex === 'right' || ex === 'both') x2 = W;
+  const log = opt(d, 'log') && pr.every(p => p > 0);
+  let p0 = isExt ? pr[2] : pr[1], p1 = isExt ? pr[2] + (pr[1] - pr[0]) : pr[0];
+  if (opt(d, 'rev')) { const s = isExt ? p1 - p0 : 0; if (isExt) { p1 = p0 - s; } else [p0, p1] = [p1, p0]; }
+  const priceAt = (v) => log ? p0 * Math.pow(p1 / p0, v) : p0 + (p1 - p0) * v;
+  const lv = lvOn(d).map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]), ys = lv.map(([v]) => P.candles.priceToCoordinate(priceAt(v)));
+  const one = opt(d, 'onec'), oc = opt(d, 'oc'), LC = (c0) => one ? oc : (c0 || col);
+  if (opt(d, 'fill')) for (let i = 1; i < lv.length; i++) if (ys[i] != null && ys[i - 1] != null) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(LC(lv[i][1]), opt(d, 'fo') * A); ctx.fillRect(x1, Math.min(ys[i], ys[i - 1]), x2 - x1, Math.abs(ys[i] - ys[i - 1])); ctx.restore(); }
+  const lh = opt(d, 'lh'), vv = opt(d, 'lvv'), base = vv === 'top' ? 'bottom' : vv === 'bottom' ? 'top' : 'middle', dy = vv === 'top' ? -2 : vv === 'bottom' ? 2 : 0;
+  lv.forEach(([v, c0], i) => { const y = ys[i]; if (y == null) return; const lc = LC(c0); pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, [x1, y], [x2, y]); hs.push([[x1, y], [x2, y]]);
+    const s = lvText(d, v, priceAt(v)); if (!s) return;
+    if (lh === 'left') x1 > 40 ? hText(ctx, d, s, x1 - 4, y + dy, lc, 'right', base) : hText(ctx, d, s, x1 + 4, y + dy, lc, 'left', base);
+    else if (lh === 'right') x2 < W - 40 ? hText(ctx, d, s, x2 + 4, y + dy, lc, 'left', base) : hText(ctx, d, s, x2 - 4, y + dy, lc, 'right', base);
+    else hText(ctx, d, s, (x1 + x2) / 2, y + dy, lc, 'center', base); });
+  ctx.setLineDash([]);
+  const yy = ys.filter(y => y != null); if (yy.length) BB.set(d, [bx[0], Math.min(...yy), bx[1], Math.max(...yy)]);
+}
+/* Fib channel: levels are parallel copies of the first line, 1 passes through the third point */
+function rFibChan(P, ctx, d, q, col, hs) {
+  const [a, b, c] = q, A = d.op ?? 1; pen(ctx, col, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, a, b); hs.push([a, b]); if (!c) return;
+  const off = chanOff(a, b, c);
+  const ex = opt(d, 'ext'), one = opt(d, 'onec'), oc = opt(d, 'oc'), lv = lvOn(d).map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]);
+  const ln = (v) => { const r = opt(d, 'rev') ? 1 - v : v, p = [a[0], a[1] + off * r], s = [b[0], b[1] + off * r]; return [ex === 'left' || ex === 'both' ? far(s, p) : p, ex === 'right' || ex === 'both' ? far(p, s) : s]; };
+  let prev = null;
+  lv.forEach(([v, c0]) => { const [p, s] = ln(v), lc = one ? oc : c0;
+    if (prev && opt(d, 'fill')) fillPoly(ctx, [prev[0], prev[1], s, p], lc, opt(d, 'fo') * A);
+    pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, p, s); hs.push([p, s]); prev = [p, s];
+    const L = p[0] <= s[0] ? p : s, R = p[0] <= s[0] ? s : p, lh = opt(d, 'lh'), txt = lvText(d, v, null);
+    if (lh === 'right') hText(ctx, d, txt, R[0] + 4, R[1], lc, 'left', 'middle'); else hText(ctx, d, txt, L[0] - 4, L[1], lc, 'right', 'middle'); });
+  ctx.setLineDash([]);
+}
+/* Fib time zone and trend-based fib time: vertical lines */
+function rFibTime(P, ctx, d, q, col, hs) {
+  const [a, b, c] = q, H = P.ph, A = d.op ?? 1, isExt = d.type === 'fibtimeext';
+  if (opt(d, 'tl')) { pen(ctx, opt(d, 'tlc'), opt(d, 'tlw'), opt(d, 'tlls'), A); for (let i = 0; i + 1 < q.length; i++) { seg(ctx, q[i], q[i + 1]); hs.push([q[i], q[i + 1]]); } }
+  if (!b || (isExt && !c)) return;
+  const dx = b[0] - a[0], x0 = isExt ? c[0] : a[0], one = opt(d, 'onec'), oc = opt(d, 'oc'), lv = lvOn(d).map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]);
+  const xs = lv.map(([v]) => x0 + dx * v), lh = opt(d, 'lh'), vv = opt(d, 'lvv');
+  if (opt(d, 'fill')) for (let i = 1; i < lv.length; i++) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(one ? oc : lv[i][1], opt(d, 'fo') * A); ctx.fillRect(Math.min(xs[i], xs[i - 1]), 0, Math.abs(xs[i] - xs[i - 1]), H); ctx.restore(); }
+  lv.forEach(([v, c0], i) => { const x = xs[i]; if (x < -5 || x > P.pw + 5) return; const lc = one ? oc : c0; pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, [x, 0], [x, H]); hs.push([[x, 0], [x, H]]);
+    if (opt(d, 'lvls')) hText(ctx, d, String(v), x + (lh === 'left' ? -4 : lh === 'right' ? 4 : 0), vv === 'top' ? 4 : vv === 'bottom' ? H - 4 : H / 2, lc, lh === 'left' ? 'right' : lh === 'right' ? 'left' : 'center', vv === 'top' ? 'top' : vv === 'bottom' ? 'bottom' : 'middle'); });
+  ctx.setLineDash([]);
+}
+/* Fib speed resistance fan */
+function rFibFan(P, ctx, d, q, col, hs) {
+  const [a, b] = q, A = d.op ?? 1; if (!b) return;
+  const one = opt(d, 'onec'), oc = opt(d, 'oc'), rev = opt(d, 'rev'), x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]);
+  const PL = lvOn(d, 'lv').map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]), TL = lvOn(d, 'tlv').map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]);
+  const pp = (v) => rev ? [b[0] + (a[0] - b[0]) * v, b[1]] : [b[0], b[1] + (a[1] - b[1]) * v], tp = (v) => rev ? [b[0], b[1] + (a[1] - b[1]) * v] : [b[0] + (a[0] - b[0]) * v, b[1]];
+  if (opt(d, 'grid')) { pen(ctx, opt(d, 'gc'), 1, 'solid', .5 * A); for (const [v] of PL) { const y = a[1] + (b[1] - a[1]) * v; seg(ctx, [x1, y], [x2, y]); } for (const [v] of TL) { const x = a[0] + (b[0] - a[0]) * v; seg(ctx, [x, y1], [x, y2]); } }
+  const fan = (L, fn, lab) => { let prev = null; L.forEach(([v, c0]) => { const lc = one ? oc : c0, p = fn(v), e = far(a, p, 3000); if (Math.hypot(p[0] - a[0], p[1] - a[1]) < 1) return;
+    if (prev && opt(d, 'fill')) fillPoly(ctx, [a, prev, e], lc, opt(d, 'fo') * A); pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, a, e); hs.push([a, e]); prev = e; lab(v, p, lc); }); };
+  fan(PL, pp, (v, p, lc) => { const s = String(v); if (opt(d, 'll')) hText(ctx, d, s, x1 - 4, p[1], lc, 'right', 'middle'); if (opt(d, 'rl')) hText(ctx, d, s, x2 + 4, p[1], lc, 'left', 'middle'); });
+  fan(TL, tp, (v, p, lc) => { const s = String(v); if (opt(d, 'tpl')) hText(ctx, d, s, p[0], y1 - 4, lc, 'center', 'bottom'); if (opt(d, 'btl')) hText(ctx, d, s, p[0], y2 + 4, lc, 'center', 'top'); });
+  ctx.setLineDash([]); BB.set(d, [x1, y1, x2, y2]);
+}
+/* Fib circles, speed resistance arcs and wedge */
+function rFibRound(P, ctx, d, q, col, hs) {
+  const [a, b, c] = q, t = d.type, A = d.op ?? 1; if (!b) return;
+  if (opt(d, 'tl')) { pen(ctx, opt(d, 'tlc'), opt(d, 'tlw'), opt(d, 'tlls'), A); seg(ctx, a, b); hs.push([a, b]); if (t === 'fibwedge' && c) { seg(ctx, a, c); hs.push([a, c]); } }
+  if (t === 'fibwedge' && !c) return;
+  const one = opt(d, 'onec'), oc = opt(d, 'oc'), lv = lvOn(d).map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]), r0 = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const ctr = t === 'fibarcs' ? b : a, upw = a[1] < b[1], full = t === 'fibcirc' || (t === 'fibarcs' && opt(d, 'full'));
+  let g0 = 0, g1 = Math.PI * 2, ccw = false;
+  if (t === 'fibarcs' && !full) { g0 = upw ? Math.PI : 0; g1 = upw ? Math.PI * 2 : Math.PI; }
+  if (t === 'fibwedge') { g0 = Math.atan2(b[1] - a[1], b[0] - a[0]); let df = Math.atan2(c[1] - a[1], c[0] - a[0]) - g0; while (df > Math.PI) df -= 2 * Math.PI; while (df < -Math.PI) df += 2 * Math.PI; g1 = g0 + df; ccw = df < 0; }
+  let prevR = 0;
+  lv.forEach(([v, c0]) => { const r = r0 * v, lc = one ? oc : c0; if (!(r > 0)) return;
+    if (opt(d, 'fill')) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(lc, opt(d, 'fo') * A); ctx.beginPath(); ctx.arc(ctr[0], ctr[1], r, g0, g1, ccw); if (prevR > 0) ctx.arc(ctr[0], ctr[1], prevR, g1, g0, !ccw); else ctx.lineTo(ctr[0], ctr[1]); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); ctx.beginPath(); ctx.arc(ctr[0], ctr[1], r, g0, g1, ccw); ctx.stroke(); hs.push({ c: ctr, r }); prevR = r;
+    if (opt(d, 'lvls')) { const g = t === 'fibwedge' ? g1 : t === 'fibarcs' && !full ? (upw ? -Math.PI / 2 : Math.PI / 2) : 0; hText(ctx, d, String(v), ctr[0] + Math.cos(g) * r + 3, ctr[1] + Math.sin(g) * r, lc, 'left', 'middle'); } });
+  ctx.setLineDash([]);
+}
+/* Pitchfork, inside pitchfork and pitchfan */
+function rFork(P, ctx, d, q, col, hs) {
+  const [a, b, c] = q, t = d.type, A = d.op ?? 1; pen(ctx, col, d.w || 2, d.ls, A); if (!c) { if (b) { seg(ctx, a, b); hs.push([a, b]); } return; }
+  const m = midp(b, c), org = t === 'ipfork' ? midp(a, b) : a, dir = [m[0] - org[0], m[1] - org[1]], ex = (p) => far(p, [p[0] + dir[0], p[1] + dir[1]], 5000), back = (p) => far(p, [p[0] - dir[0], p[1] - dir[1]], 5000);
+  const one = opt(d, 'onec'), oc = opt(d, 'oc'), lv = lvOn(d).map(l => [+l[0], l[1], l[3]]).sort((x, y) => x[0] - y[0]);
+  seg(ctx, b, c); hs.push([b, c]); if (t === 'ipfork') { ctx.setLineDash([4, 4]); seg(ctx, a, org); ctx.setLineDash([]); }
+  if (t === 'pitchfan') {
+    let pv = null;
+    lv.forEach(([v, c0, ls]) => { const lc = one ? oc : c0, pts = v === 0 ? [m] : [[m[0] + (b[0] - m[0]) * v, m[1] + (b[1] - m[1]) * v], [m[0] + (c[0] - m[0]) * v, m[1] + (c[1] - m[1]) * v]];
+      const es = pts.map(p => far(a, p, 4000)); if (pv && opt(d, 'fill')) { fillPoly(ctx, [a, pv[0], es[0]], lc, opt(d, 'fo') * A); fillPoly(ctx, [a, pv[pv.length - 1], es[es.length - 1]], lc, opt(d, 'fo') * A); }
+      pen(ctx, lc, d.w || 2, ls || d.ls, A); for (const e of es) { seg(ctx, a, e); hs.push([a, e]); } pv = es; });
+    ctx.setLineDash([]); return;
+  }
+  let pv = null;
+  lv.forEach(([v, c0, ls]) => { const lc = one ? oc : c0, base = v === 0 ? [m] : [[m[0] + (b[0] - m[0]) * v, m[1] + (b[1] - m[1]) * v], [m[0] + (c[0] - m[0]) * v, m[1] + (c[1] - m[1]) * v]];
+    if (pv && opt(d, 'fill')) { fillPoly(ctx, [pv[0], ex(pv[0]), ex(base[0]), base[0]], lc, opt(d, 'fo') * A); fillPoly(ctx, [pv[pv.length - 1], ex(pv[pv.length - 1]), ex(base[base.length - 1]), base[base.length - 1]], lc, opt(d, 'fo') * A); }
+    pen(ctx, lc, d.w || 2, ls || d.ls, A);
+    for (const p of base) { const s = v === 0 ? org : p, e = ex(p), st = opt(d, 'ext2') ? back(s) : s; seg(ctx, st, e); hs.push([st, e]); }
+    pv = base; });
+  ctx.setLineDash([]);
+}
+/* Parallel channel with FX Replay levels (0 = first line, 1 = through the third point) */
+function rChannel(P, ctx, d, q, col, hs) {
+  const [a, b, c] = q, A = d.op ?? 1; pen(ctx, col, d.w || 2, d.ls, A); if (!c) { seg(ctx, a, b); hs.push([a, b]); return; }
+  const off = chanOff(a, b, c), ex = opt(d, 'ext'), one = opt(d, 'onec'), oc = opt(d, 'oc');
+  const ln = (v) => { const p = [a[0], a[1] + off * v], s = [b[0], b[1] + off * v]; return [ex === 'left' || ex === 'both' ? far(s, p) : p, ex === 'right' || ex === 'both' ? far(p, s) : s]; };
+  if (opt(d, 'fill')) { const [p0, s0] = ln(0), [p1, s1] = ln(1); fillPoly(ctx, [p0, s0, s1, p1], opt(d, 'fc') || col, opt(d, 'fo') * A); }
+  for (const [v, c0, on, ls] of lvOf(d)) { if (!on) continue; const [p, s] = ln(+v); pen(ctx, one ? oc : (c0 || col), d.w || 2, ls || d.ls, A); seg(ctx, p, s); hs.push([p, s]); }
+  ctx.setLineDash([]);
+}
+/* Regression trend */
+function rRegr(P, ctx, d, q, col, hs) {
+  const t1 = Math.min(d.pts[0].t, d.pts[1].t), t2 = Math.max(d.pts[0].t, d.pts[1].t), xs = [], ys = [], A = d.op ?? 1;
+  for (const bar of P.agg) if (bar.time >= t1 && bar.time <= t2) { xs.push(tToL(P, bar.time)); ys.push(bar.close); }
+  if (xs.length < 2) { pen(ctx, col, 1, 'dashed', A); seg(ctx, q[0], q[1]); hs.push([q[0], q[1]]); return; }
+  const n = xs.length, mx = xs.reduce((s, v) => s + v, 0) / n, my = ys.reduce((s, v) => s + v, 0) / n; let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+  const k = sxx ? sxy / sxx : 0, c0 = my - k * mx; let sd = 0; for (let i = 0; i < n; i++) sd += (ys[i] - (c0 + k * xs[i])) ** 2; sd = Math.sqrt(sd / n);
+  const L2 = opt(d, 'ext2') ? (P.pw - P.x0) / P.dx : xs[n - 1], X1 = P.x0 + xs[0] * P.dx, X2 = P.x0 + L2 * P.dx, Y = (L, off) => P.candles.priceToCoordinate(c0 + k * L + off);
+  const mk = (off) => [[X1, Y(xs[0], off)], [X2, Y(L2, off)]], M = mk(0), U = mk(opt(d, 'udev') * sd), D = mk(opt(d, 'ldev') * sd);
+  if ([...M, ...U, ...D].some(p => p[1] == null)) return;
+  if (opt(d, 'fill')) { if (opt(d, 'uon')) fillPoly(ctx, [U[0], U[1], M[1], M[0]], opt(d, 'uc'), opt(d, 'fo') * A); if (opt(d, 'don')) fillPoly(ctx, [M[0], M[1], D[1], D[0]], opt(d, 'dc'), opt(d, 'fo') * A); }
+  const line = (on, cc, w, ls, L) => { if (!on) return; pen(ctx, cc, w || 1, ls || 'solid', A); seg(ctx, L[0], L[1]); hs.push(L); };
+  line(opt(d, 'uon'), opt(d, 'uc'), opt(d, 'uw'), opt(d, 'uls'), U); line(opt(d, 'don'), opt(d, 'dc'), opt(d, 'dw'), opt(d, 'dls'), D); line(opt(d, 'bon'), opt(d, 'bc'), d.w || 1, opt(d, 'ls') === 'solid' ? 'dashed' : opt(d, 'ls'), M);
+  ctx.setLineDash([]);
+  if (opt(d, 'pr')) { const r = sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0; hText(ctx, { fs: 12 }, r.toFixed(4), D[0][0], D[0][1] + 6, opt(d, 'dc'), 'left', 'top'); }
+  BB.set(d, bbox([...U, ...D]));
+}
+/* Gann box */
+function rGannBox(P, ctx, d, q, col, hs) {
+  const [a, b] = q, A = d.op ?? 1; if (!b) return; const rev = opt(d, 'rev'), one = opt(d, 'onec'), oc = opt(d, 'oc');
+  const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]);
+  const PLv = lvOn(d, 'lv').map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]), TLv = lvOn(d, 'tlv').map(l => [+l[0], l[1]]).sort((m, n) => m[0] - n[0]);
+  const yAt = (v) => rev ? b[1] + (a[1] - b[1]) * v : a[1] + (b[1] - a[1]) * v, xAt = (v) => rev ? b[0] + (a[0] - b[0]) * v : a[0] + (b[0] - a[0]) * v;
+  if (opt(d, 'fill')) for (let i = 1; i < PLv.length; i++) { const ya = yAt(PLv[i - 1][0]), yb = yAt(PLv[i][0]); ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(one ? oc : PLv[i][1], opt(d, 'fo') * A); ctx.fillRect(x1, Math.min(ya, yb), x2 - x1, Math.abs(yb - ya)); ctx.restore(); }
+  for (const [v, c0] of PLv) { const y = yAt(v), lc = one ? oc : c0; pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, [x1, y], [x2, y]); hs.push([[x1, y], [x2, y]]);
+    if (opt(d, 'll')) hText(ctx, d, String(v), x1 - 4, y, lc, 'right', 'middle'); if (opt(d, 'rl')) hText(ctx, d, String(v), x2 + 4, y, lc, 'left', 'middle'); }
+  for (const [v, c0] of TLv) { const x = xAt(v), lc = one ? oc : c0; pen(ctx, lc, opt(d, 'lw'), opt(d, 'lls'), A); seg(ctx, [x, y1], [x, y2]); hs.push([[x, y1], [x, y2]]);
+    if (opt(d, 'tpl')) hText(ctx, d, String(v), x, y1 - 4, lc, 'center', 'bottom'); if (opt(d, 'btl')) hText(ctx, d, String(v), x, y2 + 4, lc, 'center', 'top'); }
+  if (opt(d, 'ang')) { pen(ctx, opt(d, 'ac'), 1, 'solid', A); seg(ctx, a, b); seg(ctx, [a[0], b[1]], [b[0], a[1]]); }
+  ctx.setLineDash([]); BB.set(d, [x1, y1, x2, y2]);
+}
+function rGannFan(P, ctx, d, q, col, hs) {
+  const [a, b] = q, A = d.op ?? 1; if (!b) return; const dx = b[0] - a[0], dy = b[1] - a[1], one = opt(d, 'onec'), oc = opt(d, 'oc');
+  for (const [v, c0, on, ls] of lvOf(d)) { if (!on) continue; const [pm, tm] = String(v).split('/').map(Number); if (!(pm > 0 && tm > 0)) continue;
+    const lc = one ? oc : c0, e = [a[0] + dx * tm, a[1] + dy * pm], f = far(a, e); pen(ctx, lc, d.w || 1, ls || d.ls, A); seg(ctx, a, f); hs.push([a, f]);
+    const lp = [a[0] + (e[0] - a[0]) * .9, a[1] + (e[1] - a[1]) * .9]; hText(ctx, { fs: 11 }, String(v), lp[0] + 4, lp[1], lc, 'left', 'middle'); }
+  ctx.setLineDash([]);
+}
+/* Rectangle with extend and middle line */
+function rRect(P, ctx, d, q, col, hs) {
+  const [a, b] = q, A = d.op ?? 1; let x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]); const y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]), bx = [x1, x2], ex = opt(d, 'ext');
+  if (ex === 'left' || ex === 'both') x1 = 0; if (ex === 'right' || ex === 'both') x2 = P.pw;
+  if (opt(d, 'fill')) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || col, opt(d, 'fo') * A); ctx.fillRect(x1, y1, x2 - x1, y2 - y1); ctx.restore(); }
+  ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+  if (opt(d, 'midl')) { pen(ctx, opt(d, 'mc'), 1, 'dashed', A); seg(ctx, [x1, (y1 + y2) / 2], [x2, (y1 + y2) / 2]); ctx.setLineDash([]); }
+  BB.set(d, [bx[0], y1, bx[1], y2]);
+}
+/* Price range, date range, and date and price range */
+function rRange(P, ctx, d, q, col, hs) {
+  const [a, b] = q, t = d.type, A = d.op ?? 1, pr = d.pts.map(p => p.p), dp = pr[1] - pr[0], tick = INSTR[P.sym] ? INSTR[P.sym].tick : .25;
+  const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]), xm = (x1 + x2) / 2, ym = (y1 + y2) / 2;
+  const mc = t === 'measure' && !d.color ? (dp >= 0 ? FXC.b : FXC.r) : col;
+  if (opt(d, 'fill')) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || mc, opt(d, 'fo') * A); ctx.fillRect(x1, y1, x2 - x1, y2 - y1); ctx.restore(); }
+  pen(ctx, mc, d.w || 1, d.ls, A);
+  if (t !== 'drange') { seg(ctx, [x1, a[1]], [x2, a[1]]); seg(ctx, [x1, b[1]], [x2, b[1]]); seg(ctx, [xm, a[1]], [xm, b[1]]); ctx.setLineDash([]); arrowHead(ctx, [xm, a[1]], [xm, b[1]], 8); }
+  if (t !== 'prange') { pen(ctx, mc, d.w || 1, d.ls, A); seg(ctx, [a[0], y1], [a[0], y2]); seg(ctx, [b[0], y1], [b[0], y2]); seg(ctx, [a[0], ym], [b[0], ym]); ctx.setLineDash([]); arrowHead(ctx, [a[0], ym], [b[0], ym], 8); }
+  const bars = Math.round(Math.abs(tToL(P, d.pts[1].t) - tToL(P, d.pts[0].t))), parts = [];
+  if (t !== 'drange') { const s = []; if (opt(d, 'ipr')) s.push(`${dp >= 0 ? '+' : ''}${dp.toFixed(2)}`); if (opt(d, 'ipc')) s.push(`(${(dp / pr[0] * 100).toFixed(2)}%)`); if (opt(d, 'ipt')) s.push(`${Math.round(dp / tick)} ticks`); if (s.length) parts.push(s.join(' ')); if (t === 'measure' || t === 'prange') parts.push(`$${(Math.abs(dp) * INSTR[P.sym].pv).toFixed(2)} per contract`); }
+  if (t !== 'prange') { const s = []; if (opt(d, 'ibr')) s.push(`${bars} bars`); if (opt(d, 'idr')) s.push(fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))); if (s.length) parts.push(s.join(', '));
+    if (t === 'drange' && opt(d, 'ivol')) { const t1 = Math.min(d.pts[0].t, d.pts[1].t), t2 = Math.max(d.pts[0].t, d.pts[1].t); let v = 0; for (const bar of P.agg) if (bar.time >= t1 && bar.time <= t2) v += bar.value || 0; parts.push(`Vol ${v >= 1e6 ? (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? (v / 1e3).toFixed(1) + 'K' : v}`); } }
+  if (parts.length) { const up = t === 'drange' ? false : b[1] < a[1], bx = bubble(ctx, { fs: opt(d, 'fs'), fc: opt(d, 'lbg') ? opt(d, 'lbc') : 'rgba(0,0,0,0)', tc: d.tc || (opt(d, 'lbg') ? '#ffffff' : mc), bd: false }, xm, up ? y1 - 6 : y2 + 6, parts, mc, up ? 'cb' : 'c'); hs.push([[bx[0], bx[1]], [bx[2], bx[3]]]); }
+  BB.set(d, [x1, y1, x2, y2]);
+}
+/* Long and short position */
+function rPos(P, ctx, d, q, col, hs) {
+  const [a, b, c] = q, L = Math.min(a[0], b[0]), Wd = Math.max(8, Math.abs(b[0] - a[0])), ye = a[1], ysl = b[1], ytp = c[1], cx = L + Wd / 2, k = posInfo(P.sym, d);
+  const pc = d.pc || '#26b07a', lc = d.lc || '#e2554f', tc = opt(d, 'tc'), cmp = opt(d, 'cmp');
+  ctx.globalAlpha = 1; ctx.fillStyle = alpha(pc, d.po ?? .2); ctx.fillRect(L, Math.min(ye, ytp), Wd, Math.abs(ytp - ye));
+  ctx.fillStyle = alpha(lc, d.lo ?? .2); ctx.fillRect(L, Math.min(ye, ysl), Wd, Math.abs(ysl - ye));
+  ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = d.w || 2; ctx.setLineDash([]); seg(ctx, [L, ye], [L + Wd, ye]); ctx.globalAlpha = 1;
+  if (d.lab !== false) {
+    tag(ctx, cx, ytp + (ytp < ye ? -12 : 12), cmp ? `${k.rew.toFixed(2)} +$${fmt0(k.winUsd)}` : `Target ${k.rew.toFixed(2)} pts  +$${fmt0(k.winUsd)}`, mixHex(pc, '#000000', .25), tc, 'center');
+    tag(ctx, cx, ysl + (ysl > ye ? 12 : -12), cmp ? `${k.risk.toFixed(2)} -$${fmt0(k.lossUsd)}` : `Stop ${k.risk.toFixed(2)} pts  -$${fmt0(k.lossUsd)}`, mixHex(lc, '#000000', .2), tc, 'center');
+    tag(ctx, cx, ye, cmp ? `${k.qty} · ${k.rr.toFixed(2)}R` : `${d.type === 'long' ? 'Long' : 'Short'} ${k.qty} ${P.sym} · R:R ${k.rr.toFixed(2)}`, '#19212a', '#d9e0e8', 'center');
+  }
+  if (opt(d, 'plab')) { const R = L + Wd + 4; tag(ctx, R, ytp, fmtPx(k.tp), pc, fgOf(pc)); tag(ctx, R, ye, fmtPx(k.e), '#363a45', '#fff'); tag(ctx, R, ysl, fmtPx(k.sl), lc, fgOf(lc)); }
+  BB.set(d, [L, Math.min(ytp, ysl), L + Wd, Math.max(ytp, ysl)]);
+}
+/* Plain text with optional background, border and wrapping */
+function wrapLines(ctx, s, maxW) { const out = []; for (const para of String(s).split('\n')) { let cur = ''; for (const w of para.split(' ')) { const t = cur ? cur + ' ' + w : w; if (cur && ctx.measureText(t).width > maxW) { out.push(cur); cur = w; } else cur = t; } out.push(cur); } return out; }
+function rText(P, ctx, d, q, col, hs, isSel) {
+  const [a] = q, fs = d.fs || 14; ctx.font = dFont(d); ctx.textBaseline = 'middle';
+  const lines = opt(d, 'wrap') ? wrapLines(ctx, d.text || '', 220) : String(d.text || '').split('\n'), lh = fs * 1.25, w = Math.max(1, ...lines.map(l => ctx.measureText(l).width)), h = lines.length * lh;
+  const bx = [a[0] - 6, a[1] - lh / 2 - 4, a[0] + w + 6, a[1] - lh / 2 + h + 4];
+  if (opt(d, 'fill')) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = opt(d, 'fc'); ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx[0], bx[1], bx[2] - bx[0], bx[3] - bx[1], 4); else ctx.rect(bx[0], bx[1], bx[2] - bx[0], bx[3] - bx[1]); ctx.fill(); ctx.restore(); }
+  if (opt(d, 'bd')) { ctx.save(); ctx.globalAlpha = 1; ctx.strokeStyle = opt(d, 'bdc'); ctx.lineWidth = 1; ctx.setLineDash([]); ctx.strokeRect(bx[0] + .5, bx[1] + .5, bx[2] - bx[0], bx[3] - bx[1]); ctx.restore(); }
+  ctx.fillStyle = col; lines.forEach((l, i) => ctx.fillText(l, a[0], a[1] + i * lh));
+  if (isSel) { ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeStyle = col; ctx.strokeRect(bx[0] + 2, bx[1] + 2, bx[2] - bx[0] - 4, bx[3] - bx[1] - 4); ctx.setLineDash([]); }
+  BB.set(d, bx);
+}
+/* Anchored VWAP with standard deviation bands */
+function rAvwap(P, ctx, d, q, col, hs) {
+  const src = opt(d, 'src'), W = P.pw, A = d.op ?? 1; let pv = 0, vv = 0, p2 = 0; const mid = [], bands = [[], [], [], [], [], []];
+  const px = (b) => src === 'close' ? b.close : src === 'hl2' ? (b.high + b.low) / 2 : src === 'ohlc4' ? (b.open + b.high + b.low + b.close) / 4 : src === 'open' ? b.open : (b.high + b.low + b.close) / 3;
+  const on = [opt(d, 'b1'), opt(d, 'b2'), opt(d, 'b3')], mul = [opt(d, 'b1m'), opt(d, 'b2m'), opt(d, 'b3m')];
+  for (let i = 0; i < P.agg.length; i++) { const bar = P.agg[i]; if (bar.time < d.pts[0].t) continue; const v = bar.value || 1, p = px(bar); pv += p * v; vv += v; p2 += p * p * v;
+    const x = P.x0 + i * P.dx; if (x < -20 || x > W + 20) continue; const m = pv / vv, sd = Math.sqrt(Math.max(0, p2 / vv - m * m)), y = P.candles.priceToCoordinate(m); if (y == null) continue; mid.push([x, y]);
+    for (let j = 0; j < 3; j++) if (on[j]) { bands[j * 2].push([x, P.candles.priceToCoordinate(m + sd * mul[j])]); bands[j * 2 + 1].push([x, P.candles.priceToCoordinate(m - sd * mul[j])]); } }
+  for (let j = 2; j >= 0; j--) { if (!on[j]) continue; const U = bands[j * 2], D = bands[j * 2 + 1], bc = opt(d, 'b' + (j + 1) + 'c'); if (U.length < 2 || U.some(p => p[1] == null) || D.some(p => p[1] == null)) continue;
+    if (opt(d, 'b' + (j + 1) + 'f')) fillPoly(ctx, [...U, ...D.slice().reverse()], bc, .08 * A);
+    pen(ctx, bc, 1, 'solid', A); for (const L of [U, D]) { ctx.beginPath(); L.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); } }
+  pen(ctx, col, d.w || 2, d.ls, A); ctx.beginPath(); mid.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.setLineDash([]);
+  for (let i = 0; i + 1 < mid.length; i++) hs.push([mid[i], mid[i + 1]]);
+  if (mid.length && opt(d, 'plab')) { const l = mid[mid.length - 1]; ctx.globalAlpha = 1; tag(ctx, l[0] + 6, l[1], 'VWAP ' + fmtPx(P.candles.coordinateToPrice(l[1])), col, fgOf(col)); }
+}
+/* Fixed range and anchored volume profile */
 function volProfile(P, ctx, d, t1, t2, x1, x2, hs) {
-  const bars = P.agg.filter(b => b.time >= t1 && b.time <= t2); if (bars.length < 1) return null;
+  const bars = P.agg.filter(b => b.time >= t1 && b.time <= t2); if (bars.length < 1) return null; const A = d.op ?? 1;
   let lo = Infinity, hi = -Infinity; for (const b of bars) { lo = Math.min(lo, b.low); hi = Math.max(hi, b.high); }
-  const R = 24, step = (hi - lo) / R || 1, up = new Array(R).fill(0), dn = new Array(R).fill(0);
+  const R = Math.max(4, Math.min(200, Math.round(opt(d, 'rows')))), step = (hi - lo) / R || 1, up = new Array(R).fill(0), dn = new Array(R).fill(0);
   for (const b of bars) { const i0 = Math.min(R - 1, Math.floor((b.low - lo) / step)), i1 = Math.min(R - 1, Math.floor((b.high - lo) / step)), v = (b.value || 1) / (i1 - i0 + 1); for (let i = i0; i <= i1; i++) (b.close >= b.open ? up : dn)[i] += v; }
-  const tot = up.map((v, i) => v + dn[i]), mx = Math.max(...tot) || 1, poc = tot.indexOf(mx), all = tot.reduce((s, v) => s + v, 0);
-  let lo2 = poc, hi2 = poc, acc = tot[poc]; while (acc < all * .7 && (lo2 > 0 || hi2 < R - 1)) { const a = lo2 > 0 ? tot[lo2 - 1] : -1, b = hi2 < R - 1 ? tot[hi2 + 1] : -1; if (b >= a) { hi2++; acc += b; } else { lo2--; acc += a; } }
-  const maxW = Math.max(40, (x2 - x1) * .3);
+  const tot = up.map((v, i) => v + dn[i]), mx = Math.max(...tot) || 1, poc = tot.indexOf(mx), all = tot.reduce((s, v) => s + v, 0), vaPct = Math.max(1, Math.min(100, opt(d, 'va'))) / 100;
+  let lo2 = poc, hi2 = poc, acc = tot[poc]; while (acc < all * vaPct && (lo2 > 0 || hi2 < R - 1)) { const a = lo2 > 0 ? tot[lo2 - 1] : -1, b = hi2 < R - 1 ? tot[hi2 + 1] : -1; if (b >= a) { hi2++; acc += b; } else { lo2--; acc += a; } }
+  const yt = P.candles.priceToCoordinate(hi), yl = P.candles.priceToCoordinate(lo);
+  if (opt(d, 'fill') && yt != null && yl != null) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(opt(d, 'fc'), opt(d, 'fo') * A); ctx.fillRect(x1, yt, x2 - x1, yl - yt); ctx.restore(); }
+  const maxW = Math.max(30, (x2 - x1) * Math.max(5, Math.min(100, opt(d, 'vw'))) / 100), right = opt(d, 'vpl') === 'right', vop = opt(d, 'vop');
+  ctx.save(); ctx.globalAlpha = 1;
   for (let i = 0; i < R; i++) {
     const ya = P.candles.priceToCoordinate(lo + i * step), yb = P.candles.priceToCoordinate(lo + (i + 1) * step); if (ya == null || yb == null) continue;
     const y = Math.min(ya, yb) + .5, h = Math.max(1, Math.abs(ya - yb) - 1), va = i >= lo2 && i <= hi2, wu = up[i] / mx * maxW, wd = dn[i] / mx * maxW;
-    ctx.fillStyle = alpha('#26a69a', va ? .55 : .25); ctx.fillRect(x1, y, wu, h); ctx.fillStyle = alpha('#ef5350', va ? .55 : .25); ctx.fillRect(x1 + wu, y, wd, h);
+    const xu = right ? x2 - wu : x1, xd = right ? x2 - wu - wd : x1 + wu;
+    ctx.fillStyle = alpha(va ? opt(d, 'vauc') : opt(d, 'vuc'), vop); ctx.fillRect(xu, y, wu, h); ctx.fillStyle = alpha(va ? opt(d, 'vadc') : opt(d, 'vdc'), vop); ctx.fillRect(xd, y, wd, h);
+    if (opt(d, 'vals') && h >= 9) hText(ctx, { fs: Math.min(11, h) }, String(Math.round(tot[i])), right ? x2 - wu - wd - 3 : x1 + wu + wd + 3, y + h / 2, '#b2b5be', right ? 'right' : 'left', 'middle');
   }
-  const yp = P.candles.priceToCoordinate(lo + (poc + .5) * step);
-  if (yp != null) { ctx.save(); ctx.globalAlpha = 1; ctx.strokeStyle = '#e2554f'; ctx.lineWidth = 1.5; seg(ctx, [x1, yp], [x2, yp]); ctx.restore(); ctext(ctx, x2 - 2, yp - 2, 'POC ' + fmtPx(lo + (poc + .5) * step), '#e2554f', 'right'); }
-  const yt = P.candles.priceToCoordinate(hi), yl = P.candles.priceToCoordinate(lo);
-  if (yt != null && yl != null) { ctx.save(); ctx.globalAlpha = .6; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeRect(x1, yt, x2 - x1, yl - yt); ctx.restore(); return [x1, yt, x2, yl]; }
+  ctx.restore();
+  const level = (on, c, p, lab) => { if (!on) return; const y = P.candles.priceToCoordinate(p); if (y == null) return; ctx.save(); ctx.globalAlpha = A; ctx.strokeStyle = c; ctx.lineWidth = 1.5; ctx.setLineDash([]); seg(ctx, [x1, y], [x2, y]); ctx.restore(); hText(ctx, { fs: 11 }, `${lab} ${fmtPx(p)}`, right ? x1 + 2 : x2 - 2, y - 2, c, right ? 'left' : 'right', 'bottom'); };
+  level(opt(d, 'poc'), opt(d, 'pocc'), lo + (poc + .5) * step, 'POC'); level(opt(d, 'vah'), opt(d, 'vahc'), lo + (hi2 + 1) * step, 'VAH'); level(opt(d, 'val'), opt(d, 'valc'), lo + lo2 * step, 'VAL');
+  if (yt != null && yl != null) { ctx.save(); ctx.globalAlpha = .6; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeStyle = opt(d, 'fc'); ctx.strokeRect(x1, yt, x2 - x1, yl - yt); ctx.restore(); return [x1, yt, x2, yl]; }
   return null;
 }
+/* Elliott wave labels by degree */
+const EW_DEG = ['Supermillennium', 'Millennium', 'Submillennium', 'Grand Supercycle', 'Supercycle', 'Cycle', 'Primary', 'Intermediate', 'Minor', 'Minute', 'Minuette', 'Subminuette', 'Micro', 'Submicro', 'Minuscule'];
+const ROMAN = ['0', 'I', 'II', 'III', 'IV', 'V'], ROMAN_L = ['0', 'i', 'ii', 'iii', 'iv', 'v'];
+function ewLabels(t, deg) {
+  deg = Math.max(0, Math.min(14, +deg || 0)); const kind = deg < 6 ? 'R' : deg < 9 ? '1' : deg < 12 ? 'r' : '1', wrap = deg % 3;
+  return PLAB[t].map((s, i) => { if (!s) return ''; let v = s; if (/^\d$/.test(s)) v = kind === 'R' ? ROMAN[+s] : kind === 'r' ? ROMAN_L[+s] : s; else if (kind === 'r') v = s.toLowerCase();
+    return wrap === 0 ? `((${v}))` : wrap === 1 ? `(${v})` : v; });
+}
+/* Price and time labels shared by most drawings */
+const NO_PT = new Set(['long', 'short', 'text', 'atext', 'note', 'pin', 'table', 'comment', 'plabel', 'flag', 'avwap', 'avp', 'frvp', 'brush', 'hilite', 'arrup', 'arrdn', 'arrlt', 'arrrt', 'measure', 'barspat', 'ghost']);
+function postD(P, ctx, d, q, col) {
+  if (NO_PT.has(d.type) || (TOOLDEF[d.type] && TOOLDEF[d.type].ch)) return;
+  ctx.globalAlpha = 1; ctx.setLineDash([]); const fg = fgOf(col), n = d.type === 'channel' ? Math.min(2, q.length) : q.length;
+  if (opt(d, 'plab')) {
+    if (d.type === 'hline' || d.type === 'hray' || d.type === 'cross') tag(ctx, P.pw - 4, q[0][1], fmtPx(d.pts[0].p), col, fg, 'right');
+    else if (d.type !== 'vline') for (let i = 0; i < n; i++) tag(ctx, q[i][0] + 6, q[i][1] + (q[i][1] < 16 ? 12 : -12), fmtPx(d.pts[i].p), col, fg, 'left');
+  }
+  if (opt(d, 'tlab') && d.type !== 'hline' && d.type !== 'hray') {
+    const xs = d.type === 'vline' || d.type === 'cross' ? [0] : Array.from({ length: n }, (_, i) => i);
+    for (const i of xs) tag(ctx, q[i][0], P.ph - 11, shortT(d.pts[i].t), col, fg, 'center');
+  }
+}
+const RLV = {
+  trend: rLine, ray: rLine, ext: rLine, arrow: rLine, info: rLine,
+  hline: (P, ctx, d, q, col, hs) => { const y = q[0][1]; seg(ctx, [0, y], [P.pw, y]); hs.push([[0, y], [P.pw, y]]); },
+  hray: (P, ctx, d, q, col, hs) => { const y = q[0][1]; seg(ctx, q[0], [P.pw, y]); hs.push([q[0], [P.pw, y]]); },
+  vline: (P, ctx, d, q, col, hs) => { const x = q[0][0]; seg(ctx, [x, 0], [x, P.ph]); hs.push([[x, 0], [x, P.ph]]); },
+  cross: (P, ctx, d, q, col, hs) => { const [x, y] = q[0]; seg(ctx, [0, y], [P.pw, y]); seg(ctx, [x, 0], [x, P.ph]); hs.push([[0, y], [P.pw, y]], [[x, 0], [x, P.ph]]); },
+  channel: rChannel, regr: rRegr, pfork: rFork, ipfork: rFork, pitchfan: rFork,
+  fib: rFib, fibext: rFib, fibchan: rFibChan, fibtime: rFibTime, fibtimeext: rFibTime, fibfan: rFibFan, fibcirc: rFibRound, fibarcs: rFibRound, fibwedge: rFibRound,
+  gannbox: rGannBox, gannfan: rGannFan, rect: rRect, prange: rRange, drange: rRange, measure: rRange, long: rPos, short: rPos, text: rText, avwap: rAvwap,
+};
 function renderX(P, ctx, d, q, col, isSel) {
   const [a, b, c] = q, W = P.pw, H = P.ph, pr = d.pts.map(p => p.p), t = d.type, fo = d.fo ?? .12, hs = [];
   BB.delete(d); HS.set(d, hs);
@@ -1622,16 +1977,16 @@ function renderX(P, ctx, d, q, col, isSel) {
       ctx.strokeStyle = col; return; }
     case 'xabcd': case 'cypher': case 'abcd': case 'hs': case 'tripat': case 'threedrv': {
       const labs = PLAB[t];
-      if ((t === 'xabcd' || t === 'cypher') && q.length >= 3) { fillPoly(ctx, q.slice(0, 3), d.fc || col, fo); if (q.length >= 5) fillPoly(ctx, q.slice(2, 5), d.fc || col, fo); }
-      if (t === 'tripat' && q.length >= 4) { dash(true); L2(far(c, a), far(a, c)); L2(far(q[3], b), far(b, q[3])); dash(false); fillPoly(ctx, [a, c, q[3], b], d.fc || col, fo * .7); }
+      if ((t === 'xabcd' || t === 'cypher') && q.length >= 3 && opt(d, 'fill')) { fillPoly(ctx, q.slice(0, 3), d.fc || col, fo); if (q.length >= 5) fillPoly(ctx, q.slice(2, 5), d.fc || col, fo); }
+      if (t === 'tripat' && q.length >= 4) { dash(true); L2(far(c, a), far(a, c)); L2(far(q[3], b), far(b, q[3])); dash(false); if (opt(d, 'fill')) fillPoly(ctx, [a, c, q[3], b], d.fc || col, fo * .7); }
       if (t === 'hs' && q.length >= 5) { dash(true); L2(far(q[4], q[2]), far(q[2], q[4])); dash(false); }
       PL(q);
       const ratio = (i, j, k, m) => { if (q.length <= Math.max(i, j, k, m)) return; const r = Math.abs(pr[m] - pr[k]) / (Math.abs(pr[j] - pr[i]) || 1); dash(true); ctx.save(); ctx.globalAlpha = .6; seg(ctx, q[i === k ? j : i], q[m]); ctx.restore(); dash(false);
         const p = midp(q[i === k ? j : i], q[m]); ctx.globalAlpha = 1; tag(ctx, p[0], p[1], r.toFixed(3), '#1e222d', '#e6e6ea', 'center'); ctx.globalAlpha = d.op ?? 1; };
       if (t === 'xabcd' || t === 'cypher') { ratio(0, 1, 1, 2); ratio(1, 2, 2, 3); ratio(2, 3, 3, 4); }
       if (t === 'abcd') { ratio(0, 1, 1, 2); ratio(1, 2, 2, 3); }
-      ptLabels(ctx, q, labs, col); return; }
-    case 'ew12345': case 'ewabc': case 'ewabcde': case 'ewwxy': case 'ewwxyxz': PL(q); ptLabels(ctx, q, PLAB[t], col, true); return;
+      ptLabels(ctx, q, labs, col, false, d); return; }
+    case 'ew12345': case 'ewabc': case 'ewabcde': case 'ewwxy': case 'ewwxyxz': if (opt(d, 'wave')) PL(q); else for (let i = 0; i + 1 < q.length; i++) hs.push([q[i], q[i + 1]]); ptLabels(ctx, q, ewLabels(t, opt(d, 'deg')), col, 2, d); return;
     case 'cyclines': case 'timecyc': { const dx = Math.abs(b[0] - a[0]); dash(true); seg(ctx, a, b); dash(false); if (dx < 4) return;
       let x = Math.min(a[0], b[0]); while (x - dx > -dx) x -= dx;
       for (; x <= W + dx; x += dx) { if (t === 'cyclines') L2([x, 0], [x, H]); else RG(x + dx / 2, a[1], dx / 2, Math.PI, Math.PI * 2); }
@@ -1642,9 +1997,9 @@ function renderX(P, ctx, d, q, col, isSel) {
       tag(ctx, b[0], b[1] + (up ? -36 : 36), `${bars} bars, ${fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))}`, '#1e222d', '#e6e6ea', 'center'); return; }
     case 'barspat': {
       if (!d.src) { fillPoly(ctx, [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]], col, .1); dash(true); PL([[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]], true); dash(false); return; }
-      const L0 = tToL(P, d.src[0]), sh = d.pts[0].p - d.src[2], bw = Math.max(1, P.dx * .6), pp = [];
+      const L0 = tToL(P, d.src[0]), L9 = tToL(P, d.src[1]), sh = d.pts[0].p - d.src[2], bw = Math.max(1, P.dx * .6), pp = [], F = (v) => (d.flip ? 2 * d.src[2] - v : v) + sh;
       for (const bar of P.agg) { if (bar.time < d.src[0] || bar.time > d.src[1]) continue;
-        const x = a[0] + (tToL(P, bar.time) - L0) * P.dx, yo = P.candles.priceToCoordinate(bar.open + sh), yc = P.candles.priceToCoordinate(bar.close + sh), yh = P.candles.priceToCoordinate(bar.high + sh), yl = P.candles.priceToCoordinate(bar.low + sh);
+        const x = a[0] + (d.mir ? L9 - tToL(P, bar.time) : tToL(P, bar.time) - L0) * P.dx, yo = P.candles.priceToCoordinate(F(bar.open)), yc = P.candles.priceToCoordinate(F(bar.close)), yh = P.candles.priceToCoordinate(F(bar.high)), yl = P.candles.priceToCoordinate(F(bar.low));
         if ([yo, yc, yh, yl].some(v => v == null)) continue; const cc = d.mono ? col : bar.close >= bar.open ? '#26b07a' : '#e2554f';
         ctx.save(); ctx.globalAlpha = .55 * (d.op ?? 1); ctx.fillStyle = cc; ctx.fillRect(x - .5, yh, 1, yl - yh); ctx.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yc - yo))); ctx.restore(); pp.push([x, yh], [x, yl]); }
       if (pp.length) BB.set(d, bbox(pp)); return; }
@@ -1668,7 +2023,8 @@ function renderX(P, ctx, d, q, col, isSel) {
         const bars = Math.round(Math.abs(tToL(P, d.pts[1].t) - tToL(P, d.pts[0].t))); ctx.globalAlpha = 1; tag(ctx, (x1 + x2) / 2, y2 + 14, `${bars} bars, ${fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))}`, col, '#fff', 'center'); }
       BB.set(d, [x1, y1, x2, y2]); return; }
     case 'brush': case 'hilite': { ctx.lineJoin = 'round'; ctx.lineCap = 'round'; if (t === 'hilite') { ctx.globalAlpha = .35 * (d.op ?? 1); ctx.lineWidth = (d.w || 2) * 6; }
-      ctx.beginPath(); q.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); for (let i = 0; i + 1 < q.length; i++) hs.push([q[i], q[i + 1]]); ctx.lineCap = 'butt'; return; }
+      if (t === 'brush' && opt(d, 'fill') && q.length > 2) fillPoly(ctx, q, d.fc || col, fo * (d.op ?? 1)); ctx.beginPath(); q.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); for (let i = 0; i + 1 < q.length; i++) hs.push([q[i], q[i + 1]]); ctx.lineCap = 'butt';
+      if (t === 'brush' && q.length > 3) { if (opt(d, 're') === 'arrow') arrowHead(ctx, q[q.length - 4], q[q.length - 1]); if (opt(d, 'le') === 'arrow') arrowHead(ctx, q[3], q[0]); } return; }
     case 'arrowmk': { const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 2) return; const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, nx = -uy, ny = ux, w = Math.max(4, Math.min(10, L * .08)), hl = Math.min(L * .45, 26), hw = w * 2.4, hb = [b[0] - ux * hl, b[1] - uy * hl];
       ctx.beginPath(); ctx.moveTo(a[0] + nx * w * .4, a[1] + ny * w * .4); ctx.lineTo(hb[0] + nx * w, hb[1] + ny * w); ctx.lineTo(hb[0] + nx * hw, hb[1] + ny * hw); ctx.lineTo(b[0], b[1]); ctx.lineTo(hb[0] - nx * hw, hb[1] - ny * hw); ctx.lineTo(hb[0] - nx * w, hb[1] - ny * w); ctx.lineTo(a[0] - nx * w * .4, a[1] - ny * w * .4); ctx.closePath(); ctx.fill(); hs.push([a, b]); return; }
     case 'arrup': case 'arrdn': case 'arrlt': case 'arrrt': { const s = 9, rot = { arrup: 0, arrrt: Math.PI / 2, arrdn: Math.PI, arrlt: -Math.PI / 2 }[t];
@@ -1676,15 +2032,16 @@ function renderX(P, ctx, d, q, col, isSel) {
       BB.set(d, [a[0] - 14, a[1] - 14, a[0] + 14, a[1] + 14]); return; }
     case 'rrect': { if (!c) { L2(a, b); return; } const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L, dd = (c[0] - a[0]) * nx + (c[1] - a[1]) * ny, pp = [a, b, [b[0] + nx * dd, b[1] + ny * dd], [a[0] + nx * dd, a[1] + ny * dd]];
       fillPoly(ctx, pp, d.fc || col, fo); ctx.globalAlpha = d.op ?? 1; PL(pp, true); return; }
-    case 'path': PL(q); if (q.length > 1) arrowHead(ctx, q[q.length - 2], q[q.length - 1]); return;
-    case 'polyline': PL(q); return;
+    case 'path': PL(q); if (q.length > 1 && opt(d, 're') === 'arrow') arrowHead(ctx, q[q.length - 2], q[q.length - 1]); if (q.length > 1 && opt(d, 'le') === 'arrow') arrowHead(ctx, q[1], q[0]); return;
+    case 'polyline': if (opt(d, 'fill') && q.length > 2) fillPoly(ctx, q, d.fc || col, fo * (d.op ?? 1)); PL(q); return;
     case 'circle': { const r = Math.hypot(b[0] - a[0], b[1] - a[1]); if (d.fill !== false) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || col, fo * (d.op ?? 1)); ctx.beginPath(); ctx.arc(a[0], a[1], r, 0, 7); ctx.fill(); ctx.restore(); } RG(a[0], a[1], r); BB.set(d, [a[0] - r * .7, a[1] - r * .7, a[0] + r * .7, a[1] + r * .7]); return; }
     case 'triangle': { if (!c) { L2(a, b); return; } if (d.fill !== false) fillPoly(ctx, q, d.fc || col, fo * (d.op ?? 1)); PL(q, true); return; }
     case 'arc': case 'curve': case 'dcurve': { if (!c) { L2(a, b); return; } let pp;
       if (t === 'arc') { const m = midp(a, b); pp = qpts(a, [2 * c[0] - m[0], 2 * c[1] - m[1]], b); if (d.fill !== false) fillPoly(ctx, pp, d.fc || col, fo * (d.op ?? 1)); }
       else if (t === 'curve') pp = qpts(a, c, b);
       else { const m = midp(a, b); pp = qpts(a, c, m, 16).concat(qpts(m, [2 * m[0] - c[0], 2 * m[1] - c[1]], b, 16).slice(1)); }
-      ctx.beginPath(); pp.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); for (let i = 0; i + 1 < pp.length; i++) hs.push([pp[i], pp[i + 1]]); return; }
+      ctx.beginPath(); pp.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); for (let i = 0; i + 1 < pp.length; i++) hs.push([pp[i], pp[i + 1]]);
+      if (t === 'curve') { if (opt(d, 're') === 'arrow') arrowHead(ctx, pp[pp.length - 2], pp[pp.length - 1]); if (opt(d, 'le') === 'arrow') arrowHead(ctx, pp[1], pp[0]); } return; }
     case 'atext': { const lines = String(d.label || 'Anchored text').split('\n'), fs = d.fs || 14; ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.font = dFont(d); ctx.fillStyle = d.tc || col; ctx.textBaseline = 'top';
       const w = Math.max(...lines.map(l => ctx.measureText(l).width)); lines.forEach((l, i) => ctx.fillText(l, a[0], a[1] + i * fs * 1.25)); ctx.restore();
       BB.set(d, [a[0] - 3, a[1] - 3, a[0] + w + 3, a[1] + lines.length * fs * 1.25 + 3]); if (isSel) { ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeRect(a[0] - 4, a[1] - 4, w + 8, lines.length * fs * 1.25 + 8); ctx.setLineDash([]); } return; }
@@ -1709,16 +2066,16 @@ function renderX(P, ctx, d, q, col, isSel) {
   }
   if (TOOLDEF[t] && TOOLDEF[t].ch) { const fs = d.fs ? d.fs * 1.6 : 24; ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.font = `${fs}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TOOLDEF[t].ch, a[0], a[1]); ctx.restore(); BB.set(d, [a[0] - fs / 2, a[1] - fs / 2, a[0] + fs / 2, a[1] + fs / 2]); }
 }
-function ptLabels(ctx, q, labs, col, round) {
+function ptLabels(ctx, q, labs, col, round, d) {
   ctx.save(); ctx.globalAlpha = 1;
   q.forEach((p, i) => { const s = labs && labs[i]; if (!s) return; const pv = q[i - 1], nx = q[i + 1];
     const low = pv && nx ? p[1] >= (pv[1] + nx[1]) / 2 : pv ? p[1] > pv[1] : nx ? p[1] > nx[1] : false, y = p[1] + (low ? 15 : -15);
-    if (round) { ctx.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`(${s})`, p[0], y); }
-    else tag(ctx, p[0], y, s, col, '#fff', 'center'); });
+    if (round) { ctx.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(round === 2 ? s : `(${s})`, p[0], y); }
+    else tag(ctx, p[0], y, s, col, (d && d.tc) || '#fff', 'center'); });
   ctx.restore();
 }
 function hitX(P, d, pt, q) {
-  const T = 6, bb = BB.get(d);
+  const T = HT, bb = BB.get(d);
   if (bb && pt[0] >= bb[0] - 3 && pt[0] <= bb[2] + 3 && pt[1] >= bb[1] - 3 && pt[1] <= bb[3] + 3) return true;
   for (const s of HS.get(d) || []) { if (s.r != null) { if (Math.abs(Math.hypot(pt[0] - s.c[0], pt[1] - s.c[1]) - s.r) < T) return true; } else if (segDist(pt, s[0], s[1]) < T) return true; }
   return q.length > 0 && q[0][1] != null && Math.hypot(pt[0] - q[0][0], pt[1] - q[0][1]) < 10;
@@ -1728,6 +2085,7 @@ function renderD(P, ctx, d, isSel) {
   if (q.some(v => v[1] == null || !isFinite(v[0]))) return;
   ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = d.w || 2; ctx.setLineDash(d.ls === 'dashed' ? [6, 4] : d.ls === 'dotted' ? [1.5, 3.5] : []);
   const [a, b, c] = q, W = P.pw, H = P.ph;
+  if (RLV[d.type]) { BB.delete(d); const hs = []; HS.set(d, hs); RLV[d.type](P, ctx, d, q, col, hs, isSel); } else
   switch (d.type) {
     case 'trend': seg(ctx, d.ext === 'left' || d.ext === 'both' ? far(b, a) : a, d.ext === 'right' || d.ext === 'both' ? far(a, b) : b); break;
     case 'arrow': { seg(ctx, a, b); const g = Math.atan2(b[1] - a[1], b[0] - a[0]); ctx.beginPath(); ctx.moveTo(b[0], b[1]); ctx.lineTo(b[0] - 12 * Math.cos(g - .4), b[1] - 12 * Math.sin(g - .4)); ctx.lineTo(b[0] - 12 * Math.cos(g + .4), b[1] - 12 * Math.sin(g + .4)); ctx.closePath(); ctx.fill(); break; }
@@ -1790,11 +2148,12 @@ function renderD(P, ctx, d, isSel) {
     default: renderX(P, ctx, d, q, col, isSel);
   }
   ctx.setLineDash([]);
-  if (d.plab && !['hline', 'hray'].includes(d.type)) { ctx.globalAlpha = 1; const n = d.type === 'channel' ? 2 : d.pts.length; for (let i = 0; i < n; i++) tag(ctx, q[i][0] + 6, q[i][1] + (q[i][1] < 16 ? 12 : -12), fmtPx(d.pts[i].p), col, '#0c1015', 'left'); }
+  postD(P, ctx, d, q, col);
   if (d.label && HAS_TEXT(d.type) && d.type !== 'text' && !OWN_LABEL.has(d.type)) drawLabel(P, ctx, d, q);
   ctx.globalAlpha = 1;
-  if (isSel && d.type !== 'text') for (const [hx, hy] of (FREE.has(d.type) ? [q[0], q[q.length - 1]] : q)) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (isSel && d.type !== 'text') for (const [hx, hy] of (FREE.has(d.type) ? [q[0], q[q.length - 1]] : q)) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, COARSE ? 7 : 5, 0, 7); ctx.fill(); ctx.stroke(); }
 }
+const COARSE = matchMedia('(pointer: coarse)').matches;
 function paint(P) {
   if (!P.sym) return;
   geo(P);
@@ -1808,6 +2167,7 @@ function paint(P) {
   ctx.save(); ctx.beginPath(); ctx.rect(0, 0, P.pw, P.ph); ctx.clip(); tagMax = P.pw;
   const sel = selD();
   for (const d of dList(P.sym)) { if (!visibleOn(d, P.tf)) continue; try { renderD(P, ctx, d, d === sel); } catch (e) { /* skip a broken drawing */ } }
+  if (tcur.on && tcur.P === P && draw.tool !== 'cursor') drawTcur(P, ctx);
   ctx.restore();
 }
 function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P); } requestAnimationFrame(paintLoop); }
@@ -1817,7 +2177,8 @@ function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * 
 function inBox(p, a, b, m = 4) { return p[0] >= Math.min(a[0], b[0]) - m && p[0] <= Math.max(a[0], b[0]) + m && p[1] >= Math.min(a[1], b[1]) - m && p[1] <= Math.max(a[1], b[1]) + m; }
 function hitD(P, d, pt) {
   const q = qOf(P, d); if (q.some(v => v[1] == null)) return false;
-  const [a, b, c] = q, T = 6;
+  const [a, b, c] = q, T = HT;
+  if (RLV[d.type]) return hitX(P, d, pt, q);
   switch (d.type) {
     case 'trend': case 'arrow': return segDist(pt, a, b) < T;
     case 'ray': return segDist(pt, a, far(a, b)) < T;
@@ -1878,7 +2239,8 @@ function renderFavbar() {
 }
 function setTool(t) {
   if (draw.mk) { const m = draw.mk; draw.mk = null; lockChart(m.P, false); removeD(m.d); }
-  draw.tool = t; renderTools(); renderFavbar();
+  if (tcur.on) { const Pt = tcur.P; tcur.on = false; tcur.down = false; if (Pt && !draw.mk) lockChart(Pt, false); }
+  draw.tool = t; renderTools(); renderFavbar(); renderMkbar(); bump();
   for (const P of PANES) P.el.style.cursor = t === 'cursor' ? '' : 'crosshair';
 }
 function renderTools() {
@@ -2012,9 +2374,10 @@ function buildCustom(el) {
 }
 /* Remembered style per drawing tool, and saved templates (style + text) per tool */
 const STYLE_KEYS = ['color', 'op', 'w', 'ls', 'ext', 'fill', 'fc', 'fo', 'plab', 'tc', 'fs', 'bold', 'it', 'tv', 'th', 'pc', 'po', 'lc', 'lo', 'lab'];
-const pickStyle = (d, withText) => { const o = {}; for (const k of STYLE_KEYS) if (d[k] !== undefined && d[k] !== null) o[k] = d[k]; if (withText) { if (d.label) o.label = d.label; if (d.type === 'text' && d.text) o.text = d.text; } return o; };
+const STYLE_SKIP = new Set(['id', 'type', 'sym', 'pts', 'label', 'text', 'locked', 'vis', 'src', 'fx', 'fy', 'show', 'rp', 'fq']);
+const pickStyle = (d, withText) => { const o = {}; for (const k of Object.keys(d)) if (!STYLE_SKIP.has(k) && d[k] !== undefined && d[k] !== null) o[k] = JSON.parse(JSON.stringify(d[k])); if (withText) { if (d.label) o.label = d.label; if (d.type === 'text' && d.text) o.text = d.text; } return o; };
 function rememberStyle(d) { if (!d) return; SET().toolStyle = SET().toolStyle || {}; SET().toolStyle[d.type] = pickStyle(d, false); save(); }
-function applyStyle(d, st) { for (const k of STYLE_KEYS) delete d[k]; delete d.label; if (d.type === 'text') d.text = d.text || ''; Object.assign(d, JSON.parse(JSON.stringify(st))); }
+function applyStyle(d, st) { for (const k of Object.keys(d)) if (!STYLE_SKIP.has(k)) delete d[k]; delete d.label; if (d.type === 'text') d.text = d.text || ''; Object.assign(d, JSON.parse(JSON.stringify(st))); }
 const tplList = (type) => { SET().templates = SET().templates || {}; return (SET().templates[type] = SET().templates[type] || []); };
 function tplPop(d) {
   const list = tplList(d.type), esc2 = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -2131,48 +2494,75 @@ function bindPane(P) {
     geo(P); const [x, y] = local(P, e), list = dList(P.sym);
     for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { select(list[k], P); openDrawSettings(list[k], (list[k].type === 'text' || OWN_LABEL.has(list[k].type)) ? 'text' : undefined); return; }
   });
+  /* While we drag something with a finger, the page and the chart must not scroll */
+  el.addEventListener('touchmove', e => { if (draw.act || draw.mk || tcur.down) e.preventDefault(); }, { passive: false });
   el.addEventListener('pointerdown', e => {
     if (e.target.closest('.selbar, .txtin, .ptag button')) return;
+    const touch = e.pointerType === 'touch'; HT = touch ? 14 : 6;
+    if (tcur.down) { e.preventDefault(); e.stopPropagation(); return; }
     if (P.i < nPanes() && LAY().active !== P.i) { LAY().active = P.i; layoutPanes(); renderToolbar(); renderTicket(); renderLive(); save(); }
     closeMenus();
     if (e.button !== 0) return;
     if (draw.txt) closeText();
     geo(P); const [x, y] = local(P, e); if (x > P.pw || y > P.ph) return;
+    if (touch && draw.tool !== 'cursor' && !FREE.has(draw.tool)) {
+      grab(P, e);
+      if (!tcur.on || tcur.P !== P) { tcur.on = true; tcur.P = P; tcur.x = x; tcur.y = y; if (!SET().touchTip) { SET().touchTip = 1; save(); toast('Drag anywhere to move the crosshair, then tap to place each point.'); } }
+      tcur.down = true; tcur.moved = false; tcur.id = e.pointerId; tcur.sx = x; tcur.sy = y; tcur.ox = tcur.x; tcur.oy = tcur.y;
+      renderMkbar(); bump(); return;
+    }
     const mk = draw.mk;
     if (mk && mk.P === P && mk.need >= 99 && mk.d.pts.length > 2) { const pv = toXY(P, mk.d.pts[mk.d.pts.length - 2]); if (Math.hypot(pv[0] - x, pv[1] - y) < 7) { grab(P, e); mk.d.pts.pop(); finishD(P, mk.d); return; } }
-    if (mk && mk.P === P) { grab(P, e); mk.n++; if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); } return; }
+    if (mk && mk.P === P) { grab(P, e); mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); mk.n++; if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); } return; }
     if (draw.tool !== 'cursor') { grab(P, e); startMk(P, x, y); return; }
-    const ln = nearLine(P, y, e.target.closest('.ptag') ? 13 : 7);
+    const ln = nearLine(P, y, e.target.closest('.ptag') ? (touch ? 24 : 13) : (touch ? 16 : 7));
     if (ln) { grab(P, e); draw.act = { kind: 'line', P, line: ln }; el.style.cursor = 'ns-resize'; return; }
     if (!draw.locked && !draw.hidden) {
       const s = selD();
       if (s && draw.sel.pane === P.i && s.sym === P.sym && s.type !== 'text' && !s.locked) {
-        const hs = qOf(P, s);
-        for (let i = 0; i < hs.length; i++) if (hs[i][1] != null && Math.hypot(hs[i][0] - x, hs[i][1] - y) < 9) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i }; return; }
+        const hs = qOf(P, s), R = touch ? 22 : 9;
+        let best = -1, bd = R; for (let i = 0; i < hs.length; i++) if (hs[i][1] != null) { const dd = Math.hypot(hs[i][0] - x, hs[i][1] - y); if (dd < bd) { bd = dd; best = i; } }
+        if (best >= 0) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i: best, ox: hs[best][0] - x, oy: hs[best][1] - y }; return; }
       }
       const list = dList(P.sym);
-      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]) }; return; }
+      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]), slop: touch ? 8 : 0 }; return; }
     }
     if (draw.sel) select(null);
   }, true);
   el.addEventListener('pointermove', e => {
     if (e.target.closest('.selbar, .txtin')) return;
     geo(P); const [x, y] = local(P, e);
+    if (tcur.down && tcur.P === P) {
+      if (e.pointerId !== tcur.id) return;
+      if (Math.hypot(x - tcur.sx, y - tcur.sy) > 6) tcur.moved = true;
+      tcur.x = Math.max(0, Math.min(P.pw - 1, tcur.ox + x - tcur.sx)); tcur.y = Math.max(0, Math.min(P.ph - 1, tcur.oy + y - tcur.sy));
+      const mk = draw.mk; if (mk && mk.P === P) mk.d.pts[mk.d.pts.length - 1] = fromXY(P, tcur.x, tcur.y, true);
+      bump(); return;
+    }
     const mk = draw.mk;
     if (mk && mk.P === P) { if (mk.free) { const l = toXY(P, mk.d.pts[mk.d.pts.length - 1]); if (Math.hypot(l[0] - x, l[1] - y) > 2) mk.d.pts.push(fromXY(P, x, y, false)); bump(); return; } mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); bump(); return; }
     const A = draw.act;
     if (A && A.P === P) {
       if (A.kind === 'line') { dragLine(P, A, y); return; }
-      if (A.kind === 'handle') { if (A.d.type === 'atext') { A.d.fx = x / P.pw; A.d.fy = y / P.ph; } else setPt(A.d, A.i, fromXY(P, x, y, true)); bump(); return; }
-      if (A.kind === 'move') { const dx = x - A.x, dy = y - A.y; if (A.d.type === 'atext') { A.d.fx = (A.orig[0][0] + dx) / P.pw; A.d.fy = (A.orig[0][1] + dy) / P.ph; } else A.d.pts = A.orig.map(([px, py]) => fromXY(P, px + dx, py + dy, false)); bump(); return; }
+      if (A.kind === 'handle') { const hx = x + A.ox, hy = y + A.oy; if (A.d.type === 'atext') { A.d.fx = hx / P.pw; A.d.fy = hy / P.ph; } else setPt(A.d, A.i, fromXY(P, hx, hy, true)); bump(); return; }
+      if (A.kind === 'move') { const dx = x - A.x, dy = y - A.y; if (A.slop && Math.hypot(dx, dy) < A.slop) return; A.slop = 0;
+        if (A.d.type === 'atext') { A.d.fx = (A.orig[0][0] + dx) / P.pw; A.d.fy = (A.orig[0][1] + dy) / P.ph; } else A.d.pts = A.orig.map(([px, py]) => fromXY(P, px + dx, py + dy, false)); bump(); return; }
     }
+    if (e.pointerType === 'touch') return;
     if (draw.tool !== 'cursor') { el.style.cursor = 'crosshair'; return; }
     let cur = '';
     if (x <= P.pw && y <= P.ph) { if (nearLine(P, y)) cur = 'ns-resize'; else if (!draw.locked && !draw.hidden && dList(P.sym).some(d => hitD(P, d, [x, y]))) cur = 'move'; }
     el.style.cursor = cur;
   }, true);
   const up = (e) => {
+    if (tcur.down && tcur.P === P && e.pointerId === tcur.id) {
+      tcur.down = false;
+      if (!tcur.moved && e.type === 'pointerup') tapPlace(P);
+      if (!draw.mk && !tcur.on) lockChart(P, false);
+      renderMkbar(); bump(); return;
+    }
     const mk = draw.mk;
+    if (tcur.on && e.pointerType === 'touch') return;
     if (mk && mk.P === P && mk.free) { if (mk.d.pts.length < 2) { draw.mk = null; lockChart(P, false); removeD(mk.d); } else finishD(P, mk.d); return; }
     if (mk && mk.P === P) {
       const [x, y] = local(P, e);
@@ -2631,40 +3021,157 @@ function openDrawSettings(d, tab) {
   $('#ds-title').textContent = TOOLDEF[d.type] ? TOOLDEF[d.type].n : 'Drawing';
   renderDrawSettings(); $('#dset').hidden = false;
 }
+/* Each tool's settings, laid out like FX Replay's dialog for that tool */
+const WIDTHS = [1, 2, 3, 4, 5, 6, 8, 10].map(w => [w, w + 'px']), LSTYLES = [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']];
+const FSIZES = [8, 10, 11, 12, 14, 16, 20, 24, 28, 32, 40].map(s => [s, s]);
+const EXTS = [['', "Don't extend"], ['left', 'Extend left'], ['right', 'Extend right'], ['both', 'Extend both']];
+const ENDS = [['normal', 'Normal'], ['arrow', 'Arrow']];
+const HPOS = [['left', 'Left'], ['center', 'Center'], ['right', 'Right']], VPOS = [['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']];
+const Rw = {
+  line: (lab = 'Line', k = 'color', ok = 'op', wk = 'w', lk = 'ls', ck) => ({ t: 'line', lab, k, ok, wk, lk, ck }),
+  ws: (lab, wk = 'lw', lk = 'lls') => ({ t: 'line', lab, wk, lk }),
+  col: (lab, k, ok, ck) => ({ t: 'line', lab, k, ok, ck }),
+  chk: (lab, k) => ({ t: 'chk', lab, k }),
+  sel: (lab, k, items, ck) => ({ t: 'sel', lab, k, items, ck }),
+  sel2: (lab, k, k2, items, items2) => ({ t: 'sel', lab, k, items, k2, items2: items2 || items }),
+  num: (lab, k, step = 1, ck, ph) => ({ t: 'num', lab, k, step, ck, ph }),
+  rng: (lab, k = 'fo', ck = 'fill') => ({ t: 'rng', lab, k, ck }),
+  font: (lab = 'Text', k = 'tc') => ({ t: 'font', lab, k }),
+  hdr: (lab) => ({ t: 'hdr', lab }),
+  lv: (k = 'lv', mode = 'grid') => ({ t: 'lv', k, mode }),
+  info: (html) => ({ t: 'info', html }),
+};
+const PT = [Rw.chk('Price labels', 'plab'), Rw.chk('Time labels', 'tlab')];
+const ONEC = Rw.col('Use one color', 'oc', null, 'onec');
+const LINE_STATS = [Rw.sel2('Line ends', 'le', 're', ENDS), Rw.sel('Extend', 'ext', EXTS), Rw.chk('Middle point', 'mid'), Rw.hdr('Info'), Rw.chk('Stats', 'stats'),
+  Rw.chk('Price range', 'sp'), Rw.chk('Bars range', 'sb'), Rw.chk('Distance', 'sd'), Rw.chk('Angle', 'sa'), Rw.sel('Stats position', 'spos', HPOS), Rw.chk('Always show stats', 'sall'), Rw.hdr('Labels'), ...PT];
+const FIB_TAIL = [ONEC, Rw.rng('Background'), Rw.chk('Reverse', 'rev'), Rw.chk('Prices', 'prices'), Rw.sel('Levels', 'lfmt', [['val', 'Values'], ['pct', 'Percents']], 'lvls'),
+  Rw.sel2('Labels', 'lh', 'lvv', HPOS, VPOS), Rw.sel('Font size', 'fs', FSIZES)];
+const PATTERN = [Rw.line('Line'), Rw.col('Background', 'fc', 'fo', 'fill'), Rw.font('Text'), ...PT];
+const ELLIOTT = [Rw.line('Line'), Rw.chk('Wave', 'wave'), Rw.sel('Degree', 'deg', EW_DEG.map((n, i) => [i, `${i} ${n}`])), ...PT];
+const SHAPE = [Rw.line('Border'), Rw.col('Background', 'fc', 'fo', 'fill'), ...PT];
+const LABEL_BOX = [Rw.col('Label background', 'fc', null, 'fill'), Rw.col('Label border', 'bdc', null, 'bd'), Rw.line('Line'), ...PT];
+const RANGE_INFO = { prange: [Rw.chk('Price range', 'ipr'), Rw.chk('Percent change', 'ipc'), Rw.chk('Change in ticks', 'ipt')],
+  drange: [Rw.chk('Bars range', 'ibr'), Rw.chk('Date/time range', 'idr'), Rw.chk('Volume', 'ivol')],
+  measure: [Rw.chk('Price range', 'ipr'), Rw.chk('Percent change', 'ipc'), Rw.chk('Change in ticks', 'ipt'), Rw.chk('Bars range', 'ibr'), Rw.chk('Date/time range', 'idr')] };
+const STYLE_SPEC = {
+  trend: [Rw.line(), ...LINE_STATS], ray: [Rw.line(), ...LINE_STATS], ext: [Rw.line(), ...LINE_STATS], arrow: [Rw.line(), ...LINE_STATS], info: [Rw.line(), ...LINE_STATS],
+  angle: [Rw.line(), ...PT], hline: [Rw.line(), Rw.chk('Price labels', 'plab')], hray: [Rw.line(), Rw.chk('Price labels', 'plab')], vline: [Rw.line(), Rw.chk('Time labels', 'tlab')], cross: [Rw.line(), ...PT],
+  channel: [Rw.line(), Rw.col('Background', 'fc', 'fo', 'fill'), Rw.sel('Extend', 'ext', EXTS), Rw.hdr('Levels'), Rw.lv('lv', 'list'), ONEC, ...PT],
+  regr: [Rw.line('Base', 'bc', null, 'w', 'ls', 'bon'), Rw.line('Up', 'uc', null, 'uw', 'uls', 'uon'), Rw.line('Down', 'dc', null, 'dw', 'dls', 'don'), Rw.rng('Background'), Rw.chk('Extend lines', 'ext2'), Rw.chk("Pearson's R", 'pr')],
+  pfork: [Rw.line(), Rw.rng('Background'), Rw.hdr('Levels'), Rw.lv('lv', 'list'), ONEC, Rw.chk('Extend lines', 'ext2'), ...PT],
+  ipfork: [Rw.line(), Rw.rng('Background'), Rw.hdr('Levels'), Rw.lv('lv', 'list'), ONEC, Rw.chk('Extend lines', 'ext2'), ...PT],
+  pitchfan: [Rw.line(), Rw.rng('Background'), Rw.hdr('Levels'), Rw.lv('lv', 'list'), ONEC, ...PT],
+  fib: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.sel('Extend', 'ext', EXTS), Rw.hdr('Levels'), Rw.lv(), ...FIB_TAIL, Rw.chk('Fib levels based on log scale', 'log')],
+  fibext: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.sel('Extend', 'ext', EXTS), Rw.hdr('Levels'), Rw.lv(), ...FIB_TAIL, Rw.chk('Fib levels based on log scale', 'log')],
+  fibchan: [Rw.ws('Levels line'), Rw.sel('Extend', 'ext', EXTS), Rw.hdr('Levels'), Rw.lv(), ONEC, Rw.rng('Background'), Rw.chk('Reverse', 'rev'), Rw.chk('Levels', 'lvls'), Rw.sel('Labels', 'lh', [['left', 'Left'], ['right', 'Right']]), Rw.sel('Font size', 'fs', FSIZES)],
+  fibtime: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.hdr('Levels'), Rw.lv(), ONEC, Rw.rng('Background'), Rw.chk('Levels', 'lvls'), Rw.sel2('Labels', 'lh', 'lvv', HPOS, VPOS), Rw.sel('Font size', 'fs', FSIZES)],
+  fibtimeext: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.hdr('Levels'), Rw.lv(), ONEC, Rw.rng('Background'), Rw.chk('Levels', 'lvls'), Rw.sel2('Labels', 'lh', 'lvv', HPOS, VPOS), Rw.sel('Font size', 'fs', FSIZES)],
+  fibfan: [Rw.ws('Levels line'), Rw.hdr('Price levels'), Rw.lv('lv'), ONEC, Rw.rng('Background'), Rw.chk('Reverse', 'rev'), Rw.chk('Left labels', 'll'), Rw.chk('Right labels', 'rl'),
+    Rw.hdr('Time levels'), Rw.lv('tlv'), Rw.chk('Top labels', 'tpl'), Rw.chk('Bottom labels', 'btl'), Rw.col('Grid', 'gc', null, 'grid'), Rw.sel('Font size', 'fs', FSIZES)],
+  fibcirc: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.hdr('Levels'), Rw.lv(), ONEC, Rw.rng('Background'), Rw.chk('Levels', 'lvls'), Rw.sel('Font size', 'fs', FSIZES)],
+  fibarcs: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.hdr('Levels'), Rw.lv(), ONEC, Rw.rng('Background'), Rw.chk('Levels', 'lvls'), Rw.chk('Full circles', 'full'), Rw.sel('Font size', 'fs', FSIZES)],
+  fibwedge: [Rw.line('Trend line', 'tlc', null, 'tlw', 'tlls', 'tl'), Rw.ws('Levels line'), Rw.hdr('Levels'), Rw.lv(), ONEC, Rw.rng('Background'), Rw.chk('Levels', 'lvls'), Rw.sel('Font size', 'fs', FSIZES)],
+  fibspiral: [Rw.line()],
+  gannbox: [Rw.ws('Levels line'), Rw.hdr('Price levels'), Rw.lv('lv'), ONEC, Rw.rng('Background'), Rw.chk('Reverse', 'rev'), Rw.chk('Left labels', 'll'), Rw.chk('Right labels', 'rl'),
+    Rw.hdr('Time levels'), Rw.lv('tlv'), Rw.chk('Top labels', 'tpl'), Rw.chk('Bottom labels', 'btl'), Rw.col('Angles', 'ac', null, 'ang'), Rw.sel('Font size', 'fs', FSIZES)],
+  gannsqf: [Rw.line(), Rw.col('Background', 'fc', 'fo', 'fill')], gannsq: [Rw.line(), Rw.col('Background', 'fc', 'fo', 'fill')],
+  gannfan: [Rw.line(), Rw.hdr('Levels'), Rw.lv('lv', 'list'), ONEC, ...PT],
+  xabcd: PATTERN, cypher: PATTERN, tripat: PATTERN, hs: [Rw.line('Line'), Rw.font('Text'), ...PT], abcd: [Rw.line('Line'), Rw.font('Text'), ...PT], threedrv: [Rw.line('Line'), Rw.font('Text'), ...PT],
+  ew12345: ELLIOTT, ewabc: ELLIOTT, ewabcde: ELLIOTT, ewwxy: ELLIOTT, ewwxyxz: ELLIOTT,
+  cyclines: [Rw.line(), ...PT], timecyc: [Rw.line(), ...PT],
+  long: [Rw.col('Lines', 'color', 'op'), Rw.col('Stop color', 'lc', 'lo'), Rw.col('Target color', 'pc', 'po'), Rw.font('Text'), Rw.chk('Price labels', 'plab'), Rw.hdr('Info'), Rw.chk('Show stats', 'lab'), Rw.chk('Compact stats mode', 'cmp')],
+  forecast: [Rw.line(), ...PT], barspat: [Rw.col('Color', 'color', 'op'), Rw.chk('One colour', 'mono'), Rw.chk('Mirrored', 'mir'), Rw.chk('Flipped', 'flip')], ghost: [Rw.col('Color', 'color', 'op')],
+  avwap: [Rw.line('VWAP'), Rw.col('Bands #1', 'b1c', null, 'b1'), Rw.chk('Bands #1 background', 'b1f'), Rw.col('Bands #2', 'b2c', null, 'b2'), Rw.chk('Bands #2 background', 'b2f'), Rw.col('Bands #3', 'b3c', null, 'b3'), Rw.chk('Bands #3 background', 'b3f'), Rw.chk('Price label', 'plab')],
+  frvp: [Rw.num('Width (% of the box)', 'vw', 5), Rw.sel('Placement', 'vpl', [['left', 'Left'], ['right', 'Right']]), Rw.col('Up volume', 'vuc'), Rw.col('Down volume', 'vdc'), Rw.col('Value area up', 'vauc'), Rw.col('Value area down', 'vadc'),
+    Rw.col('POC', 'pocc', null, 'poc'), Rw.col('VAH', 'vahc', null, 'vah'), Rw.col('VAL', 'valc', null, 'val'), Rw.col('Background', 'fc', 'fo', 'fill'), Rw.chk('Values', 'vals')],
+  prange: [Rw.line(), Rw.rng('Background'), Rw.hdr('Info'), ...RANGE_INFO.prange, Rw.font('Label'), Rw.col('Label background', 'lbc', null, 'lbg'), ...PT],
+  drange: [Rw.line(), Rw.rng('Background'), Rw.hdr('Info'), ...RANGE_INFO.drange, Rw.font('Label'), Rw.col('Label background', 'lbc', null, 'lbg'), ...PT],
+  measure: [Rw.line(), Rw.rng('Background'), Rw.hdr('Info'), ...RANGE_INFO.measure, Rw.font('Label'), Rw.col('Label background', 'lbc', null, 'lbg')],
+  rect: [Rw.line('Border'), Rw.col('Background', 'fc', 'fo', 'fill'), Rw.sel('Extend', 'ext', EXTS), Rw.col('Middle line', 'mc', null, 'midl'), ...PT],
+  ellipse: SHAPE, circle: SHAPE, triangle: SHAPE, rrect: SHAPE, arc: SHAPE,
+  curve: [Rw.line(), Rw.sel2('Line ends', 'le', 're', ENDS), ...PT], dcurve: [Rw.line(), ...PT], path: [Rw.line(), Rw.sel2('Line ends', 'le', 're', ENDS), ...PT], polyline: [Rw.line(), Rw.col('Background', 'fc', 'fo', 'fill'), ...PT],
+  brush: [Rw.line(), Rw.col('Background', 'fc', 'fo', 'fill'), Rw.sel2('Line ends', 'le', 're', ENDS), ...PT], hilite: [Rw.col('Color', 'color', 'op'), Rw.sel('Width', 'w', WIDTHS)],
+  arrowmk: [Rw.col('Color', 'color', 'op'), ...PT], arrup: [Rw.col('Color', 'color', 'op')], arrdn: [Rw.col('Color', 'color', 'op')], arrlt: [Rw.col('Color', 'color', 'op')], arrrt: [Rw.col('Color', 'color', 'op')],
+  atext: [], note: LABEL_BOX, pnote: LABEL_BOX, pin: LABEL_BOX, comment: LABEL_BOX, signpost: LABEL_BOX,
+  callout: [Rw.col('Label background', 'fc', null, 'fill'), Rw.col('Label border', 'bdc', null, 'bd'), Rw.line('Line'), ...PT],
+  table: [Rw.col('Background', 'fc'), Rw.col('Border', 'color', 'op')], plabel: [Rw.col('Color', 'color', 'op')], flag: [Rw.col('Color', 'color', 'op')],
+};
+STYLE_SPEC.short = STYLE_SPEC.long; STYLE_SPEC.avp = STYLE_SPEC.frvp;
+const INPUT_TOOLS = new Set(['long', 'short', 'avwap', 'frvp', 'avp', 'regr']);
+function styleSpec(d) { return STYLE_SPEC[d.type] || (TOOLDEF[d.type] && TOOLDEF[d.type].ch ? [] : [Rw.line()]); }
 function dsTabs(d) {
   const t = [];
-  if (!['text', 'measure'].includes(d.type)) t.push('style');
+  if (INPUT_TOOLS.has(d.type)) t.push('inputs');
+  if (d.type !== 'text' && styleSpec(d).length) t.push('style');
   if (HAS_TEXT(d.type)) t.push('text');
   if (!FREE.has(d.type) && d.type !== 'atext') t.push('coords'); t.push('vis'); return t;
 }
-const TABN = { style: 'Style', text: 'Text', coords: 'Coordinates', vis: 'Visibility' };
-const swBtn = (key, col, op) => `<button class="dsw" data-dc="${key}" title="Change colour" aria-label="Change colour"><i style="background:${col};opacity:${op ?? 1}"></i></button>`;
+const TABN = { inputs: 'Inputs', style: 'Style', text: 'Text', coords: 'Coordinates', vis: 'Visibility' };
+const colOf = (d, k) => (k === 'color' ? d.color : opt(d, k)) || (d.type === 'long' || d.type === 'short' ? '#d9e0e8' : d.color || DCOL[0]);
+const swBtn = (key, col, op, ok) => `<button class="dsw" data-dc="${key}"${ok ? ` data-do="${ok}"` : ''} title="Change colour" aria-label="Change colour"><i style="background:${col};opacity:${op ?? 1}"></i></button>`;
 const selHtml = (key, items, cur) => `<select class="ctl" data-dk="${key}">${items.map(([v, n]) => `<option value="${v}" ${String(v) === String(cur) ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
 const chk = (key, on) => `<input type="checkbox" class="chk" data-dk="${key}" ${on ? 'checked' : ''}>`;
+const rowLab = (d, r) => r.ck ? `<label>${chk(r.ck, !!opt(d, r.ck))} ${r.lab}</label>` : `<span>${r.lab}</span>`;
+function rowHtml(d, r) {
+  switch (r.t) {
+    case 'hdr': return `<div class="dhdr">${r.lab}</div>`;
+    case 'info': return r.html;
+    case 'line': return `<div class="drow">${rowLab(d, r)}${r.k ? swBtn(r.k, colOf(d, r.k), r.ok ? opt(d, r.ok) : 1, r.ok) : ''}${r.wk ? selHtml(r.wk, WIDTHS, d[r.wk] ?? (r.wk === 'w' ? 2 : opt(d, r.wk))) : ''}${r.lk ? selHtml(r.lk, LSTYLES, d[r.lk] || opt(d, r.lk)) : ''}</div>`;
+    case 'chk': return `<div class="drow"><label>${chk(r.k, !!opt(d, r.k))} ${r.lab}</label></div>`;
+    case 'sel': return `<div class="drow">${rowLab(d, r)}${selHtml(r.k, r.items, opt(d, r.k))}${r.k2 ? selHtml(r.k2, r.items2, opt(d, r.k2)) : ''}</div>`;
+    case 'num': return `<div class="drow">${rowLab(d, r)}<input type="number" class="ctl num" data-dk="${r.k}" data-num="1" step="${r.step}" value="${d[r.k] ?? opt(d, r.k) ?? ''}"${r.ph ? ` placeholder="${r.ph}"` : ''}></div>`;
+    case 'rng': { const v = Math.round(opt(d, r.k) * 100); return `<div class="drow">${rowLab(d, r)}<input type="range" class="dr" data-dk="${r.k}" data-pct="1" min="0" max="100" value="${v}" aria-label="${r.lab} opacity"><span class="mut dpct">${v}%</span></div>`; }
+    case 'font': return `<div class="drow"><span>${r.lab}</span>${swBtn(r.k, colOf(d, r.k), 1)}${selHtml('fs', FSIZES, d.fs || opt(d, 'fs'))}<button class="tbtn" data-dk="bold" aria-pressed="${!!d.bold}" title="Bold"><b>B</b></button><button class="tbtn" data-dk="it" aria-pressed="${!!d.it}" title="Italic"><i>I</i></button></div>`;
+    case 'lv': return lvHtml(d, r.k, r.mode);
+  }
+  return '';
+}
+function lvHtml(d, k, mode) {
+  const L = lvOf(d, k), col = d.color || DCOL[0];
+  if (mode === 'list') return `<div class="lvlist">${L.map((l, i) => `<div class="lvrow"><input type="checkbox" class="chk" data-lk="${k}" data-lvi="${i}" data-lvf="on" ${l[2] ? 'checked' : ''} aria-label="Show level ${l[0]}">
+    <span class="lvv">${typeof l[0] === 'number' ? +(l[0] * 100).toFixed(1) + '%' : l[0]}</span><button class="dsw" data-lk="${k}" data-lvc="${i}" title="Level colour" aria-label="Level colour"><i style="background:${l[1] || col}"></i></button>
+    <select class="ctl" data-lk="${k}" data-lvi="${i}" data-lvf="ls" aria-label="Level line style">${LSTYLES.map(([v, n]) => `<option value="${v}" ${(l[3] || 'solid') === v ? 'selected' : ''}>${n}</option>`).join('')}</select></div>`).join('')}</div>`;
+  return `<div class="lvgrid">${L.map((l, i) => `<div class="lvcell"><input type="checkbox" class="chk" data-lk="${k}" data-lvi="${i}" data-lvf="on" ${l[2] ? 'checked' : ''} aria-label="Show level">
+    <input type="number" class="ctl lvn" data-lk="${k}" data-lvi="${i}" data-lvf="v" step="0.001" value="${l[0]}" aria-label="Level value"><button class="dsw" data-lk="${k}" data-lvc="${i}" title="Level colour" aria-label="Level colour"><i style="background:${l[1] || col}"></i></button></div>`).join('')}</div>`;
+}
+const lvEdit = (d, k) => { if (!d[k]) d[k] = JSON.parse(JSON.stringify(lvOf(d, k))); return d[k]; };
+function inputsHtml(d) {
+  if (d.type === 'long' || d.type === 'short') {
+    const tick = INSTR[d.sym] ? INSTR[d.sym].tick : .25, e = d.pts[0].p, sl = d.pts[1].p, tp = d.pts[2].p, k = posInfo(d.sym, d);
+    return `<div class="drow"><span>Risk % of balance <span class="mut">(empty = session risk)</span></span><input type="number" class="ctl num" data-dk="rp" data-num="1" min="0.05" step="0.05" value="${d.rp || ''}" placeholder="${riskPct()}"></div>
+      <div class="drow"><span>Or fixed contracts</span><input type="number" class="ctl num" data-dk="fq" data-num="1" min="1" step="1" value="${d.fq || ''}" placeholder="auto"></div>
+      <div class="drow"><span>Entry price</span><input type="number" class="ctl num" data-pin="e" step="${tick}" value="${e}"></div>
+      <div class="dhdr">Profit level</div>
+      <div class="drow"><span>Ticks</span><input type="number" class="ctl num" data-pin="tpt" step="1" value="${Math.round(Math.abs(tp - e) / tick)}"></div>
+      <div class="drow"><span>Price</span><input type="number" class="ctl num" data-pin="tpp" step="${tick}" value="${tp}"></div>
+      <div class="dhdr">Stop level</div>
+      <div class="drow"><span>Ticks</span><input type="number" class="ctl num" data-pin="slt" step="1" value="${Math.round(Math.abs(e - sl) / tick)}"></div>
+      <div class="drow"><span>Price</span><input type="number" class="ctl num" data-pin="slp" step="${tick}" value="${sl}"></div>
+      <div class="drow"><span>Risk/reward ratio</span><span class="mut" id="ds-rr">${k.rr.toFixed(2)}</span></div>
+      <div class="drow"><span>Contracts</span><span class="mut" id="ds-qty">${k.qty}</span></div>`;
+  }
+  if (d.type === 'avwap') return [Rw.sel('Source', 'src', [['hlc3', 'hlc3'], ['close', 'close'], ['open', 'open'], ['hl2', 'hl2'], ['ohlc4', 'ohlc4']]), Rw.hdr('Bands'),
+    Rw.num('Multiplier #1', 'b1m', .1, 'b1'), Rw.num('Multiplier #2', 'b2m', .1, 'b2'), Rw.num('Multiplier #3', 'b3m', .1, 'b3')].map(r => rowHtml(d, r)).join('');
+  if (d.type === 'frvp' || d.type === 'avp') return [Rw.num('Number of rows', 'rows', 1), Rw.num('Value area volume %', 'va', 1)].map(r => rowHtml(d, r)).join('');
+  if (d.type === 'regr') return [Rw.num('Upper deviation', 'udev', .1), Rw.num('Lower deviation', 'ldev', .1)].map(r => rowHtml(d, r)).join('');
+  return '';
+}
 function renderDrawSettings() {
   const d = ds.d, tabs = dsTabs(d);
   $('#ds-tabs').innerHTML = tabs.map(t => `<button data-tab="${t}" aria-current="${t === ds.tab}">${TABN[t]}</button>`).join('');
   let h = '';
-  if (ds.tab === 'style' && (d.type === 'long' || d.type === 'short')) {
-    h += `<div class="drow"><span>Profit area</span>${swBtn('pc', d.pc || '#26b07a', d.po ?? .2)}</div>
-      <div class="drow"><span>Stop area</span>${swBtn('lc', d.lc || '#e2554f', d.lo ?? .2)}</div>
-      <div class="drow"><span>Entry line</span>${swBtn('color', d.color || '#d9e0e8', d.op)}</div>
-      <div class="drow"><span>Show price and P&amp;L labels</span>${chk('lab', d.lab !== false)}</div>
-      <div class="drow"><span>Risk % of balance <span class="mut">(empty = your session risk)</span></span><input type="number" class="ctl num" data-dk="rp" min="0.05" step="0.05" value="${d.rp || ''}" placeholder="${riskPct()}"></div>
-      <div class="drow"><span>Or a fixed number of contracts</span><input type="number" class="ctl num" data-dk="fq" min="1" step="1" value="${d.fq || ''}" placeholder="auto"></div>`;
-  } else if (ds.tab === 'style') {
-    const stroke = d.type !== 'text';
-    h += `<div class="drow"><span>${HAS_FILL.includes(d.type) ? 'Border' : 'Line'}</span>${swBtn('color', d.color || DCOL[0], d.op)}${stroke ? selHtml('w', [1, 2, 3, 4].map(w => [w, w + 'px']), d.w || 2) + selHtml('ls', [['solid', 'Solid'], ['dashed', 'Dashed'], ['dotted', 'Dotted']], d.ls || 'solid') : ''}</div>`;
-    if (HAS_FILL.includes(d.type)) h += `<div class="drow"><span>Background</span>${chk('fill', d.fill !== false)}${swBtn('fc', d.fc || d.color || DCOL[0], d.fo ?? .12)}</div>`;
-    if (d.type === 'trend') h += `<div class="drow"><span>Extend</span>${selHtml('ext', [['', "Don't extend"], ['left', 'Left'], ['right', 'Right'], ['both', 'Both']], d.ext || '')}</div>`;
-    if (LINEISH.includes(d.type) || ['hline', 'hray', 'rect'].includes(d.type)) h += `<div class="drow"><span>Price labels</span>${chk('plab', d.plab ?? ['hline', 'hray'].includes(d.type))}</div>`;
+  if (ds.tab === 'inputs') h = inputsHtml(d);
+  else if (ds.tab === 'style') {
+    h = styleSpec(d).map(r => rowHtml(d, r)).join('');
     if (LINEISH.includes(d.type)) h += `<div class="drow"><span>Make the line perfectly flat</span><button class="btn" data-dact="flat">Make flat</button></div>`;
   } else if (ds.tab === 'text') {
-    const isT = d.type === 'text', txt = isT ? (d.text || '') : (d.label || '');
-    h += `<div class="drow"><span>Font</span>${swBtn('tc', isT ? (d.color || DCOL[0]) : (d.tc || d.color || DCOL[0]), isT ? d.op : 1)}${selHtml('fs', [10, 11, 12, 14, 16, 20, 24, 28, 32].map(s => [s, s]), d.fs || 14)}
+    const isT = d.type === 'text', txt = isT ? (d.text || '') : (d.label || ''), fk = isT ? 'color' : 'tc';
+    h += `<div class="drow"><span>Font</span>${swBtn(fk, isT ? (d.color || DCOL[0]) : (d.tc || d.color || DCOL[0]), isT ? d.op : 1, isT ? 'op' : null)}${selHtml('fs', FSIZES, d.fs || 14)}
       <button class="tbtn" data-dk="bold" aria-pressed="${!!d.bold}" title="Bold"><b>B</b></button><button class="tbtn" data-dk="it" aria-pressed="${!!d.it}" title="Italic"><i>I</i></button></div>
       <textarea class="ctl dtxt" data-dk="txt" rows="4" placeholder="Text">${txt.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</textarea>`;
-    if (!isT) h += `<div class="drow"><span>Text alignment</span>${selHtml('tv', [['top', 'Top'], ['middle', 'Middle'], ['bottom', 'Bottom']], d.tv || 'top')}${selHtml('th', [['left', 'Left'], ['center', 'Center'], ['right', 'Right']], d.th || 'center')}</div>`;
+    if (isT) h += [Rw.col('Background', 'fc', null, 'fill'), Rw.col('Border', 'bdc', null, 'bd'), Rw.chk('Text wrap', 'wrap')].map(r => rowHtml(d, r)).join('');
+    else if (!OWN_LABEL.has(d.type)) h += `<div class="drow"><span>Text alignment</span>${selHtml('tv', VPOS, d.tv || 'top')}${selHtml('th', HPOS, d.th || 'center')}</div>`;
   } else if (ds.tab === 'coords') {
     const names = PT_NAMES[d.type], tick = INSTR[d.sym] ? INSTR[d.sym].tick : 0.25;
     h += d.pts.map((p, i) => `<div class="drow"><span>${names ? names[i] : '#' + (i + 1)} <span class="mut">(price, time)</span></span>
@@ -2683,27 +3190,45 @@ function dsChanged() { bump(); renderSelbars(); if (ds.d) rememberStyle(ds.d); }
 $('#ds-tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { closePop(); ds.tab = b.dataset.tab; renderDrawSettings(); } });
 $('#ds-main').addEventListener('click', e => {
   const d = ds.d; if (!d) return;
+  const lc = e.target.closest('button[data-lvc]');
+  if (lc) { const k = lc.dataset.lk, i = +lc.dataset.lvc, cur = lvOf(d, k)[i][1] || d.color || DCOL[0];
+    openColorPop(lc, cur, null, (c) => { lvEdit(d, k)[i][1] = c; lc.querySelector('i').style.background = c; dsChanged(); }); return; }
   const s = e.target.closest('button[data-dc]');
-  if (s) { const k = s.dataset.dc;
-    const LS = d.type === 'long' || d.type === 'short';
-    const cur = k === 'pc' ? (d.pc || '#26b07a') : k === 'lc' ? (d.lc || '#e2554f') : k === 'fc' ? (d.fc || d.color || DCOL[0]) : k === 'tc' && d.type !== 'text' ? (d.tc || d.color || (LS ? '#d9e0e8' : DCOL[0])) : (d.color || (LS ? '#d9e0e8' : DCOL[0]));
-    const op = k === 'pc' ? (d.po ?? .2) : k === 'lc' ? (d.lo ?? .2) : k === 'fc' ? (d.fo ?? .12) : k === 'tc' && d.type !== 'text' ? null : (d.op ?? 1);
-    openColorPop(s, cur, op, (c, o) => {
-      if (k === 'pc') { d.pc = c; d.po = o; } else if (k === 'lc') { d.lc = c; d.lo = o; }
-      else if (k === 'fc') { d.fc = c; d.fo = o; } else if (k === 'tc' && d.type !== 'text') d.tc = c; else { d.color = c; d.op = o; if (!LS) draw.color = c; }
-      const i = s.querySelector('i'); i.style.background = c; if (o != null) i.style.opacity = o; dsChanged(); });
+  if (s) { const k = s.dataset.dc, ok = s.dataset.do || null, LS = d.type === 'long' || d.type === 'short';
+    const cur = colOf(d, k), op = ok ? opt(d, ok) : null;
+    openColorPop(s, cur, op, (c, a) => {
+      d[k] = c; if (ok && a != null) d[ok] = a; if (k === 'color' && !LS) draw.color = c;
+      const i = s.querySelector('i'); i.style.background = c; if (a != null) i.style.opacity = a; dsChanged(); });
     return; }
   const t = e.target.closest('button.tbtn'); if (t) { d[t.dataset.dk] = !d[t.dataset.dk]; t.setAttribute('aria-pressed', !!d[t.dataset.dk]); dsChanged(); return; }
   if (e.target.closest('button[data-dact="flat"]')) { flatten(d); dsChanged(); }
 });
+function posInputs(d, el) {
+  const tick = INSTR[d.sym] ? INSTR[d.sym].tick : .25, s = d.type === 'long' ? 1 : -1, v = parseFloat(el.value); if (!isFinite(v)) return;
+  const e = d.pts[0].p, tpT = Math.abs(d.pts[2].p - e), slT = Math.abs(e - d.pts[1].p);
+  switch (el.dataset.pin) {
+    case 'e': { const ne = rt(v, tick); d.pts[0].p = ne; d.pts[1].p = rt(ne - s * slT, tick); d.pts[2].p = rt(ne + s * tpT, tick); break; }
+    case 'tpt': d.pts[2].p = rt(e + s * Math.max(1, v) * tick, tick); break;
+    case 'tpp': d.pts[2].p = rt(v, tick); break;
+    case 'slt': d.pts[1].p = rt(e - s * Math.max(1, v) * tick, tick); break;
+    case 'slp': d.pts[1].p = rt(v, tick); break;
+  }
+  const n = d.pts, vals = { e: n[0].p, tpp: n[2].p, slp: n[1].p, tpt: Math.round(Math.abs(n[2].p - n[0].p) / tick), slt: Math.round(Math.abs(n[0].p - n[1].p) / tick) };
+  for (const x of $('#ds-main').querySelectorAll('input[data-pin]')) if (x !== el) x.value = vals[x.dataset.pin];
+  const k = posInfo(d.sym, d), rr = $('#ds-rr'), q = $('#ds-qty'); if (rr) rr.textContent = k.rr.toFixed(2); if (q) q.textContent = k.qty;
+}
 $('#ds-main').addEventListener('input', e => {
   const d = ds.d, el = e.target; if (!d) return;
-  if (el.dataset.dk) { const k = el.dataset.dk;
+  if (el.dataset.pin) posInputs(d, el);
+  else if (el.dataset.lvf) { const L = lvEdit(d, el.dataset.lk), i = +el.dataset.lvi, f = el.dataset.lvf;
+    if (f === 'on') L[i][2] = el.checked; else if (f === 'ls') L[i][3] = el.value; else { const v = parseFloat(el.value); if (!isFinite(v)) return; L[i][0] = v; } }
+  else if (el.dataset.dk) { const k = el.dataset.dk;
     if (k === 'txt') { if (d.type === 'text') d.text = el.value; else d.label = el.value; }
     else if (el.type === 'checkbox') d[k] = el.checked;
-    else if (k === 'w' || k === 'fs') d[k] = +el.value;
-    else if (k === 'rp' || k === 'fq') d[k] = el.value === '' ? undefined : +el.value;
-    else d[k] = el.value;
+    else if (el.dataset.pct) { d[k] = +el.value / 100; const p = el.parentNode.querySelector('.dpct'); if (p) p.textContent = el.value + '%'; }
+    else if (el.dataset.num) d[k] = el.value === '' ? undefined : +el.value;
+    else d[k] = /^-?\d+(\.\d+)?$/.test(el.value) ? +el.value : el.value;
+    if ((k === 'rp' || k === 'fq') && (d.type === 'long' || d.type === 'short')) { const kk = posInfo(d.sym, d), q = $('#ds-qty'); if (q) q.textContent = kk.qty; }
   } else if (el.dataset.cp != null) { const v = parseFloat(el.value); if (!isFinite(v)) return; const i = +el.dataset.cp; setPt(d, i, { t: d.pts[i].t, p: rt(v, INSTR[d.sym] ? INSTR[d.sym].tick : 0.25) }); }
   else if (el.dataset.ct != null) { const t = Date.parse(el.value + ':00Z') / 1000; if (!isFinite(t)) return; const i = +el.dataset.ct; setPt(d, i, { t, p: d.pts[i].p }); }
   else if (el.dataset.vu) { const u = el.dataset.vu, def = VIS_UNITS.find(x => x[0] === u); d.vis = d.vis || {}; const v = d.vis[u] || [true, def[2], def[3]];
@@ -2750,6 +3275,46 @@ $('#q-pop').addEventListener('click', e => {
   if (b.dataset.qsave) { const n = Math.max(1, Math.floor(+$('#q-qty').value || 1)); if (!pr.includes(n)) { pr.push(n); pr.sort((a, c) => a - c); } save(); renderQPresets(); }
 });
 $('#dset').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw, #ds-tpl')) closePop(); }, true);
+
+/* Touch drawing like TradingView on iPad: a crosshair you push around with your finger, tap to place each point */
+function renderMkbar() {
+  const el = $('#mkbar'); if (!el) return; const mk = draw.mk, show = tcur.on && draw.tool !== 'cursor';
+  el.hidden = !show; if (!show) return;
+  const n = mk ? mk.d.pts.length : 0, multi = mk && mk.need >= 99;
+  el.innerHTML = `<span class="mk-t">${TOOLDEF[draw.tool] ? TOOLDEF[draw.tool].n : ''}<small>${mk ? 'Drag to move, tap to place the next point' : 'Drag to move the crosshair, tap to place'}</small></span>`
+    + (mk && n > 2 ? '<button data-mk="undo">Undo point</button>' : '') + (multi && n > 2 ? '<button data-mk="finish" class="go">Finish</button>' : '') + '<button data-mk="cancel">Cancel</button>';
+}
+function drawTcur(P, ctx) {
+  const x = tcur.x, y = tcur.y, lt = isLightCol(SET().bg); ctx.save(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = lt ? '#131722' : '#d1d4dc'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); seg(ctx, [0, y], [P.pw, y]); seg(ctx, [x, 0], [x, P.ph]); ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(41,98,255,.18)'; ctx.strokeStyle = '#2962ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 10, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#2962ff'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill();
+  const q = fromXY(P, x, y, true); tag(ctx, P.pw - 4, y, fmtPx(q.p), '#131722', '#fff', 'right'); tag(ctx, x, P.ph - 11, shortT(q.t), '#131722', '#fff', 'center');
+  ctx.restore();
+}
+function tapPlace(P) {
+  const x = tcur.x, y = tcur.y, mk = draw.mk;
+  if (!mk) { startMk(P, x, y); renderMkbar(); return; }
+  if (mk.P !== P) return;
+  if (mk.need >= 99 && mk.d.pts.length > 2) { const pv = toXY(P, mk.d.pts[mk.d.pts.length - 2]); if (Math.hypot(pv[0] - x, pv[1] - y) < 12) { mk.d.pts.pop(); finishD(P, mk.d); return; } }
+  mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); mk.n++;
+  if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); renderMkbar(); }
+}
+$('#mkbar').addEventListener('click', e => {
+  const b = e.target.closest('button[data-mk]'); if (!b) return; const mk = draw.mk, k = b.dataset.mk;
+  if (k === 'cancel') setTool('cursor');
+  else if (k === 'finish' && mk) { mk.d.pts.pop(); finishD(mk.P, mk.d); }
+  else if (k === 'undo' && mk && mk.d.pts.length > 2) { mk.d.pts.splice(mk.d.pts.length - 2, 1); mk.n--; bump(); renderMkbar(); }
+});
+/* Stop iPad double-tap zoom on quick taps (next bar, buy, sell...) and page pinch zoom; the chart keeps its own pinch zoom */
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now(), b = e.target.closest && e.target.closest('button, .ibtn');
+  if (b && now - lastTouchEnd < 380) { e.preventDefault(); b.click(); }
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('gesturestart', e => e.preventDefault());
+document.addEventListener('dblclick', e => { if (!e.target.closest('.pane, #splitter')) e.preventDefault(); });
 
 /* ---------- Views ---------- */
 let view = 'chart';
@@ -3037,7 +3602,7 @@ async function boot() {
   document.body.dataset.view = 'chart';
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, DATA, ptr, TOOLDEF };
+  window.TapeReplay = { PANES, draw, S, DATA, ptr, TOOLDEF, tcur, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
   save();
 }
