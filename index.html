@@ -466,6 +466,22 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 .lvrow { display: flex; align-items: center; gap: 8px; }
 .lvrow .lvv { flex: 1; font-family: var(--font-data); }
 .lvrow .ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--fg); }
+#sym-btn { display: none; }
+.rgrip { display: none; }
+@media (pointer: coarse) {
+  .rgrip { display: grid; place-items: center; width: 26px; align-self: stretch; color: var(--muted); touch-action: none; cursor: grab; }
+  .rgrip::before { content: ""; width: 8px; height: 16px; background: radial-gradient(circle, currentColor 1.3px, transparent 1.6px) 0 0 / 4px 5.3px; }
+  .replay.floating { position: fixed; z-index: 40; box-shadow: 0 10px 28px rgba(0,0,0,.45); background: var(--panel-2); }
+  .replay .ibtn { width: 44px; height: 40px; }
+}
+@media (pointer: coarse) { #sym { display: none; } #sym-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; font-weight: 600; } #sym-btn::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); opacity: .6; } }
+#symwheel { position: fixed; z-index: 70; width: 230px; height: 200px; background: rgba(40,40,44,.96); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.55); overflow: hidden; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+#symwheel .sw-hi { position: absolute; left: 8px; right: 8px; top: 80px; height: 40px; border-radius: 10px; background: rgba(255,255,255,.1); pointer-events: none; }
+#symwheel .sw-list { height: 100%; overflow-y: auto; scroll-snap-type: y mandatory; padding: 80px 0; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scrollbar-width: none; touch-action: pan-y;
+  -webkit-mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent); }
+#symwheel .sw-list::-webkit-scrollbar { display: none; }
+#symwheel button { display: flex; align-items: center; gap: 10px; width: 100%; height: 40px; padding: 0 18px; border: 0; background: none; color: #fff; font-weight: 600; scroll-snap-align: center; text-align: left; }
+#symwheel button small { color: #9a9aa2; font-weight: 400; }
 #mkbar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 14; display: flex; align-items: center; gap: 6px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 10px 28px rgba(0,0,0,.45); max-width: calc(100% - 24px); }
 #mkbar .mk-t { display: flex; flex-direction: column; padding: 0 8px; font-weight: 600; white-space: nowrap; }
 #mkbar .mk-t small { font-weight: 400; color: var(--muted); font-size: 11px; }
@@ -535,7 +551,8 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
       <div class="ws-top">
         <span class="ws-name" id="ws-sess"></span>
         <span class="sep"></span>
-        <select class="ctl" id="sym" aria-label="Symbol on the selected chart"></select>
+        <select class="ctl" id="sym" aria-label="Symbol on the selected chart"></select><button class="ctl" id="sym-btn" aria-label="Change symbol" aria-haspopup="listbox"></button>
+        <div id="symwheel" hidden role="listbox" aria-label="Symbols"><div class="sw-hi"></div><div class="sw-list" id="sw-list"></div></div>
         <div class="tfwrap"><button id="b-tf" aria-label="Choose timeframe">5m</button><div class="menu" id="tf-menu" hidden></div></div>
         <div class="seg" id="tf-fav" role="group" aria-label="Favourite timeframes"></div>
         <span class="sep"></span>
@@ -621,7 +638,8 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
           <div class="pop" id="q-pop" hidden></div>
         </div>
         <span class="grow"></span>
-        <div class="replay">
+        <div class="replay" id="replay">
+          <span class="grip rgrip" id="rgrip" title="Drag to move the replay bar. Tap twice to put it back." aria-label="Move the replay bar"></span>
           <button class="ibtn" id="b-play" title="Play or pause" aria-label="Play or pause"><svg viewBox="0 0 18 18"><path d="M5 3l10 6-10 6z"/></svg></button>
           <button class="ibtn" id="b-next" title="Next bar" aria-label="Next bar"><svg viewBox="0 0 18 18"><path d="M4 3l8 6-8 6zM14 3v12"/></svg></button>
           <label class="steplbl" for="step">Step</label><select id="step" title="How far the chart moves each time you press Next or while playing" aria-label="Step size">
@@ -1377,7 +1395,7 @@ function fromXY(P, x, y, snap) {
     if (b) { let best = b.close, bd = Infinity; for (const v of [b.open, b.high, b.low, b.close]) { const d = Math.abs(P.candles.priceToCoordinate(v) - y); if (d < bd) { bd = d; best = v; } } return { t: b.time, p: best }; }
   }
   const p = P.candles.coordinateToPrice(y);
-  return { t: lToT(P, L), p: snap ? rt(p, INSTR[P.sym].tick) : p };
+  return { t: lToT(P, snap ? Math.round(L) : L), p: snap ? rt(p, INSTR[P.sym].tick) : p };
 }
 
 /* Painting */
@@ -3002,7 +3020,7 @@ $('#set-main').addEventListener('click', e => { const th = e.target.closest('but
   openColorPop(b, SET()[k], null, (c) => { b.querySelector('i').style.background = c; setSetting(k, c); }); });
 $('#settings').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
 $('#set-reset').addEventListener('click', () => {
-  const keep = { toolStyle: SET().toolStyle, templates: SET().templates, qtyPresets: SET().qtyPresets, favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, tools: SET().tools, customColors: SET().customColors };
+  const keep = { toolStyle: SET().toolStyle, templates: SET().templates, qtyPresets: SET().qtyPresets, favTfs: SET().favTfs, favTools: SET().favTools, favBar: SET().favBar, favPos: SET().favPos, editPos: SET().editPos, replayPos: SET().replayPos, tools: SET().tools, customColors: SET().customColors };
   store.settings = Object.assign({}, DEF_SET, keep); applySettings(); renderSettings(); save(); toast('Chart colours reset to default.');
 });
 
@@ -3285,7 +3303,7 @@ function renderMkbar() {
     + (mk && n > 2 ? '<button data-mk="undo">Undo point</button>' : '') + (multi && n > 2 ? '<button data-mk="finish" class="go">Finish</button>' : '') + '<button data-mk="cancel">Cancel</button>';
 }
 function drawTcur(P, ctx) {
-  const x = tcur.x, y = tcur.y, lt = isLightCol(SET().bg); ctx.save(); ctx.globalAlpha = 1;
+  const x = P.x0 + Math.round((tcur.x - P.x0) / P.dx) * P.dx, y = tcur.y, lt = isLightCol(SET().bg); ctx.save(); ctx.globalAlpha = 1;
   ctx.strokeStyle = lt ? '#131722' : '#d1d4dc'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); seg(ctx, [0, y], [P.pw, y]); seg(ctx, [x, 0], [x, P.ph]); ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(41,98,255,.18)'; ctx.strokeStyle = '#2962ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 10, 0, 7); ctx.fill(); ctx.stroke();
   ctx.fillStyle = '#2962ff'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 7); ctx.fill();
@@ -3333,6 +3351,23 @@ function openSession(id) {
 
 /* ---------- Events: chart workspace ---------- */
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); });
+/* iPad: the symbol picker is a scroll wheel, like TradingView on iPad */
+function syncSymBtn() { const sel = $('#sym'), o = sel.options[sel.selectedIndex]; $('#sym-btn').innerHTML = o ? `${o.value}${/sample/.test(o.text) ? ' <small class="mut">sample</small>' : ''}` : ''; }
+new MutationObserver(syncSymBtn).observe($('#sym'), { childList: true });
+let swTimer = 0;
+function swPick(v, close) { const sel = $('#sym'); if (v && sel.value !== v) { sel.value = v; sel.dispatchEvent(new Event('change')); } if (close) $('#symwheel').hidden = true; }
+$('#sym-btn').addEventListener('click', e => {
+  const w = $('#symwheel'); if (!w.hidden) { w.hidden = true; return; }
+  const sel = $('#sym'), list = $('#sw-list');
+  list.innerHTML = [...sel.options].map(o => `<button data-v="${o.value}" role="option">${o.value}${/sample/.test(o.text) ? ' <small>sample</small>' : ''}</button>`).join('');
+  const r = e.currentTarget.getBoundingClientRect(); w.hidden = false;
+  w.style.left = Math.max(8, Math.min(r.left, innerWidth - w.offsetWidth - 8)) + 'px'; w.style.top = Math.min(r.bottom + 8, innerHeight - w.offsetHeight - 8) + 'px';
+  list.scrollTop = sel.selectedIndex * 40;
+});
+$('#sw-list').addEventListener('scroll', () => { clearTimeout(swTimer); swTimer = setTimeout(() => { const l = $('#sw-list'), b = l.children[Math.round(l.scrollTop / 40)]; if (b) swPick(b.dataset.v, false); }, 180); });
+$('#sw-list').addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) swPick(b.dataset.v, true); });
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#symwheel, #sym-btn')) $('#symwheel').hidden = true; });
+$('#sym').addEventListener('change', syncSymBtn);
 $('#sym').addEventListener('change', e => {
   const sess = S(), P = AP(), c = cfgOf(P); c.sym = e.target.value; ensureSym(sess, c.sym);
   if (draw.sel && draw.sel.pane === P.i) select(null);
@@ -3409,6 +3444,22 @@ $('#fly').addEventListener('click', e => {
   const b = e.target.closest('button[data-tool]'); if (!b) return; draw.last[$('#fly').dataset.g] = b.dataset.tool; closeMenus(); setTool(b.dataset.tool);
 });
 $('#favbar').addEventListener('click', e => { const b = e.target.closest('button[data-tool]'); if (b) setTool(draw.tool === b.dataset.tool ? 'cursor' : b.dataset.tool); });
+/* iPad: the replay bar (play, next candle, step) can be dragged anywhere on screen */
+function placeReplay() {
+  if (!store) return; const el = $('#replay'), pos = SET().replayPos, on = !!pos && COARSE; el.classList.toggle('floating', on);
+  if (!on) { el.style.left = el.style.top = ''; return; }
+  const w = el.offsetWidth, h = el.offsetHeight;
+  el.style.left = Math.max(6, Math.min(pos.x * innerWidth, innerWidth - w - 6)) + 'px'; el.style.top = Math.max(6, Math.min(pos.y * innerHeight, innerHeight - h - 6)) + 'px';
+}
+$('#rgrip').addEventListener('pointerdown', e => {
+  e.preventDefault(); const el = $('#replay'), r0 = el.getBoundingClientRect(), ox = e.clientX - r0.left, oy = e.clientY - r0.top;
+  const mv = (ev) => { SET().replayPos = { x: (ev.clientX - ox) / innerWidth, y: (ev.clientY - oy) / innerHeight }; placeReplay(); };
+  const up = () => { document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); save(); };
+  document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up);
+});
+let rgTap = 0;
+$('#rgrip').addEventListener('pointerup', () => { const n = Date.now(); if (n - rgTap < 350) { SET().replayPos = null; placeReplay(); save(); } rgTap = n; });
+addEventListener('resize', placeReplay); setTimeout(placeReplay, 0);
 for (const id of ['#favbar', '#editbar']) $(id).addEventListener('pointerdown', e => {
   const g = e.target.closest('.grip'); if (!g) return; e.preventDefault();
   const el = $(id), key = g.dataset.grip, r0 = el.getBoundingClientRect(), ox = e.clientX - r0.left, oy = e.clientY - r0.top;
