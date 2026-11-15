@@ -51,6 +51,16 @@ button { cursor: pointer; }
 
 #app { height: 100%; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
 html.app-mode #b-full { display: none; }
+#tjournal .dlg { width: min(980px, 100%); max-height: calc(100vh - 32px); }
+.tj-body { padding: 14px 18px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.tj-shot img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.tj-shot .empty { padding: 20px; }
+.tj-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tj-mic { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
+.tj-mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.tj-mic.rec { background: var(--short); border-color: var(--short); color: #fff; }
+#tj-notes { min-height: 180px; font-family: var(--font-ui); font-size: 14px; line-height: 1.5; }
+.jbtn { white-space: nowrap; }
 #fullhelp ol { margin: 0 0 12px; padding-left: 20px; line-height: 1.7; }
 #fullhelp .dlg { width: min(480px, 100%); }
 header.top {
@@ -102,6 +112,9 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .menu .it > button:first-child { flex: 1; text-align: left; background: none; border: 0; padding: 7px 10px; color: var(--fg); }
 .menu .it.on > button:first-child { color: var(--accent); }
 .menu .it > button:first-child:disabled { opacity: .35; cursor: not-allowed; }
+.menu .ctf { display: flex; gap: 6px; padding: 4px 6px 6px; align-items: center; }
+.menu .ctf input { width: 56px; } .menu .ctf select { flex: 1; min-width: 0; }
+.menu .star.rm { color: var(--muted); font-size: 15px; }
 .star { background: none; border: 0; color: var(--muted); padding: 4px 8px; font-size: 14px; line-height: 1; }
 .star[aria-pressed="true"] { color: #f5c542; }
 .star:hover { color: var(--fg); }
@@ -160,6 +173,7 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .fbar button:hover { background: var(--bg); }
 .fbar button[aria-pressed="true"] { background: var(--accent); color: #fff; }
 .fbar .grip svg { width: 8px; height: 18px; fill: currentColor; stroke: none; }
+#favbar button { padding: 0 3px; } #favbar button svg { width: 25px; height: 25px; stroke-width: 1.5; }
 .fbar .dash svg { width: 32px; height: 10px; }
 .fbar .vsep { width: 1px; height: 20px; background: var(--line); margin: 0 3px; }
 .fbar .swatch { width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); }
@@ -477,6 +491,9 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 .lvrow .lvv { flex: 1; font-family: var(--font-data); }
 .lvrow .ctl { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; color: var(--fg); }
 #sym-btn { display: none; }
+#sym-swap { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 12px; }
+#sym-swap svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+@media (pointer: coarse) { #sym-swap { display: none !important; } }
 .rgrip { display: none; }
 @media (pointer: coarse) {
   .rgrip { display: grid; place-items: center; width: 26px; align-self: stretch; color: var(--muted); touch-action: none; cursor: grab; }
@@ -561,7 +578,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
       <div class="ws-top">
         <span class="ws-name" id="ws-sess"></span>
         <span class="sep"></span>
-        <select class="ctl" id="sym" aria-label="Symbol on the selected chart"></select><button class="ctl" id="sym-btn" aria-label="Change symbol" aria-haspopup="listbox"></button>
+        <select class="ctl" id="sym" aria-label="Symbol on the selected chart"></select><button class="ctl" id="sym-btn" aria-label="Change symbol" aria-haspopup="listbox"></button><button class="ctl" id="sym-swap" hidden title="Switch symbol" aria-label="Switch to the other symbol"><svg viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg></button>
         <div id="symwheel" hidden role="listbox" aria-label="Symbols"><div class="sw-hi"></div><div class="sw-list" id="sw-list"></div></div>
         <div class="tfwrap"><button id="b-tf" aria-label="Choose timeframe">5m</button><div class="menu" id="tf-menu" hidden></div></div>
         <div class="seg" id="tf-fav" role="group" aria-label="Favourite timeframes"></div>
@@ -652,7 +669,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
           <span class="grip rgrip" id="rgrip" title="Drag to move the replay bar. Tap twice to put it back." aria-label="Move the replay bar"></span>
           <button class="ibtn" id="b-play" title="Play or pause" aria-label="Play or pause"><svg viewBox="0 0 18 18"><path d="M5 3l10 6-10 6z"/></svg></button>
           <button class="ibtn" id="b-next" title="Next bar" aria-label="Next bar"><svg viewBox="0 0 18 18"><path d="M4 3l8 6-8 6zM14 3v12"/></svg></button>
-          <label class="steplbl" for="step">Step</label><select id="step" title="How far the chart moves each time you press Next or while playing" aria-label="Step size">
+          <label class="steplbl" for="step">Step</label><select id="step" title="How far the chart moves each time you press Next bar, and each tick while playing. 1 candle = one candle of your chart's timeframe" aria-label="Step size">
             <option value="0">1 candle</option>
             <option value="15">15s</option>
             <option value="60">1m</option>
@@ -660,7 +677,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
             <option value="900">15m</option>
             <option value="3600">1H</option>
           </select>
-          <input type="range" id="speed" min="1" max="20" value="4" title="Play speed, bars per second" aria-label="Play speed"><span class="spd" id="speed-v">4/s</span>
+          <input type="range" id="speed" min="1" max="20" value="4" title="Play speed: how many steps per second when you press Play" aria-label="Play speed"><span class="spd" id="speed-v">4/s</span>
           <button class="ibtn" id="b-jump" title="Jump forward" aria-label="Jump forward"><svg viewBox="0 0 18 18"><path d="M3 12a6 6 0 0 1 11-3.5M14 4v4.5h-4.5"/></svg></button>
           <div class="pop" id="jump-pop" hidden>
             <div class="opts">
@@ -824,6 +841,18 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
     <div class="dlg-foot"><button class="btn tplb" id="ds-tpl">Template ▾</button><button class="btn" id="ds-cancel">Cancel</button><button class="btn primary" id="ds-ok">Ok</button></div>
   </div>
 </div>
+<div class="modal" id="tjournal" hidden role="dialog" aria-modal="true" aria-labelledby="tj-title">
+  <div class="dlg tj">
+    <div class="dlg-head"><h2 id="tj-title">Trade</h2><button class="x" id="tj-close" aria-label="Close">×</button></div>
+    <div class="tj-body">
+      <div id="tj-shot" class="tj-shot"></div>
+      <p class="note" id="tj-facts"></p>
+      <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
+      <textarea class="io" id="tj-notes" rows="9" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+    </div>
+    <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
+  </div>
+</div>
 <div class="modal" id="fullhelp" hidden role="dialog" aria-modal="true" aria-labelledby="fh-title">
   <div class="dlg">
     <div class="dlg-head"><h2 id="fh-title">Full screen on iPad</h2><button class="x" id="fh-close" aria-label="Close">×</button></div>
@@ -873,6 +902,7 @@ const TFS = [
   ['10m', 600, '10 minutes'], ['15m', 900, '15 minutes'], ['30m', 1800, '30 minutes'], ['1H', 3600, '1 hour'], ['2H', 7200, '2 hours'], ['4H', 14400, '4 hours'],
   ['1D', 86400, '1 day'], ['1W', 604800, '1 week'], ['1M', 2592000, '1 month'],
 ];
+function tfName(sec) { const [n, u] = sec % 3600 === 0 ? [sec / 3600, 'hour'] : sec % 60 === 0 ? [sec / 60, 'minute'] : [sec, 'second']; return n + ' ' + u + (n === 1 ? '' : 's'); }
 function tfLabel(sec) {
   const f = TFS.find(t => t[1] === sec); if (f) return f[0];
   if (sec % 86400 === 0) return sec / 86400 + 'D';
@@ -929,7 +959,7 @@ const lenOf = s => DATA[s].t.length;
 function idxAtOrBefore(sym, t) { const T = DATA[sym].t; let lo = 0, hi = T.length - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (T[m] <= t) { r = m; lo = m + 1; } else hi = m - 1; } return r; }
 
 /* ---------- Imported data (IndexedDB, best effort) ---------- */
-function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open('tape-replay', 1); r.onupgradeneeded = () => r.result.createObjectStore('series'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
+function idb() { return new Promise((res, rej) => { try { const r = indexedDB.open('tape-replay', 2); r.onupgradeneeded = () => { const db = r.result; if (!db.objectStoreNames.contains('series')) db.createObjectStore('series'); if (!db.objectStoreNames.contains('shots')) db.createObjectStore('shots'); }; r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch (e) { rej(e); } }); }
 async function idbPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('series', 'readwrite'); tx.objectStore('series').put(val, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) { console.warn(e); } }
 /* Back-adjust: add every later roll gap to older bars, the way TradingView's continuous futures (B-ADJ) do. Saved data always stays unadjusted */
 function setBackAdj(X, on) {
@@ -956,6 +986,8 @@ async function readDataFile(file) {
     out[m.sym] = X; }
   return out;
 }
+async function shotPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const tx = db.transaction('shots', 'readwrite'); tx.objectStore('shots').put(val, key); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); } catch (e) { console.warn(e); } }
+async function shotGet(key) { try { const db = await idb(); return await new Promise((res) => { const rq = db.transaction('shots').objectStore('shots').get(key); rq.onsuccess = () => res(rq.result || null); rq.onerror = () => res(null); }); } catch (e) { return null; } }
 async function idbAll() { try { const db = await idb(); return await new Promise((res) => { const out = {}; const tx = db.transaction('series'); const st = tx.objectStore('series'); const rq = st.openCursor(); rq.onsuccess = () => { const c = rq.result; if (c) { out[c.key] = c.value; c.continue(); } else res(out); }; rq.onerror = () => res({}); }); } catch (e) { return {}; } }
 const ET_FMT = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 const offCache = new Map();
@@ -1151,6 +1183,7 @@ function closePos(sess, p, px, t, reason) {
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
     openT: p.openT, closeT: t, pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
   sess.positions = sess.positions.filter(x => x !== p);
+  SHOTQ.push(sess.trades[sess.trades.length - 1]);
 }
 function openPos(sess, o, px, t) {
   const pv = INSTR[o.sym].pv;
@@ -2265,7 +2298,42 @@ function paint(P) {
   if (tcur.on && tcur.P === P && draw.tool !== 'cursor') drawTcur(P, ctx);
   ctx.restore();
 }
-function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P); } requestAnimationFrame(paintLoop); }
+function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P); } shotTick(); requestAnimationFrame(paintLoop); }
+/* A chart picture for every closed trade: frames the trade with some candles before it, marks entry, stop, target and exit, keeps your drawings */
+const SHOTQ = []; let shotBusy = false;
+const raf2 = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+function shotTick() { if (shotBusy || !SHOTQ.length || view !== 'chart') return; shotBusy = true; takeTradeShot(SHOTQ.shift()).catch(e => console.warn(e)).finally(() => { shotBusy = false; }); }
+async function takeTradeShot(t) {
+  const P = visiblePanes().find(x => x.sym === t.sym); if (!P || !P.agg.length) return;
+  const ts = P.chart.timeScale(), keep = ts.getVisibleLogicalRange(), auto = P.chart.priceScale('right').options().autoScale;
+  const iOf = (tt) => { const b = bucket(tt, P.tf); let i = P.agg.length - 1; while (i > 0 && P.agg[i].time > b) i--; return i; };
+  const i0 = iOf(t.openT), i1 = iOf(t.closeT), span = Math.max(i1 - i0, 1), pad = Math.max(30, Math.round(span * 1.2));
+  ts.setVisibleLogicalRange({ from: Math.max(0, i0 - pad), to: i1 + Math.max(10, Math.round(pad / 3)) });
+  P.chart.priceScale('right').applyOptions({ autoScale: true }); P.sig = ''; await raf2(); await new Promise(r => setTimeout(r, 80)); await raf2();
+  try {
+    const shot = P.chart.takeScreenshot(), k = shot.width / P.el.clientWidth, cv = document.createElement('canvas');
+    cv.width = shot.width; cv.height = shot.height; const g = cv.getContext('2d'); g.drawImage(shot, 0, 0);
+    g.drawImage(P.cv, 0, 0, P.cv.width, P.cv.height, 0, 0, P.cv.width / (window.devicePixelRatio || 1) * k, P.cv.height / (window.devicePixelRatio || 1) * k);
+    g.scale(k, k);
+    const X = (tt) => ts.timeToCoordinate(P.agg[iOf(tt)].time), Y = (px) => P.candles.priceToCoordinate(px);
+    const x0 = X(t.openT), x1 = Math.max(X(t.closeT), x0 + 6), ye = Y(t.entry);
+    const zone = (px, col) => { const y = Y(px); if (y == null || ye == null) return; g.fillStyle = col; g.fillRect(x0, Math.min(y, ye), x1 - x0, Math.abs(y - ye)); };
+    if (t.tp != null) zone(t.tp, 'rgba(34,171,148,.22)'); if (t.sl != null) zone(t.sl, 'rgba(242,54,69,.22)');
+    const hl = (px, col, dash) => { const y = Y(px); if (y == null) return; g.strokeStyle = col; g.lineWidth = 1.5; g.setLineDash(dash || []); g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke(); g.setLineDash([]); };
+    hl(t.entry, t.side > 0 ? C.buy : C.sell); if (t.sl != null) hl(t.sl, C.slc, [5, 4]); if (t.tp != null) hl(t.tp, C.tpc, [5, 4]);
+    const yx = Y(t.exit); if (yx != null && ye != null) { g.strokeStyle = t.pnl >= 0 ? '#22ab94' : '#f23645'; g.lineWidth = 2; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(x0, ye); g.lineTo(x1, yx); g.stroke(); g.setLineDash([]); g.fillStyle = g.strokeStyle; g.beginPath(); g.arc(x1, yx, 4, 0, 7); g.fill(); }
+    if (ye != null) { g.fillStyle = t.side > 0 ? C.buy : C.sell; g.beginPath(); g.arc(x0, ye, 4, 0, 7); g.fill(); }
+    const lab = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym}  ${fmtUsd(t.pnl)}${t.r != null ? '  ' + t.r.toFixed(2) + 'R' : ''}`;
+    g.font = '600 13px ' + getComputedStyle(document.body).fontFamily; const tw = g.measureText(lab).width + 16;
+    g.fillStyle = 'rgba(19,23,34,.85)'; g.fillRect(10, 30, tw, 24); g.fillStyle = t.pnl >= 0 ? '#5fd3b4' : '#ff7b86'; g.fillText(lab, 18, 47);
+    const max = 1400, sc = Math.min(1, max / cv.width), out = document.createElement('canvas'); out.width = Math.round(cv.width * sc); out.height = Math.round(cv.height * sc);
+    out.getContext('2d').drawImage(cv, 0, 0, out.width, out.height);
+    await shotPut(t.id, out.toDataURL('image/jpeg', .82)); t.shot = 1; save();
+    if (view === 'trades') renderTrades();
+  } finally {
+    if (keep) ts.setVisibleLogicalRange(keep); P.chart.priceScale('right').applyOptions({ autoScale: auto }); P.sig = '';
+  }
+}
 
 /* Hit testing */
 function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy; let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); }
@@ -2729,7 +2797,10 @@ function renderToolbar() {
   $('#tf-fav').innerHTML = favs.map(sec => `<button data-tf="${sec}" aria-pressed="${sec === c.tf}" ${dis(sec)}>${tfLabel(sec)}</button>`).join('');
   $('#tf-fav').hidden = !favs.length;
   const grp = [['Seconds', t => t < 60], ['Minutes', t => t >= 60 && t < 3600], ['Hours', t => t >= 3600 && t < 86400], ['Days, weeks and months', t => t >= 86400]];
-  $('#tf-menu').innerHTML = grp.map(([h, f]) => `<div class="mh">${h}</div>` + TFS.filter(t => f(t[1])).map(([l, sec, name]) => `<div class="it ${sec === c.tf ? 'on' : ''}"><button data-tf="${sec}" ${dis(sec)}>${name}</button><button class="star" data-favtf="${sec}" aria-pressed="${favs.includes(sec)}" title="Add to favourites" aria-label="Add ${name} to favourites">★</button></div>`).join('')).join('');
+  const cust = (SET().customTfs || []).filter(x => !TFS.some(t => t[1] === x)), all = [...TFS, ...cust.map(x => [tfLabel(x), x, tfName(x), 1])].sort((a, b) => a[1] - b[1]);
+  $('#tf-menu').innerHTML = `<div class="mh">Make your own</div><div class="ctf"><input type="number" class="ctl num" id="ctf-n" min="1" max="999" step="1" value="4" aria-label="How many"><select class="ctl" id="ctf-u" aria-label="Unit"><option value="60">minutes</option><option value="3600">hours</option><option value="1">seconds</option></select><button class="btn primary" id="ctf-add">Add</button></div>` + grp.map(([h, f]) => `<div class="mh">${h}</div>` + all.filter(t => f(t[1])).map(([l, sec, name, mine]) => `<div class="it ${sec === c.tf ? 'on' : ''}"><button data-tf="${sec}" ${dis(sec)}>${name}</button>${mine ? `<button class="star rm" data-rmtf="${sec}" title="Remove this timeframe" aria-label="Remove ${name}">×</button>` : ''}<button class="star" data-favtf="${sec}" aria-pressed="${favs.includes(sec)}" title="Add to favourites" aria-label="Add ${name} to favourites">★</button></div>`).join('')).join('');
+  const st = $('#step'), sv = +st.value, steps = [[0, '1 candle'], [15, '15s'], [60, '1m'], [300, '5m'], [900, '15m'], [3600, '1H']].filter(([v]) => !v || v >= base);
+  st.innerHTML = steps.map(([v, n]) => `<option value="${v}" ${v === sv ? 'selected' : ''}>${n}</option>`).join('');
   for (const b of $$('#layout button')) b.setAttribute('aria-pressed', b.dataset.l === LAY().mode);
 }
 function renderLegend(P) {
@@ -2782,8 +2853,8 @@ function renderTrades() {
   if (tFilter === 'win') tr = tr.filter(t => t.pnl > 0); if (tFilter === 'loss') tr = tr.filter(t => t.pnl < 0);
   if (tFilter === 'long') tr = tr.filter(t => t.side > 0); if (tFilter === 'short') tr = tr.filter(t => t.side < 0);
   const idx = new Map([...sess.trades].sort((a, b) => a.closeT - b.closeT).map((t, i) => [t.id, i + 1]));
-  $('#trades-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th>#</th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th>Exit</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">MAE pts</th><th class="num">MFE pts</th><th class="num">Held</th><th>Notes</th><th>Tags</th></tr></thead><tbody>${
-    tr.map(t => `<tr><td class="num mut">${idx.get(t.id)}</td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td><span class="pill n">${t.reason}</span></td><td class="num ${cls(t.pnl)}">${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${t.mae.toFixed(2)}</td><td class="num">${t.mfe.toFixed(2)}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td><input data-note="${t.id}" value="${esc(t.notes)}" placeholder="Why did you take it?" aria-label="Notes"></td><td><input data-tags="${t.id}" value="${esc(t.tags)}" placeholder="e.g. A+ setup" aria-label="Tags"></td></tr>`).join('')
+  $('#trades-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th>#</th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th>Exit</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">MAE pts</th><th class="num">MFE pts</th><th class="num">Held</th><th>Journal</th><th>Notes</th><th>Tags</th></tr></thead><tbody>${
+    tr.map(t => `<tr><td class="num mut">${idx.get(t.id)}</td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td><span class="pill n">${t.reason}</span></td><td class="num ${cls(t.pnl)}">${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${t.mae.toFixed(2)}</td><td class="num">${t.mfe.toFixed(2)}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td><button class="btn jbtn" data-journal="${t.id}" title="Open the chart picture and voice notes">${t.shot ? '📷 ' : ''}Open</button></td><td><input data-note="${t.id}" value="${esc(t.notes)}" placeholder="Why did you take it?" aria-label="Notes"></td><td><input data-tags="${t.id}" value="${esc(t.tags)}" placeholder="e.g. A+ setup" aria-label="Tags"></td></tr>`).join('')
   }</tbody></table>` : '<div class="empty" style="padding:18px">No closed trades yet in this session.</div>';
 }
 
@@ -3435,12 +3506,15 @@ function openSession(id) {
 /* ---------- Events: chart workspace ---------- */
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setView(b.dataset.v); });
 /* iPad: the symbol picker is a scroll wheel, like TradingView on iPad */
-function syncSymBtn() { const sel = $('#sym'), o = sel.options[sel.selectedIndex]; $('#sym-btn').innerHTML = o ? `${o.value}${/sample/.test(o.text) ? ' <small class="mut">sample</small>' : ''}` : ''; }
+function syncSymBtn() { const sel = $('#sym'), o = sel.options[sel.selectedIndex], sw = $('#sym-swap'), n = sel.options.length; sw.hidden = n < 2; if (n >= 2) { const nx = sel.options[(sel.selectedIndex + 1) % n]; sw.title = 'Switch to ' + nx.value; sw.innerHTML = `<svg viewBox="0 0 18 18"><path d="M3 6h11M11 3l3 3-3 3M15 12H4M7 9l-3 3 3 3"/></svg><span>${nx.value}</span>`; } $('#sym-btn').innerHTML = o ? `${o.value}${/sample/.test(o.text) ? ' <small class="mut">sample</small>' : ''}` : ''; }
 new MutationObserver(syncSymBtn).observe($('#sym'), { childList: true });
 let swTimer = 0;
 function swPick(v, close) { const sel = $('#sym'); if (v && sel.value !== v) { sel.value = v; sel.dispatchEvent(new Event('change')); } if (close) $('#symwheel').hidden = true; }
+function swapSym() { const sel = $('#sym'), n = sel.options.length; if (n < 2) return; swPick(sel.options[(sel.selectedIndex + 1) % n].value, true); }
+$('#sym-swap').addEventListener('click', swapSym);
 $('#sym-btn').addEventListener('click', e => {
   const w = $('#symwheel'); if (!w.hidden) { w.hidden = true; return; }
+  if ($('#sym').options.length === 2) { swapSym(); return; } // only two symbols: one tap switches
   const sel = $('#sym'), list = $('#sw-list');
   list.innerHTML = [...sel.options].map(o => `<button data-v="${o.value}" role="option">${o.value}${/sample/.test(o.text) ? ' <small>sample</small>' : ''}</button>`).join('');
   const r = e.currentTarget.getBoundingClientRect(); w.hidden = false;
@@ -3535,6 +3609,15 @@ $('#splitter').addEventListener('pointerdown', e => {
 });
 $('#splitter').addEventListener('dblclick', () => { LAY().split = 0.5; layoutPanes(); save(); });
 $('#tf-menu').addEventListener('click', e => {
+  if (e.target.closest('#ctf-add')) {
+    const sec = Math.round((+$('#ctf-n').value || 0) * +$('#ctf-u').value);
+    if (sec < 15 || sec >= 86400) { toast('Pick a timeframe from 15 seconds up to 23 hours.'); return; }
+    const base = DATA[cfgOf(AP()).sym].base; if (sec < base || sec % base) { toast('Your data is ' + tfLabel(base) + ' bars, so the timeframe must be a whole number of ' + tfLabel(base) + ' bars.'); return; }
+    const ct = SET().customTfs || (SET().customTfs = []); if (!TFS.some(t => t[1] === sec) && !ct.includes(sec)) ct.push(sec);
+    if (!SET().favTfs.includes(sec)) { SET().favTfs.push(sec); SET().favTfs.sort((a, b) => a - b); }
+    save(); setTf(sec); toast(tfName(sec) + ' added to your timeframes.'); return;
+  }
+  const rm = e.target.closest('button[data-rmtf]'); if (rm) { const sec = +rm.dataset.rmtf; SET().customTfs = (SET().customTfs || []).filter(x => x !== sec); SET().favTfs = SET().favTfs.filter(x => x !== sec); renderToolbar(); save(); return; }
   const s = e.target.closest('button[data-favtf]'); if (!s) return;
   const sec = +s.dataset.favtf, f = SET().favTfs, i = f.indexOf(sec);
   if (i >= 0) f.splice(i, 1); else { f.push(sec); f.sort((a, b) => a - b); }
@@ -3639,6 +3722,7 @@ document.addEventListener('click', e => {
   else if (d.tsl || d.ttp) { $(d.tsl ? '#o-sl-on' : '#o-tp-on').checked = true; renderTicket(); }
   else if (d.cancel) { sess.orders = sess.orders.filter(x => x.id !== d.cancel); toast('Order cancelled.'); }
   else if (d.rmsl || d.rmtp) { const id = d.rmsl || d.rmtp, x = sess.positions.find(p => p.id === id) || sess.orders.find(o => o.id === id); if (x) { if (d.rmsl) x.sl = null; else x.tp = null; toast(d.rmsl ? 'Stop loss removed.' : 'Take profit removed.'); } }
+  else if (d.journal) { openJournal(d.journal); return; }
   else if (d.open) { openSession(d.open); setView('chart'); return; }
   else if (d.an) { openSession(d.an); $('#an-scope').value = 'cur'; setView('analytics'); return; }
   else if (d.del) { confirmDel = d.del; renderSessions(); return; }
@@ -3650,6 +3734,52 @@ document.addEventListener('click', e => {
   else return;
   drawOverlays(); renderLive(); save();
 });
+/* Trade journal: chart picture plus spoken notes, sorted into clean sections */
+let tjTrade = null, rec = null, recText = '';
+async function openJournal(id) {
+  const sess = S(), t = sess.trades.find(x => x.id === id); if (!t) return; tjTrade = t;
+  $('#tj-title').textContent = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
+  $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
+  $('#tj-notes').value = t.notes || ''; $('#tj-live').textContent = '';
+  $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
+  const img = await shotGet(t.id);
+  $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
+}
+function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; tjTrade = null; if (view === 'trades') renderTrades(); }
+$('#tj-close').addEventListener('click', closeJournal); $('#tj-done').addEventListener('click', closeJournal);
+$('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
+const SECTIONS = [
+  ['Key level', /\b(level|support|resistance|liquidity|high|low|vwap|fvg|fair value|gap|order block|supply|demand|zone|range|open|pdh|pdl|previous day|session high|session low|equal highs|equal lows)\b/i],
+  ['Confirmation', /\b(confirm\w*|break of structure|bos|choch|change of character|retest|engulf\w*|rejection|rejected|wick|displacement|sweep|swept|reclaim\w*|divergence|signal)\b/i],
+  ['Entry', /\b(enter\w*|entry|got in|took (it|the trade)|went (long|short)|bought|sold|limit order|market order)\b/i],
+  ['Management and exit', /\b(stop|target|take profit|tp|sl|break ?even|trail\w*|moved|exit\w*|closed|partial\w*|scaled)\b/i],
+  ['Mindset', /\b(felt|feel\w*|emotion\w*|nervous|scared|fomo|confident|greedy|impatient|calm|tilt\w*|frustrat\w*|happy)\b/i],
+  ['Lesson', /\b(next time|lesson|learn\w*|should have|shouldn'?t have|mistake|improve|remember to|need to)\b/i],
+];
+function tidyNotes(raw, t) {
+  let s = ' ' + raw.replace(/\s+/g, ' ') + ' ';
+  s = s.replace(/\b(um+|uh+|erm*|you know|i mean|basically|literally|kind of|sort of|like,)\s/gi, ' ').replace(/\s+/g, ' ').trim();
+  const clauses = s.split(/(?<=[.!?])\s+|,\s*|\s+(?:and then|then|also|after that|plus|and I|and my)\s+/i).map(x => x.replace(/^(and|so|but|okay|ok|right)\s+/i, '').trim()).filter(x => x.length > 2);
+  const out = new Map(SECTIONS.map(([n]) => [n, []])); out.set('Other', []);
+  const ORDER = ['Lesson', 'Mindset', 'Entry', 'Management and exit', 'Key level', 'Confirmation'];
+  for (const c of clauses) { const hit = ORDER.map(n => SECTIONS.find(x => x[0] === n)).find(([, re]) => re.test(c)); let x = c.charAt(0).toUpperCase() + c.slice(1); if (!/[.!?]$/.test(x)) x += '.'; out.get(hit ? hit[0] : 'Other').push(x.replace(/\bi\b/g, 'I')); }
+  const head = t ? `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET\nEntry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${t.reason}) · ${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}` : '';
+  const body = [...out].filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.join(' ')}`).join('\n');
+  return (head ? head + '\n\n' : '') + body;
+}
+function stopRec() { if (rec) { const r = rec; rec = null; try { r.stop(); } catch (e) {} } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
+$('#tj-mic').addEventListener('click', () => {
+  if (rec) { stopRec(); const said = recText.trim(); if (said) { const prev = $('#tj-notes').value.replace(/^(Long|Short) [\s\S]*?\n\n/, ''); $('#tj-notes').value = tidyNotes((prev ? prev.replace(/^[A-Z][a-z ]+: /gm, '') + ' ' : '') + said, tjTrade); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
+  recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
+  let done = '';
+  r.onresult = (e) => { let live = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) done += x[0].transcript + ' '; else live += x[0].transcript; } recText = done + live; $('#tj-live').textContent = '“' + recText.slice(-90) + '”'; };
+  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; } };
+  r.onend = () => { if (rec === r) { recText = done; try { r.start(); } catch (e) {} } };
+  try { r.start(); $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.'; } catch (e) { rec = null; $('#tj-live').textContent = 'Could not start the microphone.'; }
+});
+$('#tj-tidy').addEventListener('click', () => { const v = $('#tj-notes').value.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][a-z ]+: /gm, ''); $('#tj-notes').value = tidyNotes(v, tjTrade); });
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
 $('#cal-next').addEventListener('click', () => shiftCal(1));
 document.addEventListener('change', e => {
@@ -3775,8 +3905,9 @@ async function boot() {
   migrate(S()); syncPtrs(S());
   document.body.dataset.view = 'chart';
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
+  SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, DATA, ptr, TOOLDEF, tcur, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { PANES, draw, S, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
   save();
 }
