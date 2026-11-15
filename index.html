@@ -867,7 +867,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
     <div class="dlg-head"><h2 id="tj-title">Trade</h2><button class="x" id="tj-close" aria-label="Close">×</button></div>
     <div class="tj-body">
       <div id="tj-shot" class="tj-shot"></div>
-      <p class="note" id="tj-facts"></p>
+      <p class="note" id="tj-facts"></p><div class="tj-row"><button class="btn" id="tj-be">Count as break even</button></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
       <textarea class="io" id="tj-notes" rows="9" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
@@ -1205,6 +1205,16 @@ function initSettings() {
 }
 function isLightCol(h) { try { const n = parseInt(String(h).slice(1, 7), 16); return .299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255) > 140; } catch (e) { return false; } }
 let store = null;
+/* A trade whose stop was moved to entry and then hit is a break-even trade: no money made or lost */
+function fixBreakEvens(st) {
+  let n = 0;
+  for (const se of (st && st.sessions) || []) for (const t of se.trades || []) {
+    if (t.reason === 'BE' || t.finalSl == null || !INSTR[t.sym]) continue;
+    if (Math.abs(t.finalSl - t.entry) <= INSTR[t.sym].tick + 1e-9 && Math.abs(t.exit - t.entry) <= INSTR[t.sym].tick * 8 && /SL|Stop/i.test(t.reason || '')) { markBE(t); n++; }
+  }
+  return n;
+}
+function markBE(t) { t.exit = t.entry; t.pnl = 0; t.fees = 0; t.r = 0; t.reason = 'BE'; }
 function load() { try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {} return null; }
 let saveT = 0;
 function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }, 250); }
@@ -1229,8 +1239,8 @@ const openPnl = (sess) => sess.positions.reduce((a, p) => a + unrealized(sess, p
 function closePos(sess, p, px, t, reason) {
   const pv = INSTR[p.sym].pv;
   const gross = p.side * (px - p.entry) * p.qty * pv;
-  const fees = sess.comm * p.qty * 2;
-  const pnl = gross - fees;
+  const be = reason === 'BE', fees = be ? 0 : sess.comm * p.qty * 2;
+  const pnl = be ? 0 : gross - fees;
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
     openT: p.openT, closeT: t, pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
   if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.notes; tr.notes = tidyNotes(p.notes, tr); }
@@ -1259,7 +1269,7 @@ function processBar(sess, sym, i) {
     p.mae = Math.max(p.mae, adverse); p.mfe = Math.max(p.mfe, favor);
     const slHit = p.sl != null && (p.side > 0 ? l <= p.sl : h >= p.sl);
     const tpHit = p.tp != null && (p.side > 0 ? h >= p.tp : l <= p.tp);
-    if (slHit) { const px = p.side > 0 ? Math.min(p.sl, o) : Math.max(p.sl, o); closePos(sess, p, px, t, 'SL'); }
+    if (slHit) closePos(sess, p, p.sl, t, Math.abs(p.sl - p.entry) <= INSTR[p.sym].tick + 1e-9 ? 'BE' : 'SL');
     else if (tpHit) { const px = p.side > 0 ? Math.max(p.tp, o) : Math.min(p.tp, o); closePos(sess, p, px, t, 'TP'); }
   }
 }
@@ -1520,7 +1530,10 @@ const tcur = { on: false, down: false, moved: false, P: null, id: 0, x: 0, y: 0,
 let HT = 6;
 const dList = (sym) => { const s = S(); s.drawings = s.drawings || {}; return (s.drawings[sym] = s.drawings[sym] || []); };
 const selD = () => draw.sel ? dList(draw.sel.sym).find(d => d.id === draw.sel.id) : null;
-const bump = () => { draw.ver++; };
+const bump = () => {
+  for (const d of [draw.mk && draw.mk.d, draw.act && draw.act.d]) if (d && d.keepFlat && LINEISH.includes(d.type) && d.pts.length > 1) { const i = draw.act && draw.act.d === d && draw.act.kind === 'handle' ? Math.min(draw.act.i, 1) : 0, p = d.pts[i].p; d.pts[0].p = p; d.pts[1].p = p; }
+  draw.ver++;
+};
 
 /* Time and price <-> pixels. Time maps to a fractional bar index so drawings survive gaps and timeframe changes. */
 function tToL(P, t) {
@@ -2460,7 +2473,7 @@ function renderSelbars() {
   let h = `<span class="grip" data-grip="editPos" title="Drag to move this bar">${GRIP}</span><button data-e="tpl" title="Templates: save this style and text, or apply a saved one" aria-label="Templates">${svg('tpl')}</button>`;
   if (hasColor) h += `<button data-e="color" title="Colour"><span class="swatch" style="background:${d.color || DCOL[0]};opacity:${d.op ?? 1}"></span></button>`;
   if (hasStroke) h += `<button data-e="width" title="Line thickness">${d.w || 2}px</button><button data-e="style" class="dash" title="Line style">${dashSvg(d.ls)}</button>`;
-  if (LINEISH.includes(d.type)) h += `<button data-e="flat" title="Make the line perfectly flat">${svg('hline')}Make flat</button>`;
+  if (LINEISH.includes(d.type)) h += `<button data-e="flat" aria-pressed="${!!d.keepFlat}" title="Keep the line flat while you move it">${svg('hline')}Keep flat</button>`;
   if (d.type === 'text') h += '<button data-e="text">Edit text</button>';
   else if (OWN_LABEL.has(d.type)) h += '<button data-e="ltext">Edit text</button>';
   if (d.type === 'long' || d.type === 'short') { const k = posInfo(P.sym, d), s = d.type === 'long' ? 1 : -1, typ = orderTypeFor(s, k.e, priceNow(P.sym), INSTR[P.sym].tick); h += `<button class="go" data-e="place">Place ${s > 0 ? 'buy' : 'sell'} ${typ} · ${k.qty} ${P.sym}</button>`; }
@@ -2669,6 +2682,7 @@ function startMk(P, x, y) {
   const type = draw.tool, q = fromXY(P, x, y, true);
   const d = { id: uid(), type, sym: P.sym, color: ['long', 'short', 'measure'].includes(type) ? null : draw.color, pts: [q] };
   const rs = SET().toolStyle && SET().toolStyle[type]; if (rs) Object.assign(d, JSON.parse(JSON.stringify(rs)));
+  if (LINEISH.includes(type)) d.keepFlat = !!SET().keepFlat;
   if (!rs && TV_DEF[type]) Object.assign(d, TV_DEF[type]);
   if (!rs && type === 'hilite') d.color = '#ffeb3b';
   if (!rs && (type === 'arrup' || type === 'arrdn')) d.color = type === 'arrup' ? '#26b07a' : '#e2554f';
@@ -2774,7 +2788,7 @@ function bindPane(P) {
         if (best >= 0) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i: best, ox: hs[best][0] - x, oy: hs[best][1] - y, back: snapD(s) }; return; }
       }
       const list = dList(P.sym);
-      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]), slop: touch ? 8 : 0, back: snapD(list[k]) }; return; }
+      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { if (touch && selD() !== list[k]) { select(list[k], P); return; } grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]), slop: touch ? 8 : 0, back: snapD(list[k]) }; return; }
     }
     if (draw.sel) select(null);
   }, true);
@@ -3808,7 +3822,7 @@ $('#editbar').addEventListener('click', e => {
   }
   closePop();
   if (k === 'settings') openDrawSettings(d);
-  else if (k === 'flat') { flatten(d); done(); }
+  else if (k === 'flat') { d.keepFlat = !d.keepFlat; SET().keepFlat = d.keepFlat; if (d.keepFlat) d.pts[1].p = d.pts[0].p; toast(d.keepFlat ? 'Keep flat is on: this line stays flat, and new lines start flat.' : 'Keep flat is off.'); done(); }
   else if (k === 'ltext') openDrawSettings(d, 'text');
   else if (k === 'text') { const P = PANES[draw.sel.pane]; geo(P); const [x, y] = toXY(P, d.pts[0]); openText(P, d, x, y); }
   else if (k === 'place') placeFromPos(d);
@@ -3906,7 +3920,7 @@ async function openJournal(id) {
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-15-26';
+const BUILD = '2026-11-15-27';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -3958,7 +3972,8 @@ function micHelp() {
 $('#mh-close').addEventListener('click', () => { $('#michelp').hidden = true; });
 $('#mh-try').addEventListener('click', () => { $('#michelp').hidden = true; micBlocked = false; voiceStart(); });
 $('#vp-done').addEventListener('click', () => voiceStop(true)); $('#vp-cancel').addEventListener('click', () => voiceStop(false));
-$('#tj-close').addEventListener('click', closeJournal); $('#tj-done').addEventListener('click', closeJournal);
+$('#tj-close').addEventListener('click', closeJournal);
+$('#tj-be').addEventListener('click', () => { if (!tjTrade) return; markBE(tjTrade); save(); toast('Counted as a break-even trade. Balance, win rate and drawdown are updated.'); const id = tjTrade.id; renderLive(); if (view === 'analytics') renderAnalytics(); openJournal(id); }); $('#tj-done').addEventListener('click', closeJournal);
 $('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
 /* Speech engines don't know trading words, so common mishearings are fixed here */
 const TERMS = [
@@ -4191,6 +4206,7 @@ async function boot() {
   const imported = await idbAll();
   for (const [sym, X] of Object.entries(imported)) if (INSTR[sym] && X && X.t) DATA[sym] = X;
   store = load();
+  try { if (store && fixBreakEvens(store)) localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {}
   if (!store || !store.sessions || !store.sessions.length) { const s = defaultSession(); store = { sessions: [s], activeId: s.id }; }
   initSettings();
   for (const s of SYMS) setBackAdj(DATA[s], SET().backAdj);
