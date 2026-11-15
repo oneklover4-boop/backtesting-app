@@ -882,7 +882,7 @@ function tfLabel(sec) {
 }
 let mDay = -1, mVal = 0;
 function bucket(t, tf) {
-  if (tf < 86400) return Math.floor(t / tf) * tf;
+  if (tf < 86400) return Math.floor((t + 21600) / tf) * tf - 21600; // anchored at the 18:00 ET session open, so 4H candles start 18:00, 22:00, 02:00… like TradingView
   const day = Math.floor((t + 6 * 3600) / 86400); // trading day starts 18:00 ET
   if (tf === 86400) return day * 86400;
   if (tf === 2592000) { if (day !== mDay) { mDay = day; const d = new Date(day * 86400000); mVal = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000; } return mVal; }
