@@ -128,7 +128,15 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .panes[data-l="2h"] .splitter { top: 0; bottom: 0; width: 4px; margin-left: -2px; cursor: col-resize; }
 .panes[data-l="2v"] .splitter { left: 0; right: 0; height: 4px; margin-top: -2px; cursor: row-resize; }
 .pane .txtin { position: absolute; z-index: 7; background: var(--panel-2); border: 1px solid var(--accent); color: var(--fg); border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 220px; }
-#tf-typed { position: absolute; left: 50%; top: 40%; transform: translate(-50%,-50%); background: var(--panel-2); border: 1px solid var(--accent); padding: 10px 18px; border-radius: 10px; font-family: var(--font-data); font-size: 22px; z-index: 20; }
+#tf-typed { position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%); z-index: 20; background: #1e1e22; border: 1px solid #2e2e34; border-radius: 10px; padding: 10px 12px 9px; box-shadow: 0 12px 32px rgba(0,0,0,.5); min-width: 260px; font-family: var(--font-ui); }
+.ti-row { display: flex; align-items: center; gap: 10px; }
+.ti-lb { font-size: 13px; color: #b6b6bf; }
+.ti-in { flex: 1; display: flex; align-items: center; height: 32px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 6px; font-size: 15px; color: var(--fg); background: #121214; }
+.ti-caret { display: inline-block; width: 1px; height: 16px; background: var(--fg); margin-left: 1px; animation: tiblink 1s steps(1) infinite; }
+@keyframes tiblink { 50% { opacity: 0; } }
+.ti-ent { background: none; border: 0; color: var(--muted); font-size: 17px; cursor: pointer; padding: 0 2px; }
+.ti-ent:hover { color: var(--fg); }
+.ti-sub { font-size: 12px; color: var(--muted); margin: 7px 0 0 66px; }
 
 /* Floating bars: favourites and the edit bar for the selected drawing */
 .fbar { position: absolute; z-index: 12; display: flex; align-items: center; gap: 2px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
@@ -340,14 +348,19 @@ textarea.io { width: 100%; min-height: 140px; background: var(--bg); border: 1px
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 /* Round 3: trade labels, quick trade bar, colour picker, drawing settings */
 .ptags { position: absolute; left: 0; top: 0; height: 0; z-index: 6; pointer-events: none; }
-.ptag { position: absolute; right: 0; top: -11px; height: 22px; display: flex; align-items: stretch; border: 1px solid var(--c); border-radius: 4px; background: #0f0f12; font: 500 11px var(--font-data); color: var(--fg); pointer-events: auto; white-space: nowrap; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.4); user-select: none; }
-.ptag.drag { cursor: ns-resize; }
-.ptag > * { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--c); }
-.ptag > :first-child { border-left: 0; }
-.ptag .pk { background: var(--c); color: #fff; font: 600 11px var(--font-ui); }
-.ptag .pv.up { color: var(--long); } .ptag .pv.dn { color: var(--short); }
-.ptag button { background: none; border: 0; border-left: 1px solid var(--c); color: var(--muted); font-size: 14px; line-height: 1; padding: 0 7px; cursor: pointer; }
-.ptag button:hover { background: var(--c); color: #fff; }
+.ptag { position: absolute; right: 0; top: -11px; height: 22px; display: flex; gap: 4px; pointer-events: none; white-space: nowrap; user-select: none; font: 500 11px var(--font-data); }
+.ptag .pc { display: flex; align-items: stretch; border: 1px solid var(--c); border-radius: 4px; background: #131722; color: var(--c); pointer-events: auto; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.ptag .pc > * { display: flex; align-items: center; padding: 0 8px; border-left: 1px solid var(--c); }
+.ptag .pc > :first-child { border-left: 0; }
+.ptag .pk { font: 600 11px var(--font-ui); }
+.ptag .pl { font-family: var(--font-ui); }
+.ptag .pv.up { color: #26b07a; } .ptag .pv.dn { color: #f0545f; }
+.ptag button { background: none; border: 0; border-left: 1px solid var(--c); color: var(--c); font-size: 14px; line-height: 1; padding: 0 7px; cursor: pointer; }
+.ptag .pc button:hover { background: var(--c); color: #fff; }
+.ptag .pc.fill { background: var(--c); color: #fff; padding: 0 9px; align-items: center; font: 600 11px var(--font-ui); }
+.ptag .pc.dot { border-style: dashed; padding: 0 8px; align-items: center; font: 600 11px var(--font-ui); color: var(--c); }
+.ptag .pc.dot:hover { background: var(--c); color: #fff; }
+.ptag.drag .pc.main { cursor: ns-resize; }
 .quick { position: relative; gap: 8px; }
 .quick > .qb, .quick > .qs { height: 34px; padding: 0 18px 0 14px; border-radius: 10px; font-size: 14px; gap: 8px; }
 .quick > .qb { background: #0b63f6; } .quick > .qs { background: #f2867a; }
@@ -458,6 +471,18 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
 .mc-form input { width: 130px; }
 .mcsvg { width: 100%; height: 240px; display: block; margin-top: 14px; background: var(--bg); border-radius: 8px; }
 #an-sim input[type=range] { accent-color: var(--accent); }
+#favbar { padding: 2px; gap: 0; border-radius: 9px; box-shadow: 0 6px 16px rgba(0,0,0,.35); }
+#favbar button { height: 26px; min-width: 26px; padding: 0 4px; border-radius: 6px; }
+#favbar svg { width: 15px; height: 15px; }
+#favbar .grip { padding: 0 2px; }
+#favbar .grip svg { width: 6px; height: 14px; }
+#b-draw[aria-pressed="true"] { color: var(--fg); }
+.flyout { max-height: calc(100vh - 16px); overflow-y: auto; }
+.flyout .mh:not(:first-child) { margin-top: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+.emo { display: inline-block; width: 18px; height: 18px; font-size: 15px; line-height: 18px; text-align: center; flex: none; }
+:root[data-chartlight="1"] .pane .legend { color: #131722; }
+:root[data-chartlight="1"] .pane .legend .mut { color: #50535e; }
+.seg.thm button { font-family: var(--font-ui); font-size: 12px; padding: 5px 10px; }
 </style>
 </head>
 <body>
@@ -498,6 +523,7 @@ table.grid tr.hl td { background: rgba(47,124,246,.1); }
         </div>
         <span class="grow"></span>
         <span class="clock" id="clock">–</span>
+        <button class="ibtn" id="b-draw" aria-pressed="true" title="Show or hide the drawing toolbar" aria-label="Show or hide the drawing toolbar"><svg viewBox="0 0 18 18"><path d="M3 15l1.5-4.5L12 3l3 3-7.5 7.5z"/><path d="M10.5 4.5l3 3"/></svg></button>
         <button class="ibtn" id="b-settings" title="Chart settings" aria-label="Chart settings"><svg viewBox="0 0 18 18"><circle cx="9" cy="9" r="2.5"/><path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4"/></svg></button>
         <button class="ibtn" id="b-full" title="Full screen" aria-label="Full screen"><svg viewBox="0 0 18 18"><path d="M2 6V2h4M12 2h4v4M16 12v4h-4M6 16H2v-4"/></svg></button>
         <button id="b-order" aria-pressed="false"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v6M5 8h6"/></svg>Order</button>
@@ -977,11 +1003,22 @@ async function importFiles(files, tzMode, onProgress, want) {
 
 /* ---------- Store ---------- */
 const KEY = 'tape-replay.v1';
-const DEF_SET = { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350',
-  bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', volume: true, priceLine: true, markers: false,
-  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, scaleText: '#e6e6ea', fontSize: 12 };
+const THEMES = {
+  fxr: { up: '#b2b5be', down: '#434651', upBorder: '#000000', downBorder: '#000000', upWick: '#000000', downWick: '#000000', _upBorder: true, _downBorder: true, _upWick: true, _downWick: true,
+    bg: '#cac8c8', grid: false, gridColor: '#b4b2b2', text: '#000000', scaleText: '#000000', scaleLine: '#1a1a1a', volUp: '#26a69a', volDown: '#ef5350' },
+  dark: { up: '#26a69a', down: '#ef5350', upBorder: '#26a69a', downBorder: '#ef5350', upWick: '#26a69a', downWick: '#ef5350', _upBorder: false, _downBorder: false, _upWick: false, _downWick: false,
+    bg: '#0a0a0b', grid: true, gridColor: '#1a1a1f', text: '#8b8b95', scaleText: '#e6e6ea', scaleLine: '#27272d', volUp: '#26a69a', volDown: '#ef5350' },
+};
+const DEF_SET = { ...THEMES.fxr, themeV: 5, volume: true, priceLine: true, markers: false,
+  favTfs: [60, 300, 900, 3600, 14400, 86400, 604800, 2592000], favTools: ['trend', 'hline', 'hray', 'fib', 'rect', 'long', 'short'], favBar: true, favPos: null, editPos: null, tools: true, customColors: [], qtyPresets: [1, 2, 5], toolStyle: {}, templates: {}, fontSize: 12 };
 const SET = () => store.settings;
-function initSettings() { store.settings = Object.assign({}, DEF_SET, store.settings || {}); }
+function initSettings() {
+  const o = store.settings || {};
+  // Charts still on the old dark default switch once to the FX Replay look; a custom background is left alone.
+  if (!o.themeV) { if (!o.bg || o.bg === '#0a0a0b') for (const k of Object.keys(THEMES.fxr)) delete o[k]; o.themeV = 5; }
+  store.settings = Object.assign({}, DEF_SET, o);
+}
+function isLightCol(h) { try { const n = parseInt(String(h).slice(1, 7), 16); return .299 * (n >> 16) + .587 * ((n >> 8) & 255) + .114 * (n & 255) > 140; } catch (e) { return false; } }
 let store = null;
 function load() { try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {} return null; }
 let saveT = 0;
@@ -1058,7 +1095,7 @@ function placeOrder(sess, o) {
 /* ---------- Chart workspace: one or two panes on the same replay clock ---------- */
 const css = getComputedStyle(document.documentElement);
 const C = { bg: css.getPropertyValue('--bg').trim(), line: css.getPropertyValue('--line').trim(), fg: css.getPropertyValue('--fg').trim(), muted: css.getPropertyValue('--muted').trim(),
-  long: css.getPropertyValue('--long').trim(), short: css.getPropertyValue('--short').trim(), accent: css.getPropertyValue('--accent').trim(), buy: '#0b63f6', sell: '#f2867a' };
+  long: css.getPropertyValue('--long').trim(), short: css.getPropertyValue('--short').trim(), accent: css.getPropertyValue('--accent').trim(), buy: '#0b63f6', sell: '#f2867a', tpc: '#22ab94', slc: '#ff9800' };
 const UPV = 'rgba(38,176,122,.28)', DNV = 'rgba(226,85,79,.28)';
 const MAXBARS = 6000;
 const panesEl = $('#panes');
@@ -1104,7 +1141,7 @@ function makePane(i) {
 
 const aggBar = (D, i, b) => ({ time: b, open: D.o[i], high: D.h[i], low: D.l[i], close: D.c[i], value: D.v[i] });
 const cBar = (b) => ({ time: b.time, open: b.open, high: b.high, low: b.low, close: b.close });
-const vBar = (b) => ({ time: b.time, value: b.value, color: alpha(b.close >= b.open ? SET().up : SET().down, .32) });
+const vBar = (b) => ({ time: b.time, value: b.value, color: alpha(b.close >= b.open ? (SET().volUp || SET().up) : (SET().volDown || SET().down), isLightCol(SET().bg) ? .55 : .32) });
 function mergeInto(a, D, i, tf) {
   const b = bucket(D.t[i], tf), last = a[a.length - 1];
   if (last && last.time === b) { if (D.h[i] > last.high) last.high = D.h[i]; if (D.l[i] < last.low) last.low = D.l[i]; last.close = D.c[i]; last.value += D.v[i]; }
@@ -1156,23 +1193,25 @@ const pnlAt = (p, px) => p.side * (px - p.entry) * p.qty * INSTR[p.sym].pv;
 function drawPaneOverlays(P) {
   const sess = S(), sym = P.sym; if (!sym) return;
   clearLines(P);
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1), SLC = C.slc, TPC = C.tpc;
+  const adds = (x, attr) => [x.tp == null ? { k: 'TP', c: TPC, at: `data-addtp="${attr}"`, t: 'Add a take profit' } : null, x.sl == null ? { k: 'SL', c: SLC, at: `data-addsl="${attr}"`, t: 'Add a stop loss' } : null].filter(Boolean);
   for (const p of sess.positions.filter(p => p.sym === sym)) {
-    const col = p.side > 0 ? C.long : C.short;
-    addLine(P, p.entry, col, 0, 'entry', p, 1, { k: p.side > 0 ? 'Long' : 'Short', q: p.qty, v: unrealized(sess, p), c: col, x: `data-close="${p.id}"`, xt: 'Close this position at the current price' });
-    if (p.sl != null) addLine(P, p.sl, C.short, 2, 'psl', p, 1, { k: 'SL', v: pnlAt(p, p.sl), c: C.short, x: `data-rmsl="${p.id}"`, xt: 'Remove the stop loss', drag: 1 });
-    if (p.tp != null) addLine(P, p.tp, C.long, 2, 'ptp', p, 1, { k: 'TP', v: pnlAt(p, p.tp), c: C.long, x: `data-rmtp="${p.id}"`, xt: 'Remove the take profit', drag: 1 });
+    const col = p.side > 0 ? C.buy : C.sell;
+    addLine(P, p.entry, col, 0, 'entry', p, 1, { f: p.side > 0 ? 'Long' : 'Short', adds: adds(p, p.id), q: p.qty, v: unrealized(sess, p), c: col, x: `data-close="${p.id}"`, xt: 'Close this position at the current price' });
+    if (p.sl != null) addLine(P, p.sl, SLC, 2, 'psl', p, 1, { k: 'SL', v: pnlAt(p, p.sl), c: SLC, x: `data-rmsl="${p.id}"`, xt: 'Remove the stop loss', drag: 1 });
+    if (p.tp != null) addLine(P, p.tp, TPC, 2, 'ptp', p, 1, { k: 'TP', v: pnlAt(p, p.tp), c: TPC, x: `data-rmtp="${p.id}"`, xt: 'Remove the take profit', drag: 1 });
   }
   for (const o of sess.orders.filter(o => o.sym === sym)) {
     const oc = o.side > 0 ? C.buy : C.sell, risk = o.sl != null ? -Math.abs(o.price - o.sl) * o.qty * INSTR[sym].pv : null, rew = o.tp != null ? Math.abs(o.tp - o.price) * o.qty * INSTR[sym].pv : null;
-    addLine(P, o.price, oc, 2, 'order', o, 1, { k: (o.side > 0 ? 'Buy ' : 'Sell ') + o.type, q: o.qty, c: oc, x: `data-cancel="${o.id}"`, xt: 'Cancel this order', drag: 1 });
-    if (o.sl != null) addLine(P, o.sl, C.short, 2, 'osl', o, 1, { k: 'SL', v: risk, c: C.short, x: `data-rmsl="${o.id}"`, xt: 'Remove the stop loss', drag: 1 });
-    if (o.tp != null) addLine(P, o.tp, C.long, 2, 'otp', o, 1, { k: 'TP', v: rew, c: C.long, x: `data-rmtp="${o.id}"`, xt: 'Remove the take profit', drag: 1 });
+    addLine(P, o.price, oc, 0, 'order', o, 1, { f: o.side > 0 ? 'Buy' : 'Sell', adds: adds(o, o.id), q: o.qty, lbl: `${o.side > 0 ? 'Buy' : 'Sell'} ${cap(o.type)}`, c: oc, x: `data-cancel="${o.id}"`, xt: 'Cancel this order', drag: 1 });
+    if (o.sl != null) addLine(P, o.sl, SLC, 2, 'osl', o, 1, { k: 'SL', v: risk, c: SLC, x: `data-rmsl="${o.id}"`, xt: 'Remove the stop loss', drag: 1 });
+    if (o.tp != null) addLine(P, o.tp, TPC, 2, 'otp', o, 1, { k: 'TP', v: rew, c: TPC, x: `data-rmtp="${o.id}"`, xt: 'Remove the take profit', drag: 1 });
   }
   if (ticket.open && P === AP()) {
-    const k = ticketCalc(), tc = ticket.side > 0 ? C.buy : C.sell;
-    addLine(P, k.entry, tc, 1, 'tentry', null, 1, { k: `${ticket.side > 0 ? 'Buy' : 'Sell'} ${ticket.type}`, q: k.qty, c: tc, drag: 1 });
-    if (k.sl != null) addLine(P, k.sl, C.short, 1, 'tsl', null, 1, { k: 'SL', v: -k.riskUsd, c: C.short, drag: 1 });
-    if (k.tp != null) addLine(P, k.tp, C.long, 1, 'ttp', null, 1, { k: 'TP', v: k.rewardUsd, c: C.long, drag: 1 });
+    const k = ticketCalc(), tc = ticket.side > 0 ? C.buy : C.sell, ta = [!$('#o-tp-on').checked ? { k: 'TP', c: TPC, at: 'data-ttp="1"', t: 'Add a take profit' } : null, !$('#o-sl-on').checked ? { k: 'SL', c: SLC, at: 'data-tsl="1"', t: 'Add a stop loss' } : null].filter(Boolean);
+    addLine(P, k.entry, tc, 0, 'tentry', null, 1, { f: ticket.side > 0 ? 'Buy' : 'Sell', adds: ta, q: k.qty, lbl: `${ticket.side > 0 ? 'Buy' : 'Sell'} ${cap(ticket.type)}`, c: tc, drag: 1 });
+    if (k.sl != null) addLine(P, k.sl, SLC, 2, 'tsl', null, 1, { k: 'SL', v: -k.riskUsd, c: SLC, drag: 1 });
+    if (k.tp != null) addLine(P, k.tp, TPC, 2, 'ttp', null, 1, { k: 'TP', v: k.rewardUsd, c: TPC, drag: 1 });
   }
   renderTags(P);
   const tf = P.tf, m = [];
@@ -1279,7 +1318,7 @@ const ICON = {
   hide: '<path d="M1 9s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5z"/><circle cx="9" cy="9" r="2"/>',
   trash: '<path d="M3 5h12M7 5V3h4v2M5 5l1 11h6l1-11"/>',
 };
-const svg = (k) => `<svg viewBox="0 0 18 18" aria-hidden="true">${ICON[k]}</svg>`;
+const svg = (k) => TOOLDEF[k] && TOOLDEF[k].ch ? `<span class="emo" aria-hidden="true">${TOOLDEF[k].ch}</span>` : `<svg viewBox="0 0 18 18" aria-hidden="true">${ICON[k]}</svg>`;
 const draw = { tool: 'cursor', color: DCOL[0], magnet: false, keep: false, locked: false, hidden: false, sel: null, mk: null, act: null, txt: null, ver: 0, last: {}, armed: 0 };
 const dList = (sym) => { const s = S(); s.drawings = s.drawings || {}; return (s.drawings[sym] = s.drawings[sym] || []); };
 const selD = () => draw.sel ? dList(draw.sel.sym).find(d => d.id === draw.sel.id) : null;
@@ -1354,8 +1393,338 @@ function posInfo(sym, d) {
   return { e, sl, tp, risk, rew, qty, rr: risk ? rew / risk : 0, lossUsd: risk * pv * qty, winUsd: rew * pv * qty };
 }
 const fmtSpan = (s) => s < 3600 ? Math.round(s / 60) + 'm' : s < 86400 ? Math.floor(s / 3600) + 'h ' + Math.round(s % 3600 / 60) + 'm' : Math.floor(s / 86400) + 'd ' + Math.round(s % 86400 / 3600) + 'h';
+/* ---------- The full FX Replay drawing set ---------- */
+Object.assign(TOOLDEF, {
+  info: { n: 'Info line', pts: 2 }, angle: { n: 'Trend angle', pts: 2 }, regr: { n: 'Regression trend', pts: 2 },
+  pfork: { n: 'Pitchfork', pts: 3 }, ipfork: { n: 'Inside pitchfork', pts: 3 },
+  fibext: { n: 'Trend-based fib extension', pts: 3 }, fibchan: { n: 'Fib channel', pts: 3 }, fibtime: { n: 'Fib time zone', pts: 2 },
+  fibfan: { n: 'Fib speed resistance fan', pts: 2 }, fibtimeext: { n: 'Trend-based fib time', pts: 3 }, fibcirc: { n: 'Fib circles', pts: 2 },
+  fibspiral: { n: 'Fib spiral', pts: 2 }, fibarcs: { n: 'Fib speed resistance arcs', pts: 2 }, fibwedge: { n: 'Fib wedge', pts: 3 }, pitchfan: { n: 'Pitchfan', pts: 3 },
+  gannbox: { n: 'Gann box', pts: 2 }, gannsqf: { n: 'Gann square fixed', pts: 2 }, gannsq: { n: 'Gann square', pts: 2 }, gannfan: { n: 'Gann fan', pts: 2 },
+  xabcd: { n: 'XABCD pattern', pts: 5 }, cypher: { n: 'Cypher pattern', pts: 5 }, hs: { n: 'Head and shoulders', pts: 7 }, abcd: { n: 'ABCD pattern', pts: 4 },
+  tripat: { n: 'Triangle pattern', pts: 4 }, threedrv: { n: 'Three drives pattern', pts: 7 },
+  ew12345: { n: 'Elliott impulse wave (1·2·3·4·5)', pts: 6 }, ewabc: { n: 'Elliott correction wave (A·B·C)', pts: 4 }, ewabcde: { n: 'Elliott triangle wave (A·B·C·D·E)', pts: 6 },
+  ewwxy: { n: 'Elliott double combo wave (W·X·Y)', pts: 4 }, ewwxyxz: { n: 'Elliott triple combo wave (W·X·Y·X·Z)', pts: 6 },
+  cyclines: { n: 'Cyclic lines', pts: 2 }, timecyc: { n: 'Time cycles', pts: 2 },
+  forecast: { n: 'Position forecast', pts: 2 }, barspat: { n: 'Bars pattern', pts: 2 }, ghost: { n: 'Ghost feed', pts: 99 },
+  avwap: { n: 'Anchored VWAP', pts: 1 }, frvp: { n: 'Fixed range volume profile', pts: 2 }, avp: { n: 'Anchored volume profile', pts: 1 },
+  prange: { n: 'Price range', pts: 2 }, drange: { n: 'Date range', pts: 2 },
+  brush: { n: 'Brush', pts: -1 }, hilite: { n: 'Highlighter', pts: -1 },
+  arrowmk: { n: 'Arrow marker', pts: 2 }, arrup: { n: 'Arrow mark up', pts: 1 }, arrdn: { n: 'Arrow mark down', pts: 1 }, arrlt: { n: 'Arrow mark left', pts: 1 }, arrrt: { n: 'Arrow mark right', pts: 1 },
+  rrect: { n: 'Rotated rectangle', pts: 3 }, path: { n: 'Path', pts: 99 }, circle: { n: 'Circle', pts: 2 }, polyline: { n: 'Polyline', pts: 99 },
+  triangle: { n: 'Triangle', pts: 3 }, arc: { n: 'Arc', pts: 3 }, curve: { n: 'Curve', pts: 3 }, dcurve: { n: 'Double curve', pts: 3 },
+  atext: { n: 'Anchored text', pts: 1 }, note: { n: 'Note', pts: 1 }, pnote: { n: 'Price note', pts: 2 }, pin: { n: 'Pin', pts: 1 }, table: { n: 'Table', pts: 1 },
+  callout: { n: 'Callout', pts: 2 }, comment: { n: 'Comment', pts: 1 }, plabel: { n: 'Price label', pts: 1 }, signpost: { n: 'Signpost', pts: 1 }, flag: { n: 'Flag mark', pts: 1 },
+});
+TOOLDEF.measure.n = 'Date and price range'; TOOLDEF.trend.n = 'Trendline'; TOOLDEF.cross.n = 'Crossline';
+const EMOJI = [['😀', 'Smile'], ['🚀', 'Rocket'], ['🔥', 'Fire'], ['✅', 'Tick'], ['❌', 'Cross'], ['⚠️', 'Warning'], ['💰', 'Money'], ['📈', 'Chart up'], ['📉', 'Chart down'], ['🎯', 'Target'],
+  ['⭐', 'Star'], ['👀', 'Eyes'], ['💎', 'Diamond'], ['🛑', 'Stop'], ['🧠', 'Brain'], ['⏰', 'Clock'], ['🐂', 'Bull'], ['🐻', 'Bear'], ['👍', 'Thumbs up'], ['👎', 'Thumbs down']];
+EMOJI.forEach(([ch, n], i) => { TOOLDEF['emo' + i] = { n, pts: 1, ch }; });
+GROUPS.length = 0;
+GROUPS.push(['cursor', ['cursor']],
+  ['lines', ['#Lines', 'trend', 'ray', 'info', 'ext', 'angle', 'hline', 'hray', 'vline', 'cross', '#Channels', 'channel', 'regr', '#Pitchforks', 'pfork', 'ipfork']],
+  ['fib', ['#Fibonacci', 'fib', 'fibext', 'fibchan', 'fibtime', 'fibfan', 'fibtimeext', 'fibcirc', 'fibspiral', 'fibarcs', 'fibwedge', 'pitchfan', '#Gann', 'gannbox', 'gannsqf', 'gannsq', 'gannfan']],
+  ['patterns', ['#Chart patterns', 'xabcd', 'cypher', 'hs', 'abcd', 'tripat', 'threedrv', '#Elliott waves', 'ew12345', 'ewabc', 'ewabcde', 'ewwxy', 'ewwxyxz', '#Cycles', 'cyclines', 'timecyc']],
+  ['pos', ['#Forecasting', 'long', 'short', 'forecast', 'barspat', 'ghost', '#Volume-based', 'avwap', 'frvp', 'avp', '#Measurers', 'prange', 'drange', 'measure']],
+  ['brush', ['#Brushes', 'brush', 'hilite', '#Arrows', 'arrowmk', 'arrow', 'arrup', 'arrdn', 'arrlt', 'arrrt', '#Shapes', 'rect', 'rrect', 'path', 'circle', 'ellipse', 'polyline', 'triangle', 'arc', 'curve', 'dcurve']],
+  ['text', ['#Text and notes', 'text', 'atext', 'note', 'pnote', 'pin', 'table', 'callout', 'comment', 'plabel', 'signpost', 'flag']],
+  ['emoji', ['#Emojis', ...EMOJI.map((e, i) => 'emo' + i)]],
+  ['measure', ['measure']]);
+Object.assign(GNAME, { patterns: 'Patterns', pos: 'Forecasting and measuring', brush: 'Brushes, arrows and shapes', text: 'Text and notes', emoji: 'Emojis', measure: 'Measure' });
+const GTOOLS = (list) => list.filter(t => t[0] !== '#');
+const FREE = new Set(['brush', 'hilite']);
+const OWN_LABEL = new Set(['atext', 'note', 'pnote', 'pin', 'table', 'callout', 'comment', 'signpost']);
+Object.assign(ICON, {
+  info: '<path d="M3 13L13 3"/><circle cx="3" cy="13" r="1.6"/><circle cx="13" cy="3" r="1.6"/><path d="M8 15h9"/>',
+  angle: '<path d="M2 15h14M2 15L14 4"/><path d="M8 15a6 6 0 0 0-1.6-4"/>',
+  regr: '<path d="M2 12L16 6"/><path d="M2 8L16 2M2 16L16 10" stroke-dasharray="2 2"/>',
+  pfork: '<path d="M2 15L8 9h8M8 4v10M8 4h8M8 14h8"/>',
+  ipfork: '<path d="M2 15L8 9h8M8 5h8M8 13h8"/><circle cx="8" cy="9" r="1.4"/>',
+  fibext: '<path d="M2 4h14M2 8h14M2 12h14"/><path d="M3 16l4-5 3 3"/>',
+  fibchan: '<path d="M2 10L10 2M5 13L13 5M8 16L16 8"/>',
+  fibtime: '<path d="M2 2v14M5 2v14M8 2v14M13 2v14"/>',
+  fibfan: '<path d="M2 16L16 2M2 16L16 7M2 16L16 12M2 16L7 2"/>',
+  fibtimeext: '<path d="M3 2v14M9 2v14M15 2v14"/><path d="M3 16l6-6 6 6" stroke-dasharray="2 2"/>',
+  fibcirc: '<circle cx="9" cy="9" r="3"/><circle cx="9" cy="9" r="7"/>',
+  fibspiral: '<path d="M9 9a1.5 1.5 0 0 1 3 0 3 3 0 0 1-6 0 5 5 0 0 1 10 0 7 7 0 0 1-7 7"/>',
+  fibarcs: '<path d="M2 16a7 7 0 0 1 14 0M5 16a4 4 0 0 1 8 0"/>',
+  fibwedge: '<path d="M2 16L16 4M2 16h14M8 16a6 6 0 0 0-1-4M12 16a10 10 0 0 0-2-7"/>',
+  pitchfan: '<path d="M2 9L16 2M2 9h14M2 9l14 7M16 2v14"/>',
+  gannbox: '<rect x="2" y="3" width="14" height="12"/><path d="M6 3v12M12 3v12M2 7h14M2 11h14"/>',
+  gannsqf: '<rect x="2" y="2" width="14" height="14"/><path d="M2 16L16 2M2 2l14 14"/>',
+  gannsq: '<rect x="2" y="2" width="14" height="14"/><path d="M2 16L16 2M2 16L16 9M2 16L9 2"/>',
+  gannfan: '<path d="M2 16L16 2M2 16L16 9M2 16L9 2M2 16L16 13M2 16L5 2"/>',
+  xabcd: '<path d="M2 14L6 4l4 7 3-5 3 9"/>',
+  cypher: '<path d="M2 12L6 3l3 8 4-6 3 10"/>',
+  hs: '<path d="M1 14l3-6 3 4 2-9 2 9 3-4 3 6M3 12h12"/>',
+  abcd: '<path d="M2 14L7 4l4 6 5-8"/>',
+  tripat: '<path d="M2 3l14 6M2 15l14-6"/><path d="M2 3l4 11 4-8 4 4" stroke-dasharray="2 1.5"/>',
+  threedrv: '<path d="M1 15l3-4 2 2 3-6 2 2 3-7 3 2"/>',
+  ew12345: '<path d="M1 15l3-5 2 3 4-9 2 4 4-6"/>',
+  ewabc: '<path d="M2 3l5 9 4-4 5 8"/>',
+  ewabcde: '<path d="M1 3l3 12 3-9 3 6 3-3 3 3"/>',
+  ewwxy: '<path d="M2 4l4 8 4-5 6 9"/>',
+  ewwxyxz: '<path d="M1 3l3 9 3-5 3 7 3-4 4 7"/>',
+  cyclines: '<path d="M3 2v14M7 2v14M11 2v14M15 2v14"/>',
+  timecyc: '<path d="M1 14a4 4 0 0 1 8 0 4 4 0 0 1 8 0"/>',
+  forecast: '<path d="M2 14L14 5"/><path d="M10 4h5v5"/><path d="M2 14h14" stroke-dasharray="2 2"/>',
+  barspat: '<path d="M4 3v12M9 5v9M14 2v10"/><rect x="3" y="6" width="2" height="5"/><rect x="8" y="7" width="2" height="4"/><rect x="13" y="4" width="2" height="5"/>',
+  ghost: '<path d="M4 5v9M9 3v8M14 6v8" stroke-dasharray="1.5 1.5"/><rect x="3" y="7" width="2" height="5"/><rect x="8" y="5" width="2" height="4"/><rect x="13" y="8" width="2" height="4"/>',
+  avwap: '<path d="M2 14c4-1 5-8 9-8s4 4 5 3"/><circle cx="2" cy="14" r="1.6"/>',
+  frvp: '<path d="M3 3v12M3 4h6M3 7h10M3 10h8M3 13h4"/>',
+  avp: '<path d="M3 3v12M3 5h5M3 8h11M3 11h7M3 14h3"/><circle cx="3" cy="3" r="1.4"/>',
+  prange: '<path d="M4 2h10M4 16h10M9 3v12M7 5l2-2 2 2M7 13l2 2 2-2"/>',
+  drange: '<path d="M2 4v10M16 4v10M3 9h12M5 7l-2 2 2 2M13 7l2 2-2 2"/>',
+  brush: '<path d="M15 2L8 10"/><path d="M8 10c-3 0-4 2-4 4s-2 2-2 2c3 1 7 0 7-3"/>',
+  hilite: '<path d="M11 3l4 4-7 7H4v-4z"/><path d="M3 16h12"/>',
+  arrowmk: '<path d="M2 9l6-6v4h8v4H8v4z"/>',
+  arrup: '<path d="M9 3l5 6h-3v6H7V9H4z"/>',
+  arrdn: '<path d="M9 15l5-6h-3V3H7v6H4z"/>',
+  arrlt: '<path d="M3 9l6-5v3h6v4H9v3z"/>',
+  arrrt: '<path d="M15 9l-6-5v3H3v4h6v3z"/>',
+  rrect: '<path d="M2 11L9 3l7 5-7 8z"/>',
+  path: '<path d="M2 15l4-8 5 5 5-9"/><path d="M13 3h3v3"/>',
+  circle: '<circle cx="9" cy="9" r="7"/>',
+  polyline: '<path d="M2 14L5 4l6 4 5-5-1 12z"/>',
+  triangle: '<path d="M9 3l7 12H2z"/>',
+  arc: '<path d="M2 14C4 4 14 4 16 14"/>',
+  curve: '<path d="M2 15C5 2 13 2 16 8"/>',
+  dcurve: '<path d="M2 12C4 2 8 2 9 9s5 7 7-3"/>',
+  atext: '<path d="M4 5V3h10v2M9 3v10M7 13h4"/><path d="M2 16h14"/>',
+  note: '<rect x="3" y="2" width="12" height="14" rx="1.5"/><path d="M6 6h6M6 9h6M6 12h3"/>',
+  pnote: '<circle cx="4" cy="14" r="1.6"/><path d="M5 13l5-5"/><rect x="9" y="3" width="8" height="5" rx="1"/>',
+  pin: '<path d="M9 16v-5M5 3h8M6 3v5l-2 3h10l-2-3V3"/>',
+  table: '<rect x="2" y="3" width="14" height="12" rx="1"/><path d="M2 7h14M2 11h14M8 3v12"/>',
+  callout: '<rect x="6" y="2" width="11" height="7" rx="1.5"/><path d="M8 9L2 16"/>',
+  comment: '<path d="M3 3h12v9H8l-4 3v-3H3z"/>',
+  plabel: '<path d="M2 9l4-4h10v8H6z"/>',
+  signpost: '<path d="M9 16V2M5 3h9l2 2-2 2H5z"/>',
+  flag: '<path d="M4 16V2M4 3h10l-2 3 2 3H4"/>',
+});
+const LVCOL = ['#7f8b99', '#e2554f', '#e4a640', '#26b07a', '#26a69a', '#4c8dff', '#7f8b99', '#b07cf0', '#e2554f', '#e91e63', '#9c27b0'];
+const PLAB = { xabcd: ['X', 'A', 'B', 'C', 'D'], cypher: ['X', 'A', 'B', 'C', 'D'], abcd: ['A', 'B', 'C', 'D'], tripat: ['A', 'B', 'C', 'D'], hs: ['', 'LS', '', 'H', '', 'RS', ''],
+  threedrv: ['', '1', '', '2', '', '3', ''], ew12345: ['0', '1', '2', '3', '4', '5'], ewabc: ['0', 'A', 'B', 'C'], ewabcde: ['0', 'A', 'B', 'C', 'D', 'E'], ewwxy: ['0', 'W', 'X', 'Y'], ewwxyxz: ['0', 'W', 'X', 'Y', 'X', 'Z'] };
+const BB = new WeakMap(), HS = new WeakMap();
+const qOf = (P, d) => d.type === 'atext' ? [[(d.fx ?? .5) * P.pw, (d.fy ?? .3) * P.ph]] : d.pts.map(p => toXY(P, p));
+const midp = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+const bbox = (pp) => [Math.min(...pp.map(p => p[0])), Math.min(...pp.map(p => p[1])), Math.max(...pp.map(p => p[0])), Math.max(...pp.map(p => p[1]))];
+const qpts = (p0, k, p1, n = 24) => Array.from({ length: n + 1 }, (_, i) => { const t = i / n, u = 1 - t; return [u * u * p0[0] + 2 * u * t * k[0] + t * t * p1[0], u * u * p0[1] + 2 * u * t * k[1] + t * t * p1[1]]; });
+function ctext(ctx, x, y, s, col, align = 'left', base = 'bottom', font) { ctx.save(); ctx.globalAlpha = 1; ctx.font = font || '11px "IBM Plex Mono", ui-monospace, monospace'; ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = base; ctx.fillText(s, x, y); ctx.restore(); }
+function fillPoly(ctx, pp, col, a) { if (pp.some(p => p[1] == null)) return; ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(col, a); ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]); for (const p of pp.slice(1)) ctx.lineTo(p[0], p[1]); ctx.closePath(); ctx.fill(); ctx.restore(); }
+/* A dark box with text lines; returns its bounds */
+function bubble(ctx, d, x, y, lines, border, place = 'tl') {
+  ctx.save(); ctx.globalAlpha = 1; ctx.font = dFont({ ...d, fs: d.fs || 13 });
+  const lh = (d.fs || 13) * 1.3, w = Math.max(30, ...lines.map(l => ctx.measureText(l).width)) + 16, h = lines.length * lh + 10;
+  const x0 = place.includes('r') ? x - w : place.includes('c') ? x - w / 2 : x, y0 = place.includes('b') ? y - h : y;
+  ctx.fillStyle = d.fc || '#1e222d'; ctx.strokeStyle = border; ctx.lineWidth = 1; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x0, y0, w, h, 5); else ctx.rect(x0, y0, w, h); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = d.tc || '#e6e6ea'; ctx.textBaseline = 'top'; lines.forEach((l, i) => ctx.fillText(l, x0 + 8, y0 + 5 + i * lh + (lh - (d.fs || 13)) / 2));
+  ctx.restore(); return [x0, y0, x0 + w, y0 + h];
+}
+function arrowHead(ctx, from, to, size = 11) { const g = Math.atan2(to[1] - from[1], to[0] - from[0]); ctx.beginPath(); ctx.moveTo(to[0], to[1]); ctx.lineTo(to[0] - size * Math.cos(g - .4), to[1] - size * Math.sin(g - .4)); ctx.lineTo(to[0] - size * Math.cos(g + .4), to[1] - size * Math.sin(g + .4)); ctx.closePath(); ctx.fill(); }
+function volProfile(P, ctx, d, t1, t2, x1, x2, hs) {
+  const bars = P.agg.filter(b => b.time >= t1 && b.time <= t2); if (bars.length < 1) return null;
+  let lo = Infinity, hi = -Infinity; for (const b of bars) { lo = Math.min(lo, b.low); hi = Math.max(hi, b.high); }
+  const R = 24, step = (hi - lo) / R || 1, up = new Array(R).fill(0), dn = new Array(R).fill(0);
+  for (const b of bars) { const i0 = Math.min(R - 1, Math.floor((b.low - lo) / step)), i1 = Math.min(R - 1, Math.floor((b.high - lo) / step)), v = (b.value || 1) / (i1 - i0 + 1); for (let i = i0; i <= i1; i++) (b.close >= b.open ? up : dn)[i] += v; }
+  const tot = up.map((v, i) => v + dn[i]), mx = Math.max(...tot) || 1, poc = tot.indexOf(mx), all = tot.reduce((s, v) => s + v, 0);
+  let lo2 = poc, hi2 = poc, acc = tot[poc]; while (acc < all * .7 && (lo2 > 0 || hi2 < R - 1)) { const a = lo2 > 0 ? tot[lo2 - 1] : -1, b = hi2 < R - 1 ? tot[hi2 + 1] : -1; if (b >= a) { hi2++; acc += b; } else { lo2--; acc += a; } }
+  const maxW = Math.max(40, (x2 - x1) * .3);
+  for (let i = 0; i < R; i++) {
+    const ya = P.candles.priceToCoordinate(lo + i * step), yb = P.candles.priceToCoordinate(lo + (i + 1) * step); if (ya == null || yb == null) continue;
+    const y = Math.min(ya, yb) + .5, h = Math.max(1, Math.abs(ya - yb) - 1), va = i >= lo2 && i <= hi2, wu = up[i] / mx * maxW, wd = dn[i] / mx * maxW;
+    ctx.fillStyle = alpha('#26a69a', va ? .55 : .25); ctx.fillRect(x1, y, wu, h); ctx.fillStyle = alpha('#ef5350', va ? .55 : .25); ctx.fillRect(x1 + wu, y, wd, h);
+  }
+  const yp = P.candles.priceToCoordinate(lo + (poc + .5) * step);
+  if (yp != null) { ctx.save(); ctx.globalAlpha = 1; ctx.strokeStyle = '#e2554f'; ctx.lineWidth = 1.5; seg(ctx, [x1, yp], [x2, yp]); ctx.restore(); ctext(ctx, x2 - 2, yp - 2, 'POC ' + fmtPx(lo + (poc + .5) * step), '#e2554f', 'right'); }
+  const yt = P.candles.priceToCoordinate(hi), yl = P.candles.priceToCoordinate(lo);
+  if (yt != null && yl != null) { ctx.save(); ctx.globalAlpha = .6; ctx.setLineDash([4, 4]); ctx.lineWidth = 1; ctx.strokeRect(x1, yt, x2 - x1, yl - yt); ctx.restore(); return [x1, yt, x2, yl]; }
+  return null;
+}
+function renderX(P, ctx, d, q, col, isSel) {
+  const [a, b, c] = q, W = P.pw, H = P.ph, pr = d.pts.map(p => p.p), t = d.type, fo = d.fo ?? .12, hs = [];
+  BB.delete(d); HS.set(d, hs);
+  const L2 = (p1, p2) => { seg(ctx, p1, p2); hs.push([p1, p2]); };
+  const PL = (pp, close) => { for (let i = 0; i + 1 < pp.length; i++) L2(pp[i], pp[i + 1]); if (close && pp.length > 2) L2(pp[pp.length - 1], pp[0]); };
+  const RG = (cx, cy, r, a0 = 0, a1 = Math.PI * 2, ccw = false) => { if (!(r > 0)) return; ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1, ccw); ctx.stroke(); hs.push({ c: [cx, cy], r }); };
+  const dash = (on) => ctx.setLineDash(on ? [4, 4] : []);
+  const lvLines = (LV, priceFn, x1, x2) => { let prev = null; const ys = [];
+    LV.forEach((lv, i) => { const p = priceFn(lv), y = P.candles.priceToCoordinate(p); if (y == null) return; const lc = LVCOL[i % LVCOL.length];
+      if (prev != null) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(lc, .07); ctx.fillRect(x1, Math.min(y, prev), x2 - x1, Math.abs(y - prev)); ctx.restore(); }
+      ctx.strokeStyle = lc; L2([x1, y], [x2, y]); ctext(ctx, x1 + 4, y - 2, `${lv} (${fmtPx(p)})`, lc); prev = y; ys.push(y); });
+    ctx.strokeStyle = col; if (ys.length) BB.set(d, [x1, Math.min(...ys), x2, Math.max(...ys)]); };
+  switch (t) {
+    case 'info': { L2(a, b); const dp = pr[1] - pr[0], bars = Math.round(Math.abs(tToL(P, d.pts[1].t) - tToL(P, d.pts[0].t))), ang = Math.atan2(a[1] - b[1], b[0] - a[0]) * 180 / Math.PI;
+      ctx.globalAlpha = 1; tag(ctx, b[0] + 8, b[1], `${dp >= 0 ? '+' : ''}${dp.toFixed(2)} (${(dp / pr[0] * 100).toFixed(2)}%)  ${bars} bars, ${fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))}  ${ang.toFixed(1)}°`, '#1e222d', '#e6e6ea'); return; }
+    case 'angle': { L2(a, b); const r = Math.max(24, Math.min(70, Math.hypot(b[0] - a[0], b[1] - a[1]))), g = Math.atan2(b[1] - a[1], b[0] - a[0]), base = b[0] >= a[0] ? 0 : Math.PI;
+      let df = g - base; while (df > Math.PI) df -= 2 * Math.PI; while (df < -Math.PI) df += 2 * Math.PI;
+      dash(true); seg(ctx, a, [a[0] + (base ? -1 : 1) * (r + 16), a[1]]); dash(false);
+      ctx.beginPath(); ctx.arc(a[0], a[1], r * .6, base, base + df, df < 0); ctx.stroke();
+      const deg = -df * 180 / Math.PI * (base ? -1 : 1), mg = base + df / 2; ctext(ctx, a[0] + Math.cos(mg) * (r * .6 + 8), a[1] + Math.sin(mg) * (r * .6 + 8), deg.toFixed(1) + '°', col, base ? 'right' : 'left', 'middle'); return; }
+    case 'regr': { const t1 = Math.min(d.pts[0].t, d.pts[1].t), t2 = Math.max(d.pts[0].t, d.pts[1].t), xs = [], ys = [];
+      for (const bar of P.agg) if (bar.time >= t1 && bar.time <= t2) { xs.push(tToL(P, bar.time)); ys.push(bar.close); }
+      if (xs.length < 2) { dash(true); L2(a, b); dash(false); return; }
+      const n = xs.length, mx = xs.reduce((s, v) => s + v, 0) / n, my = ys.reduce((s, v) => s + v, 0) / n; let sxy = 0, sxx = 0;
+      for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+      const k = sxx ? sxy / sxx : 0, c0 = my - k * mx; let sd = 0; for (let i = 0; i < n; i++) sd += (ys[i] - (c0 + k * xs[i])) ** 2; sd = Math.sqrt(sd / n);
+      const X1 = P.x0 + xs[0] * P.dx, X2 = P.x0 + xs[n - 1] * P.dx, Y = (L, off) => P.candles.priceToCoordinate(c0 + k * L + off);
+      const m1 = [X1, Y(xs[0], 0)], m2 = [X2, Y(xs[n - 1], 0)], u1 = [X1, Y(xs[0], 2 * sd)], u2 = [X2, Y(xs[n - 1], 2 * sd)], l1 = [X1, Y(xs[0], -2 * sd)], l2 = [X2, Y(xs[n - 1], -2 * sd)];
+      if ([m1, m2, u1, u2, l1, l2].some(p => p[1] == null)) return;
+      fillPoly(ctx, [u1, u2, l2, l1], d.fc || col, fo * .8); L2(m1, m2); dash(true); L2(u1, u2); L2(l1, l2); dash(false); BB.set(d, bbox([u1, u2, l1, l2])); return; }
+    case 'pfork': case 'ipfork': { if (!c) { L2(a, b); return; }
+      const m = midp(b, c), o = t === 'ipfork' ? midp(a, b) : a, dir = [m[0] - o[0], m[1] - o[1]], ex = (p) => far(p, [p[0] + dir[0], p[1] + dir[1]], 5000);
+      fillPoly(ctx, [b, ex(b), ex(c), c], d.fc || col, fo * .6);
+      if (t === 'ipfork') { dash(true); L2(a, o); dash(false); }
+      L2(a, b); L2(b, c); L2(o, ex(m)); L2(b, ex(b)); L2(c, ex(c)); return; }
+    case 'fib': return;
+    case 'fibext': { dash(true); PL(q); dash(false); if (!c) return;
+      lvLines([0, .236, .382, .5, .618, .786, 1, 1.618, 2.618, 3.618, 4.236], (lv) => pr[2] + (pr[1] - pr[0]) * lv, Math.min(b[0], c[0]), Math.max(b[0], c[0]) + Math.abs(b[0] - a[0])); return; }
+    case 'fibchan': { L2(a, b); if (!c) return; const off = chanOff(a, b, c), LV = [0, .236, .382, .5, .618, .786, 1, 1.618, 2.618]; let prev = null;
+      LV.forEach((lv, i) => { const a2 = [a[0], a[1] + off * lv], b2 = [b[0], b[1] + off * lv], lc = LVCOL[i % LVCOL.length];
+        if (prev) fillPoly(ctx, [prev[0], prev[1], b2, a2], lc, .06); ctx.strokeStyle = lc; L2(a2, b2); ctext(ctx, Math.min(a2[0], b2[0]) - 4, a2[0] < b2[0] ? a2[1] : b2[1], String(lv), lc, 'right', 'middle'); prev = [a2, b2]; });
+      ctx.strokeStyle = col; return; }
+    case 'fibtime': case 'fibtimeext': { const dx = b[0] - a[0], N = t === 'fibtime' ? [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89] : [0, .382, .5, .618, 1, 1.382, 1.618, 2, 2.382, 2.618, 3], x0 = t === 'fibtime' ? a[0] : c ? c[0] : null;
+      dash(true); PL(q); dash(false); if (x0 == null) return;
+      N.forEach((n, i) => { const x = x0 + dx * n; if (x < -5 || x > W + 5) return; ctx.strokeStyle = LVCOL[i % LVCOL.length]; L2([x, 0], [x, H]); ctext(ctx, x + 3, H - 4, String(n), LVCOL[i % LVCOL.length]); });
+      ctx.strokeStyle = col; return; }
+    case 'fibfan': { const LV = [0, .25, .382, .5, .618, .75, 1]; ctx.save(); ctx.globalAlpha = .5; ctx.strokeRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.abs(b[0] - a[0]), Math.abs(b[1] - a[1])); ctx.restore();
+      LV.forEach((lv, i) => { const lc = LVCOL[i % LVCOL.length], p1 = [b[0], b[1] + (a[1] - b[1]) * lv], p2 = [b[0] + (a[0] - b[0]) * lv, b[1]]; ctx.strokeStyle = lc;
+        if (lv < 1) { L2(a, far(a, p1)); ctext(ctx, b[0] + 4, p1[1], String(lv), lc, 'left', 'middle'); }
+        if (lv > 0 && lv < 1) L2(a, far(a, p2)); });
+      ctx.strokeStyle = col; return; }
+    case 'fibcirc': { const r0 = Math.hypot(b[0] - a[0], b[1] - a[1]); dash(true); L2(a, b); dash(false);
+      [.236, .382, .5, .618, .786, 1, 1.618].forEach((lv, i) => { ctx.strokeStyle = LVCOL[(i + 1) % LVCOL.length]; RG(a[0], a[1], r0 * lv); }); ctx.strokeStyle = col; return; }
+    case 'fibspiral': { const r0 = Math.hypot(b[0] - a[0], b[1] - a[1]), g0 = Math.atan2(b[1] - a[1], b[0] - a[0]), phi = 1.618034, pp = [];
+      for (let k = -16 * 6; k <= 16 * 3; k++) { const th = k / 16 * Math.PI / 2, r = r0 * Math.pow(phi, th / (Math.PI / 2)); pp.push([a[0] + r * Math.cos(g0 + th), a[1] + r * Math.sin(g0 + th)]); }
+      PL(pp); dash(true); seg(ctx, a, b); dash(false); return; }
+    case 'fibarcs': { const r0 = Math.hypot(b[0] - a[0], b[1] - a[1]), upw = a[1] < b[1]; dash(true); L2(a, b); dash(false);
+      [.236, .382, .5, .618, .786, 1].forEach((lv, i) => { ctx.strokeStyle = LVCOL[(i + 1) % LVCOL.length]; RG(b[0], b[1], r0 * lv, upw ? Math.PI : 0, upw ? Math.PI * 2 : Math.PI); ctext(ctx, b[0] + 3, b[1] + (upw ? -1 : 1) * r0 * lv, String(lv), LVCOL[(i + 1) % LVCOL.length], 'left', upw ? 'bottom' : 'top'); });
+      ctx.strokeStyle = col; return; }
+    case 'fibwedge': { L2(a, b); if (!c) return; L2(a, c); const r0 = Math.hypot(b[0] - a[0], b[1] - a[1]), g1 = Math.atan2(b[1] - a[1], b[0] - a[0]), g2 = Math.atan2(c[1] - a[1], c[0] - a[0]);
+      let df = g2 - g1; while (df > Math.PI) df -= 2 * Math.PI; while (df < -Math.PI) df += 2 * Math.PI;
+      [.236, .382, .5, .618, .786, 1].forEach((lv, i) => { ctx.strokeStyle = LVCOL[(i + 1) % LVCOL.length]; RG(a[0], a[1], r0 * lv, g1, g1 + df, df < 0); }); ctx.strokeStyle = col; return; }
+    case 'pitchfan': { L2(a, b); if (!c) return; L2(b, c);
+      [0, .236, .382, .5, .618, .786, 1].forEach((lv, i) => { const p = [b[0] + (c[0] - b[0]) * lv, b[1] + (c[1] - b[1]) * lv]; ctx.strokeStyle = LVCOL[i % LVCOL.length]; L2(a, far(a, p)); });
+      ctx.strokeStyle = col; return; }
+    case 'gannbox': case 'gannsqf': case 'gannsq': {
+      const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]), w = x2 - x1, h = y2 - y1;
+      fillPoly(ctx, [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], d.fc || col, fo * .5);
+      const LV = t === 'gannbox' ? [0, .25, .382, .5, .618, .75, 1] : t === 'gannsqf' ? [0, .25, .5, .75, 1] : [0, 1 / 3, 2 / 3, 1];
+      LV.forEach((lv, i) => { const lc = t === 'gannbox' ? LVCOL[i % LVCOL.length] : col; ctx.strokeStyle = lc; ctx.globalAlpha = (lv === 0 || lv === 1) ? (d.op ?? 1) : .6 * (d.op ?? 1);
+        L2([x1 + w * lv, y1], [x1 + w * lv, y2]); L2([x1, y1 + h * lv], [x2, y1 + h * lv]);
+        if (t === 'gannbox') { ctext(ctx, x1 + w * lv, y1 - 3, String(+lv.toFixed(3)), lc, 'center'); ctext(ctx, x1 - 4, y1 + h * lv, String(+lv.toFixed(3)), lc, 'right', 'middle'); } });
+      ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = col;
+      if (t === 'gannsqf') { L2([x1, y2], [x2, y1]); L2([x1, y1], [x2, y2]); RG(x1, y2, w, -Math.PI / 2, 0); RG(x1, y2, w / 2, -Math.PI / 2, 0); }
+      if (t === 'gannsq') for (const lv of [1 / 3, 2 / 3, 1]) { L2([x1, y2], [x2, y2 - h * lv]); if (lv < 1) L2([x1, y2], [x1 + w * lv, y1]); }
+      BB.set(d, [x1, y1, x2, y2]); return; }
+    case 'gannfan': { const dx = b[0] - a[0], dy = b[1] - a[1];
+      [[1, 8], [1, 4], [1, 3], [1, 2], [1, 1], [2, 1], [3, 1], [4, 1], [8, 1]].forEach(([tm, pm], i) => { const lc = LVCOL[(i + 1) % LVCOL.length], e = [a[0] + dx * tm, a[1] + dy * pm]; ctx.strokeStyle = lc; L2(a, far(a, e));
+        const lp = [a[0] + (e[0] - a[0]) * .9, a[1] + (e[1] - a[1]) * .9]; ctext(ctx, lp[0] + 4, lp[1], `${pm}/${tm}`, lc, 'left', 'middle'); });
+      ctx.strokeStyle = col; return; }
+    case 'xabcd': case 'cypher': case 'abcd': case 'hs': case 'tripat': case 'threedrv': {
+      const labs = PLAB[t];
+      if ((t === 'xabcd' || t === 'cypher') && q.length >= 3) { fillPoly(ctx, q.slice(0, 3), d.fc || col, fo); if (q.length >= 5) fillPoly(ctx, q.slice(2, 5), d.fc || col, fo); }
+      if (t === 'tripat' && q.length >= 4) { dash(true); L2(far(c, a), far(a, c)); L2(far(q[3], b), far(b, q[3])); dash(false); fillPoly(ctx, [a, c, q[3], b], d.fc || col, fo * .7); }
+      if (t === 'hs' && q.length >= 5) { dash(true); L2(far(q[4], q[2]), far(q[2], q[4])); dash(false); }
+      PL(q);
+      const ratio = (i, j, k, m) => { if (q.length <= Math.max(i, j, k, m)) return; const r = Math.abs(pr[m] - pr[k]) / (Math.abs(pr[j] - pr[i]) || 1); dash(true); ctx.save(); ctx.globalAlpha = .6; seg(ctx, q[i === k ? j : i], q[m]); ctx.restore(); dash(false);
+        const p = midp(q[i === k ? j : i], q[m]); ctx.globalAlpha = 1; tag(ctx, p[0], p[1], r.toFixed(3), '#1e222d', '#e6e6ea', 'center'); ctx.globalAlpha = d.op ?? 1; };
+      if (t === 'xabcd' || t === 'cypher') { ratio(0, 1, 1, 2); ratio(1, 2, 2, 3); ratio(2, 3, 3, 4); }
+      if (t === 'abcd') { ratio(0, 1, 1, 2); ratio(1, 2, 2, 3); }
+      ptLabels(ctx, q, labs, col); return; }
+    case 'ew12345': case 'ewabc': case 'ewabcde': case 'ewwxy': case 'ewwxyxz': PL(q); ptLabels(ctx, q, PLAB[t], col, true); return;
+    case 'cyclines': case 'timecyc': { const dx = Math.abs(b[0] - a[0]); dash(true); seg(ctx, a, b); dash(false); if (dx < 4) return;
+      let x = Math.min(a[0], b[0]); while (x - dx > -dx) x -= dx;
+      for (; x <= W + dx; x += dx) { if (t === 'cyclines') L2([x, 0], [x, H]); else RG(x + dx / 2, a[1], dx / 2, Math.PI, Math.PI * 2); }
+      return; }
+    case 'forecast': { const up = pr[1] >= pr[0], fc = up ? '#26b07a' : '#e2554f', dp = pr[1] - pr[0], bars = Math.round(Math.abs(tToL(P, d.pts[1].t) - tToL(P, d.pts[0].t)));
+      ctx.strokeStyle = fc; ctx.fillStyle = fc; dash(true); seg(ctx, a, [b[0], a[1]]); dash(false); L2(a, b); arrowHead(ctx, a, b);
+      ctx.globalAlpha = 1; tag(ctx, b[0], b[1] + (up ? -16 : 16), `${dp >= 0 ? '+' : ''}${dp.toFixed(2)} (${(dp / pr[0] * 100).toFixed(2)}%)`, fc, '#fff', 'center');
+      tag(ctx, b[0], b[1] + (up ? -36 : 36), `${bars} bars, ${fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))}`, '#1e222d', '#e6e6ea', 'center'); return; }
+    case 'barspat': {
+      if (!d.src) { fillPoly(ctx, [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]], col, .1); dash(true); PL([[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]], true); dash(false); return; }
+      const L0 = tToL(P, d.src[0]), sh = d.pts[0].p - d.src[2], bw = Math.max(1, P.dx * .6), pp = [];
+      for (const bar of P.agg) { if (bar.time < d.src[0] || bar.time > d.src[1]) continue;
+        const x = a[0] + (tToL(P, bar.time) - L0) * P.dx, yo = P.candles.priceToCoordinate(bar.open + sh), yc = P.candles.priceToCoordinate(bar.close + sh), yh = P.candles.priceToCoordinate(bar.high + sh), yl = P.candles.priceToCoordinate(bar.low + sh);
+        if ([yo, yc, yh, yl].some(v => v == null)) continue; const cc = d.mono ? col : bar.close >= bar.open ? '#26b07a' : '#e2554f';
+        ctx.save(); ctx.globalAlpha = .55 * (d.op ?? 1); ctx.fillStyle = cc; ctx.fillRect(x - .5, yh, 1, yl - yh); ctx.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yc - yo))); ctx.restore(); pp.push([x, yh], [x, yl]); }
+      if (pp.length) BB.set(d, bbox(pp)); return; }
+    case 'ghost': { const bwF = .6;
+      for (let i = 0; i + 1 < q.length; i++) { const p1 = q[i], p2 = q[i + 1], n = Math.max(1, Math.round(Math.abs(p2[0] - p1[0]) / P.dx)), bw = Math.max(1, Math.abs(p2[0] - p1[0]) / n * bwF);
+        for (let j = 0; j < n; j++) { const yo = p1[1] + (p2[1] - p1[1]) * j / n, yc = p1[1] + (p2[1] - p1[1]) * (j + 1) / n, x = p1[0] + (p2[0] - p1[0]) * (j + .5) / n, wk = Math.abs(yc - yo) * .35 + 2;
+          ctx.save(); ctx.globalAlpha = .55 * (d.op ?? 1); ctx.fillStyle = yc <= yo ? '#26b07a' : '#e2554f'; ctx.fillRect(x - .5, Math.min(yo, yc) - wk, 1, Math.abs(yc - yo) + wk * 2); ctx.fillRect(x - bw / 2, Math.min(yo, yc), bw, Math.max(1, Math.abs(yc - yo))); ctx.restore(); }
+        hs.push([p1, p2]); }
+      return; }
+    case 'avwap': { let pv = 0, vv = 0; const pp = [];
+      for (let i = 0; i < P.agg.length; i++) { const bar = P.agg[i]; if (bar.time < d.pts[0].t) continue; const v = bar.value || 1; pv += (bar.high + bar.low + bar.close) / 3 * v; vv += v;
+        const x = P.x0 + i * P.dx; if (x < -20 || x > W + 20) continue; const y = P.candles.priceToCoordinate(pv / vv); if (y != null) pp.push([x, y]); }
+      PL(pp); if (pp.length) ctext(ctx, pp[pp.length - 1][0] + 4, pp[pp.length - 1][1], 'VWAP', col, 'left', 'middle'); return; }
+    case 'frvp': { const t1 = Math.min(d.pts[0].t, d.pts[1].t), t2 = Math.max(d.pts[0].t, d.pts[1].t), bb = volProfile(P, ctx, d, t1, t2, Math.min(a[0], b[0]), Math.max(a[0], b[0]), hs); if (bb) BB.set(d, bb); else { dash(true); L2(a, b); dash(false); } return; }
+    case 'avp': { const last = P.agg[P.agg.length - 1]; if (!last) return; const bb = volProfile(P, ctx, d, d.pts[0].t, last.time, a[0], Math.max(a[0] + 40, P.x0 + (P.agg.length - 1) * P.dx), hs); if (bb) BB.set(d, bb); return; }
+    case 'prange': case 'drange': { const x1 = Math.min(a[0], b[0]), x2 = Math.max(a[0], b[0]), y1 = Math.min(a[1], b[1]), y2 = Math.max(a[1], b[1]);
+      fillPoly(ctx, [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], col, .12); ctx.globalAlpha = d.op ?? 1;
+      if (t === 'prange') { L2([x1, a[1]], [x2, a[1]]); L2([x1, b[1]], [x2, b[1]]); const xm = (x1 + x2) / 2; seg(ctx, [xm, a[1]], [xm, b[1]]); arrowHead(ctx, [xm, a[1]], [xm, b[1]], 8);
+        const dp = pr[1] - pr[0]; ctx.globalAlpha = 1; tag(ctx, xm, b[1] + (b[1] < a[1] ? -14 : 14), `${dp >= 0 ? '+' : ''}${dp.toFixed(2)} (${(dp / pr[0] * 100).toFixed(2)}%)  $${(Math.abs(dp) * INSTR[P.sym].pv).toFixed(2)}/contract`, col, '#fff', 'center'); }
+      else { L2([a[0], y1], [a[0], y2]); L2([b[0], y1], [b[0], y2]); const ym = (y1 + y2) / 2; seg(ctx, [a[0], ym], [b[0], ym]); arrowHead(ctx, [a[0], ym], [b[0], ym], 8);
+        const bars = Math.round(Math.abs(tToL(P, d.pts[1].t) - tToL(P, d.pts[0].t))); ctx.globalAlpha = 1; tag(ctx, (x1 + x2) / 2, y2 + 14, `${bars} bars, ${fmtSpan(Math.abs(d.pts[1].t - d.pts[0].t))}`, col, '#fff', 'center'); }
+      BB.set(d, [x1, y1, x2, y2]); return; }
+    case 'brush': case 'hilite': { ctx.lineJoin = 'round'; ctx.lineCap = 'round'; if (t === 'hilite') { ctx.globalAlpha = .35 * (d.op ?? 1); ctx.lineWidth = (d.w || 2) * 6; }
+      ctx.beginPath(); q.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); for (let i = 0; i + 1 < q.length; i++) hs.push([q[i], q[i + 1]]); ctx.lineCap = 'butt'; return; }
+    case 'arrowmk': { const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 2) return; const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, nx = -uy, ny = ux, w = Math.max(4, Math.min(10, L * .08)), hl = Math.min(L * .45, 26), hw = w * 2.4, hb = [b[0] - ux * hl, b[1] - uy * hl];
+      ctx.beginPath(); ctx.moveTo(a[0] + nx * w * .4, a[1] + ny * w * .4); ctx.lineTo(hb[0] + nx * w, hb[1] + ny * w); ctx.lineTo(hb[0] + nx * hw, hb[1] + ny * hw); ctx.lineTo(b[0], b[1]); ctx.lineTo(hb[0] - nx * hw, hb[1] - ny * hw); ctx.lineTo(hb[0] - nx * w, hb[1] - ny * w); ctx.lineTo(a[0] - nx * w * .4, a[1] - ny * w * .4); ctx.closePath(); ctx.fill(); hs.push([a, b]); return; }
+    case 'arrup': case 'arrdn': case 'arrlt': case 'arrrt': { const s = 9, rot = { arrup: 0, arrrt: Math.PI / 2, arrdn: Math.PI, arrlt: -Math.PI / 2 }[t];
+      ctx.save(); ctx.translate(a[0], a[1]); ctx.rotate(rot); ctx.beginPath(); ctx.moveTo(0, -s * 1.6); ctx.lineTo(s, -s * .3); ctx.lineTo(s * .4, -s * .3); ctx.lineTo(s * .4, s * 1.4); ctx.lineTo(-s * .4, s * 1.4); ctx.lineTo(-s * .4, -s * .3); ctx.lineTo(-s, -s * .3); ctx.closePath(); ctx.fill(); ctx.restore();
+      BB.set(d, [a[0] - 14, a[1] - 14, a[0] + 14, a[1] + 14]); return; }
+    case 'rrect': { if (!c) { L2(a, b); return; } const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L, dd = (c[0] - a[0]) * nx + (c[1] - a[1]) * ny, pp = [a, b, [b[0] + nx * dd, b[1] + ny * dd], [a[0] + nx * dd, a[1] + ny * dd]];
+      fillPoly(ctx, pp, d.fc || col, fo); ctx.globalAlpha = d.op ?? 1; PL(pp, true); return; }
+    case 'path': PL(q); if (q.length > 1) arrowHead(ctx, q[q.length - 2], q[q.length - 1]); return;
+    case 'polyline': PL(q); return;
+    case 'circle': { const r = Math.hypot(b[0] - a[0], b[1] - a[1]); if (d.fill !== false) { ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = alpha(d.fc || col, fo * (d.op ?? 1)); ctx.beginPath(); ctx.arc(a[0], a[1], r, 0, 7); ctx.fill(); ctx.restore(); } RG(a[0], a[1], r); BB.set(d, [a[0] - r * .7, a[1] - r * .7, a[0] + r * .7, a[1] + r * .7]); return; }
+    case 'triangle': { if (!c) { L2(a, b); return; } if (d.fill !== false) fillPoly(ctx, q, d.fc || col, fo * (d.op ?? 1)); PL(q, true); return; }
+    case 'arc': case 'curve': case 'dcurve': { if (!c) { L2(a, b); return; } let pp;
+      if (t === 'arc') { const m = midp(a, b); pp = qpts(a, [2 * c[0] - m[0], 2 * c[1] - m[1]], b); if (d.fill !== false) fillPoly(ctx, pp, d.fc || col, fo * (d.op ?? 1)); }
+      else if (t === 'curve') pp = qpts(a, c, b);
+      else { const m = midp(a, b); pp = qpts(a, c, m, 16).concat(qpts(m, [2 * m[0] - c[0], 2 * m[1] - c[1]], b, 16).slice(1)); }
+      ctx.beginPath(); pp.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); for (let i = 0; i + 1 < pp.length; i++) hs.push([pp[i], pp[i + 1]]); return; }
+    case 'atext': { const lines = String(d.label || 'Anchored text').split('\n'), fs = d.fs || 14; ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.font = dFont(d); ctx.fillStyle = d.tc || col; ctx.textBaseline = 'top';
+      const w = Math.max(...lines.map(l => ctx.measureText(l).width)); lines.forEach((l, i) => ctx.fillText(l, a[0], a[1] + i * fs * 1.25)); ctx.restore();
+      BB.set(d, [a[0] - 3, a[1] - 3, a[0] + w + 3, a[1] + lines.length * fs * 1.25 + 3]); if (isSel) { ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeRect(a[0] - 4, a[1] - 4, w + 8, lines.length * fs * 1.25 + 8); ctx.setLineDash([]); } return; }
+    case 'note': case 'pin': { ctx.globalAlpha = 1;
+      if (t === 'note') { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(a[0] - 10, a[1] - 22, 20, 20, 4); else ctx.rect(a[0] - 10, a[1] - 22, 20, 20); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; seg(ctx, [a[0] - 5, a[1] - 16], [a[0] + 5, a[1] - 16]); seg(ctx, [a[0] - 5, a[1] - 12], [a[0] + 5, a[1] - 12]); seg(ctx, [a[0] - 5, a[1] - 8], [a[0] + 1, a[1] - 8]); BB.set(d, [a[0] - 10, a[1] - 22, a[0] + 10, a[1] - 2]); }
+      else { ctx.beginPath(); ctx.arc(a[0], a[1] - 18, 8, 0, 7); ctx.fill(); ctx.beginPath(); ctx.moveTo(a[0] - 5, a[1] - 12); ctx.lineTo(a[0], a[1]); ctx.lineTo(a[0] + 5, a[1] - 12); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(a[0], a[1] - 18, 3, 0, 7); ctx.fill(); BB.set(d, [a[0] - 9, a[1] - 27, a[0] + 9, a[1]]); }
+      if (isSel || d.show) bubble(ctx, d, a[0] + 14, a[1] - 26, String(d.label || (t === 'note' ? 'Note' : 'Pin')).split('\n'), col);
+      return; }
+    case 'pnote': { ctx.beginPath(); ctx.arc(a[0], a[1], 3.5, 0, 7); ctx.fill(); L2(a, b); const bb = bubble(ctx, d, b[0], b[1], [fmtPx(pr[0]), ...(d.label ? String(d.label).split('\n') : [])], col, b[0] < a[0] ? 'r' + (b[1] < a[1] ? 'b' : '') : (b[1] < a[1] ? 'b' : '')); BB.set(d, bb); return; }
+    case 'table': { const rows = String(d.label || 'Setup | Notes\nEntry | \nStop | ').split('\n').map(r => r.split('|').map(s => s.trim())), nc = Math.max(...rows.map(r => r.length));
+      ctx.save(); ctx.globalAlpha = 1; ctx.font = dFont({ ...d, fs: d.fs || 12 }); const fs = d.fs || 12, rh = fs * 1.6 + 6, cw = Array.from({ length: nc }, (_, j) => Math.max(40, ...rows.map(r => ctx.measureText(r[j] || '').width)) + 16), w = cw.reduce((s, v) => s + v, 0), h = rows.length * rh;
+      ctx.fillStyle = d.fc || '#1e222d'; ctx.fillRect(a[0], a[1], w, h); ctx.strokeStyle = col; ctx.lineWidth = 1; ctx.strokeRect(a[0] + .5, a[1] + .5, w, h);
+      let x = a[0]; for (let j = 0; j < nc; j++) { if (j) seg(ctx, [x + .5, a[1]], [x + .5, a[1] + h]); rows.forEach((r, i) => { ctx.fillStyle = i === 0 ? (d.tc || '#ffffff') : (d.tc || '#c9ccd3'); ctx.textBaseline = 'middle'; ctx.fillText(r[j] || '', x + 8, a[1] + i * rh + rh / 2); }); x += cw[j]; }
+      for (let i = 1; i < rows.length; i++) seg(ctx, [a[0], a[1] + i * rh + .5], [a[0] + w, a[1] + i * rh + .5]); ctx.restore(); BB.set(d, [a[0], a[1], a[0] + w, a[1] + h]); return; }
+    case 'callout': { const bb = bubble(ctx, d, b[0], b[1], String(d.label || 'Callout').split('\n'), col, 'c' + (b[1] < a[1] ? 'b' : '')), ey = b[1] < a[1] ? bb[3] : bb[1], cx = Math.min(Math.max(a[0], bb[0] + 10), bb[2] - 10);
+      ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = d.fc || '#1e222d'; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(cx - 7, ey); ctx.lineTo(a[0], a[1]); ctx.lineTo(cx + 7, ey); ctx.fill(); ctx.stroke(); ctx.restore(); hs.push([a, [cx, ey]]); BB.set(d, bb); return; }
+    case 'comment': { const bb = bubble(ctx, d, a[0], a[1] - 10, String(d.label || 'Comment').split('\n'), col, 'b'); ctx.save(); ctx.globalAlpha = 1; ctx.fillStyle = d.fc || '#1e222d'; ctx.strokeStyle = col; ctx.beginPath(); ctx.moveTo(a[0] + 6, a[1] - 10.5); ctx.lineTo(a[0], a[1]); ctx.lineTo(a[0] + 16, a[1] - 10.5); ctx.fill(); ctx.stroke(); ctx.restore(); BB.set(d, [bb[0], bb[1], bb[2], a[1]]); return; }
+    case 'plabel': { ctx.save(); ctx.globalAlpha = 1; ctx.font = '600 12px "IBM Plex Mono", ui-monospace, monospace'; const s = fmtPx(pr[0]), w = ctx.measureText(s).width + 14;
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[0] + 8, a[1] - 11); ctx.lineTo(a[0] + 8 + w, a[1] - 11); ctx.lineTo(a[0] + 8 + w, a[1] + 11); ctx.lineTo(a[0] + 8, a[1] + 11); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(s, a[0] + 14, a[1]); ctx.restore(); BB.set(d, [a[0], a[1] - 11, a[0] + 8 + w, a[1] + 11]); return; }
+    case 'signpost': { ctx.globalAlpha = 1; ctx.lineWidth = 1.5; seg(ctx, a, [a[0], a[1] - 40]); ctx.beginPath(); ctx.arc(a[0], a[1], 3, 0, 7); ctx.fill(); const bb = bubble(ctx, d, a[0], a[1] - 40, String(d.label || fmtPx(pr[0])).split('\n'), col, 'cb'); BB.set(d, [bb[0], bb[1], bb[2], a[1]]); return; }
+    case 'flag': { ctx.globalAlpha = 1; ctx.lineWidth = 2; seg(ctx, a, [a[0], a[1] - 24]); ctx.beginPath(); ctx.moveTo(a[0], a[1] - 24); ctx.lineTo(a[0] + 16, a[1] - 24); ctx.lineTo(a[0] + 12, a[1] - 19); ctx.lineTo(a[0] + 16, a[1] - 14); ctx.lineTo(a[0], a[1] - 14); ctx.closePath(); ctx.fill(); BB.set(d, [a[0] - 3, a[1] - 26, a[0] + 17, a[1] + 2]); return; }
+  }
+  if (TOOLDEF[t] && TOOLDEF[t].ch) { const fs = d.fs ? d.fs * 1.6 : 24; ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.font = `${fs}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(TOOLDEF[t].ch, a[0], a[1]); ctx.restore(); BB.set(d, [a[0] - fs / 2, a[1] - fs / 2, a[0] + fs / 2, a[1] + fs / 2]); }
+}
+function ptLabels(ctx, q, labs, col, round) {
+  ctx.save(); ctx.globalAlpha = 1;
+  q.forEach((p, i) => { const s = labs && labs[i]; if (!s) return; const pv = q[i - 1], nx = q[i + 1];
+    const low = pv && nx ? p[1] >= (pv[1] + nx[1]) / 2 : pv ? p[1] > pv[1] : nx ? p[1] > nx[1] : false, y = p[1] + (low ? 15 : -15);
+    if (round) { ctx.font = '600 11px "IBM Plex Sans", system-ui, sans-serif'; ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(`(${s})`, p[0], y); }
+    else tag(ctx, p[0], y, s, col, '#fff', 'center'); });
+  ctx.restore();
+}
+function hitX(P, d, pt, q) {
+  const T = 6, bb = BB.get(d);
+  if (bb && pt[0] >= bb[0] - 3 && pt[0] <= bb[2] + 3 && pt[1] >= bb[1] - 3 && pt[1] <= bb[3] + 3) return true;
+  for (const s of HS.get(d) || []) { if (s.r != null) { if (Math.abs(Math.hypot(pt[0] - s.c[0], pt[1] - s.c[1]) - s.r) < T) return true; } else if (segDist(pt, s[0], s[1]) < T) return true; }
+  return q.length > 0 && q[0][1] != null && Math.hypot(pt[0] - q[0][0], pt[1] - q[0][1]) < 10;
+}
 function renderD(P, ctx, d, isSel) {
-  const col = d.color || DCOL[0], q = d.pts.map(p => toXY(P, p));
+  const col = d.color || DCOL[0], q = qOf(P, d);
   if (q.some(v => v[1] == null || !isFinite(v[0]))) return;
   ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = d.w || 2; ctx.setLineDash(d.ls === 'dashed' ? [6, 4] : d.ls === 'dotted' ? [1.5, 3.5] : []);
   const [a, b, c] = q, W = P.pw, H = P.ph;
@@ -1418,12 +1787,13 @@ function renderD(P, ctx, d, isSel) {
       if (isSel) { const w = ctx.measureText(d.text || '').width, hh = (d.fs || 14) / 2 + 4; ctx.setLineDash([3, 3]); ctx.lineWidth = 1; ctx.strokeRect(a[0] - 4, a[1] - hh, w + 8, hh * 2); ctx.setLineDash([]); }
       break;
     }
+    default: renderX(P, ctx, d, q, col, isSel);
   }
   ctx.setLineDash([]);
   if (d.plab && !['hline', 'hray'].includes(d.type)) { ctx.globalAlpha = 1; const n = d.type === 'channel' ? 2 : d.pts.length; for (let i = 0; i < n; i++) tag(ctx, q[i][0] + 6, q[i][1] + (q[i][1] < 16 ? 12 : -12), fmtPx(d.pts[i].p), col, '#0c1015', 'left'); }
-  if (d.label && HAS_TEXT(d.type) && d.type !== 'text') drawLabel(P, ctx, d, q);
+  if (d.label && HAS_TEXT(d.type) && d.type !== 'text' && !OWN_LABEL.has(d.type)) drawLabel(P, ctx, d, q);
   ctx.globalAlpha = 1;
-  if (isSel && d.type !== 'text') for (const [hx, hy] of q) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill(); ctx.stroke(); }
+  if (isSel && d.type !== 'text') for (const [hx, hy] of (FREE.has(d.type) ? [q[0], q[q.length - 1]] : q)) { ctx.fillStyle = '#0a0a0b'; ctx.strokeStyle = d.color || '#d9e0e8'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(hx, hy, 5, 0, 7); ctx.fill(); ctx.stroke(); }
 }
 function paint(P) {
   if (!P.sym) return;
@@ -1446,7 +1816,7 @@ function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P);
 function segDist(p, a, b) { const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy; let t = l2 ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy); }
 function inBox(p, a, b, m = 4) { return p[0] >= Math.min(a[0], b[0]) - m && p[0] <= Math.max(a[0], b[0]) + m && p[1] >= Math.min(a[1], b[1]) - m && p[1] <= Math.max(a[1], b[1]) + m; }
 function hitD(P, d, pt) {
-  const q = d.pts.map(p => toXY(P, p)); if (q.some(v => v[1] == null)) return false;
+  const q = qOf(P, d); if (q.some(v => v[1] == null)) return false;
   const [a, b, c] = q, T = 6;
   switch (d.type) {
     case 'trend': case 'arrow': return segDist(pt, a, b) < T;
@@ -1462,7 +1832,7 @@ function hitD(P, d, pt) {
     case 'long': case 'short': return inBox(pt, [a[0], b[1]], [b[0], c[1]]);
     case 'text': { P.ctx.font = dFont(d); const w = P.ctx.measureText(d.text || '').width; return pt[0] >= a[0] - 4 && pt[0] <= a[0] + w + 4 && Math.abs(pt[1] - a[1]) < (d.fs || 14) / 2 + 5; }
   }
-  return false;
+  return hitX(P, d, pt, q);
 }
 function setPt(d, i, v) { d.pts[i] = v; if ((d.type === 'long' || d.type === 'short') && i > 0) d.pts[3 - i].t = v.t; }
 
@@ -1493,6 +1863,7 @@ function renderSelbars() {
   if (hasStroke) h += `<button data-e="width" title="Line thickness">${d.w || 2}px</button><button data-e="style" class="dash" title="Line style">${dashSvg(d.ls)}</button>`;
   if (LINEISH.includes(d.type)) h += `<button data-e="flat" title="Make the line perfectly flat">${svg('hline')}Make flat</button>`;
   if (d.type === 'text') h += '<button data-e="text">Edit text</button>';
+  else if (OWN_LABEL.has(d.type)) h += '<button data-e="ltext">Edit text</button>';
   if (d.type === 'long' || d.type === 'short') { const k = posInfo(P.sym, d), s = d.type === 'long' ? 1 : -1, typ = orderTypeFor(s, k.e, priceNow(P.sym), INSTR[P.sym].tick); h += `<button class="go" data-e="place">Place ${s > 0 ? 'buy' : 'sell'} ${typ} · ${k.qty} ${P.sym}</button>`; }
   h += `<button data-e="settings" title="Settings: colours, text, exact prices and which timeframes show it">${svg('gear')}</button>`;
   h += `<span class="vsep"></span><button data-e="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Unlock this drawing' : 'Lock this drawing in place'}">${svg('lock')}</button>`;
@@ -1511,7 +1882,7 @@ function setTool(t) {
   for (const P of PANES) P.el.style.cursor = t === 'cursor' ? '' : 'crosshair';
 }
 function renderTools() {
-  const g = GROUPS.map(([gid, list]) => {
+  const g = GROUPS.map(([gid, all]) => { const list = GTOOLS(all);
     const on = list.includes(draw.tool), cur = on ? draw.tool : (draw.last[gid] || list[0]), label = list.length > 1 ? GNAME[gid] + ': ' + TOOLDEF[cur].n : TOOLDEF[cur].n;
     return `<button data-grp="${gid}" aria-pressed="${on}" title="${label}" aria-label="${label}">${svg(cur)}${list.length > 1 ? '<i class="more"></i>' : ''}</button>`;
   }).join('');
@@ -1521,10 +1892,10 @@ function renderTools() {
   $('#tools').innerHTML = g + '<hr>' + tg + `<button data-tg="trash" class="${draw.armed > Date.now() ? 'warn' : ''}" title="Remove all drawings on this symbol" aria-label="Remove all drawings on this symbol">${svg('trash')}</button>`
     + `<span class="grow"></span><button data-tg="favbar" aria-pressed="${SET().favBar}" title="Show or hide the favourites bar" aria-label="Show or hide the favourites bar">${svg('star')}</button>`
     + `<button data-tg="collapse" title="Hide the drawing tools" aria-label="Hide the drawing tools">${svg('collapse')}</button>`;
-  $('#ws-mid').classList.toggle('notools', !SET().tools); $('#tools-open').hidden = SET().tools;
+  $('#ws-mid').classList.toggle('notools', !SET().tools); $('#tools-open').hidden = SET().tools; $('#b-draw').setAttribute('aria-pressed', !!SET().tools);
 }
 function flyHtml(gid, list) {
-  return `<div class="mh">${GNAME[gid]}</div>` + list.map(t => `<div class="it ${draw.tool === t ? 'on' : ''}"><button data-tool="${t}">${svg(t)}<span>${TOOLDEF[t].n}</span></button>${t === 'cursor' ? '' : `<button class="star" data-favtool="${t}" aria-pressed="${SET().favTools.includes(t)}" title="Add to favourites bar" aria-label="Add ${TOOLDEF[t].n} to favourites">★</button>`}</div>`).join('');
+  return (list[0][0] === '#' ? '' : `<div class="mh">${GNAME[gid]}</div>`) + list.map(t => t[0] === '#' ? `<div class="mh">${t.slice(1)}</div>` : `<div class="it ${draw.tool === t ? 'on' : ''}"><button data-tool="${t}">${svg(t)}<span>${TOOLDEF[t].n}</span></button>${t === 'cursor' ? '' : `<button class="star" data-favtool="${t}" aria-pressed="${SET().favTools.includes(t)}" title="Add to favourites bar" aria-label="Add ${TOOLDEF[t].n} to favourites">★</button>`}</div>`).join('');
 }
 function openFly(btn, gid, list) {
   const f = $('#fly'); if (!f.hidden && f.dataset.g === gid) { closeMenus(); return; }
@@ -1688,6 +2059,10 @@ function startMk(P, x, y) {
   const type = draw.tool, q = fromXY(P, x, y, true);
   const d = { id: uid(), type, sym: P.sym, color: ['long', 'short', 'measure'].includes(type) ? null : draw.color, pts: [q] };
   const rs = SET().toolStyle && SET().toolStyle[type]; if (rs) Object.assign(d, JSON.parse(JSON.stringify(rs)));
+  if (!rs && type === 'hilite') d.color = '#ffeb3b';
+  if (!rs && (type === 'arrup' || type === 'arrdn')) d.color = type === 'arrup' ? '#26b07a' : '#e2554f';
+  if (type === 'atext') { d.fx = x / P.pw; d.fy = y / P.ph; }
+  if (FREE.has(type)) { dList(P.sym).push(d); draw.mk = { P, d, n: 1, need: 1e9, free: true, sx: x, sy: y }; bump(); return; }
   if (type === 'long' || type === 'short') {
     const tick = INSTR[P.sym].tick, vis = Math.abs(P.candles.coordinateToPrice(0) - P.candles.coordinateToPrice(P.ph)), risk = Math.max(tick * 4, rt(vis * 0.06, tick)), s = type === 'long' ? 1 : -1;
     const t2 = lToT(P, tToL(P, q.t) + 20);
@@ -1697,8 +2072,17 @@ function startMk(P, x, y) {
   if (type === 'text') { lockChart(P, false); if (!draw.keep) setTool('cursor'); select(d, P); openText(P, d, x, y); return; }
   if (TOOLDEF[type].pts === 1) { finishD(P, d); return; }
   d.pts.push({ ...q }); draw.mk = { P, d, n: 1, need: TOOLDEF[type].pts, sx: x, sy: y }; bump();
+  if (TOOLDEF[type].pts >= 99) toast('Click to add each point. Click the last point again to finish.');
 }
-function finishD(P, d) { draw.mk = null; lockChart(P, false); if (!draw.keep) setTool('cursor'); select(d, P); save(); bump(); }
+function finishD(P, d) {
+  if (d.type === 'barspat' && !d.src && d.pts.length > 1) {
+    const t1 = Math.min(d.pts[0].t, d.pts[1].t), t2 = Math.max(d.pts[0].t, d.pts[1].t), src = P.agg.filter(b => b.time >= t1 && b.time <= t2);
+    if (src.length) { const L1 = tToL(P, src[0].time), L2 = tToL(P, src[src.length - 1].time), base = src[0].open; d.src = [src[0].time, src[src.length - 1].time, base];
+      d.pts = [{ t: lToT(P, L2 + 2), p: base }, { t: lToT(P, L2 + 2 + (L2 - L1)), p: base }]; toast('Bars copied. Drag the copy wherever you like.'); }
+  }
+  draw.mk = null; lockChart(P, false); if (!draw.keep) setTool('cursor'); select(d, P); save(); bump();
+  if (OWN_LABEL.has(d.type) && !d.label && !['pnote', 'signpost'].includes(d.type)) openDrawSettings(d, 'text');
+}
 function openText(P, d, x, y) {
   closeText();
   const inp = document.createElement('input'); inp.className = 'txtin'; inp.value = d.text || ''; inp.placeholder = 'Type a note, then press Enter';
@@ -1745,7 +2129,7 @@ function bindPane(P) {
   el.addEventListener('dblclick', e => {
     if (draw.hidden || draw.tool !== 'cursor' || e.target.closest('.ptag')) return;
     geo(P); const [x, y] = local(P, e), list = dList(P.sym);
-    for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { select(list[k], P); openDrawSettings(list[k], list[k].type === 'text' ? 'text' : undefined); return; }
+    for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { select(list[k], P); openDrawSettings(list[k], (list[k].type === 'text' || OWN_LABEL.has(list[k].type)) ? 'text' : undefined); return; }
   });
   el.addEventListener('pointerdown', e => {
     if (e.target.closest('.selbar, .txtin, .ptag button')) return;
@@ -1755,6 +2139,7 @@ function bindPane(P) {
     if (draw.txt) closeText();
     geo(P); const [x, y] = local(P, e); if (x > P.pw || y > P.ph) return;
     const mk = draw.mk;
+    if (mk && mk.P === P && mk.need >= 99 && mk.d.pts.length > 2) { const pv = toXY(P, mk.d.pts[mk.d.pts.length - 2]); if (Math.hypot(pv[0] - x, pv[1] - y) < 7) { grab(P, e); mk.d.pts.pop(); finishD(P, mk.d); return; } }
     if (mk && mk.P === P) { grab(P, e); mk.n++; if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); } return; }
     if (draw.tool !== 'cursor') { grab(P, e); startMk(P, x, y); return; }
     const ln = nearLine(P, y, e.target.closest('.ptag') ? 13 : 7);
@@ -1762,11 +2147,11 @@ function bindPane(P) {
     if (!draw.locked && !draw.hidden) {
       const s = selD();
       if (s && draw.sel.pane === P.i && s.sym === P.sym && s.type !== 'text' && !s.locked) {
-        const hs = s.pts.map(p => toXY(P, p));
+        const hs = qOf(P, s);
         for (let i = 0; i < hs.length; i++) if (hs[i][1] != null && Math.hypot(hs[i][0] - x, hs[i][1] - y) < 9) { grab(P, e); draw.act = { kind: 'handle', P, d: s, i }; return; }
       }
       const list = dList(P.sym);
-      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: list[k].pts.map(p => toXY(P, p)) }; return; }
+      for (let k = list.length - 1; k >= 0; k--) if (visibleOn(list[k], P.tf) && hitD(P, list[k], [x, y])) { grab(P, e); select(list[k], P); if (list[k].locked) { lockChart(P, false); return; } draw.act = { kind: 'move', P, d: list[k], x, y, orig: qOf(P, list[k]) }; return; }
     }
     if (draw.sel) select(null);
   }, true);
@@ -1774,12 +2159,12 @@ function bindPane(P) {
     if (e.target.closest('.selbar, .txtin')) return;
     geo(P); const [x, y] = local(P, e);
     const mk = draw.mk;
-    if (mk && mk.P === P) { mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); bump(); return; }
+    if (mk && mk.P === P) { if (mk.free) { const l = toXY(P, mk.d.pts[mk.d.pts.length - 1]); if (Math.hypot(l[0] - x, l[1] - y) > 2) mk.d.pts.push(fromXY(P, x, y, false)); bump(); return; } mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); bump(); return; }
     const A = draw.act;
     if (A && A.P === P) {
       if (A.kind === 'line') { dragLine(P, A, y); return; }
-      if (A.kind === 'handle') { setPt(A.d, A.i, fromXY(P, x, y, true)); bump(); return; }
-      if (A.kind === 'move') { const dx = x - A.x, dy = y - A.y; A.d.pts = A.orig.map(([px, py]) => fromXY(P, px + dx, py + dy, false)); bump(); return; }
+      if (A.kind === 'handle') { if (A.d.type === 'atext') { A.d.fx = x / P.pw; A.d.fy = y / P.ph; } else setPt(A.d, A.i, fromXY(P, x, y, true)); bump(); return; }
+      if (A.kind === 'move') { const dx = x - A.x, dy = y - A.y; if (A.d.type === 'atext') { A.d.fx = (A.orig[0][0] + dx) / P.pw; A.d.fy = (A.orig[0][1] + dy) / P.ph; } else A.d.pts = A.orig.map(([px, py]) => fromXY(P, px + dx, py + dy, false)); bump(); return; }
     }
     if (draw.tool !== 'cursor') { el.style.cursor = 'crosshair'; return; }
     let cur = '';
@@ -1788,6 +2173,7 @@ function bindPane(P) {
   }, true);
   const up = (e) => {
     const mk = draw.mk;
+    if (mk && mk.P === P && mk.free) { if (mk.d.pts.length < 2) { draw.mk = null; lockChart(P, false); removeD(mk.d); } else finishD(P, mk.d); return; }
     if (mk && mk.P === P) {
       const [x, y] = local(P, e);
       if (mk.n === 1 && Math.hypot(x - mk.sx, y - mk.sy) > 6) { mk.n++; if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); } }
@@ -2170,8 +2556,11 @@ function renderSessions() {
 function applySettings() {
   const s = SET();
   document.documentElement.style.setProperty('--chart-bg', s.bg);
+  const lt = isLightCol(s.bg), ch = { color: lt ? '#55555e' : '#758696', labelBackgroundColor: lt ? '#131316' : '#2a2a30' };
+  document.documentElement.dataset.chartlight = lt ? '1' : '';
   for (const P of PANES) {
-    P.chart.applyOptions({ layout: { background: { color: s.bg }, textColor: s.text, fontSize: +s.fontSize || 12 }, rightPriceScale: { textColor: s.scaleText || s.text },
+    P.chart.applyOptions({ layout: { background: { color: s.bg }, textColor: s.text, fontSize: +s.fontSize || 12 }, rightPriceScale: { textColor: s.scaleText || s.text, borderColor: s.scaleLine || C.line },
+      timeScale: { borderColor: s.scaleLine || C.line }, crosshair: { vertLine: ch, horzLine: ch },
       grid: { vertLines: { visible: s.grid, color: s.gridColor }, horzLines: { visible: s.grid, color: s.gridColor } } });
     P.candles.applyOptions({ upColor: s.up, downColor: s.down, borderUpColor: s.upBorder, borderDownColor: s.downBorder, wickUpColor: s.upWick, wickDownColor: s.downWick, priceLineVisible: s.priceLine, lastValueVisible: true });
     P.volume.applyOptions({ visible: s.volume });
@@ -2183,16 +2572,19 @@ function renderSettings() {
   const s = SET(), col = (k) => `<button class="dsw" data-setcol="${k}" title="Change colour" aria-label="Change ${k} colour"><i style="background:${s[k]}"></i></button>`, sw = (k) => `<input type="checkbox" class="switch" data-set="${k}" ${s[k] ? 'checked' : ''}>`;
   for (const b of $$('#set-nav button')) b.setAttribute('aria-current', b.dataset.sec === setSec);
   const secs = {
-    candles: `<h4>Candles</h4>
+    candles: `<h4>Look</h4>
+      <div class="srow"><span>Chart theme</span><div class="seg thm">${[['fxr', 'FX Replay grey'], ['dark', 'Dark']].map(([k, n]) => `<button data-theme="${k}" aria-pressed="${s.bg === THEMES[k].bg && s.up === THEMES[k].up}">${n}</button>`).join('')}</div></div>
+      <h4 style="margin-top:20px">Candles</h4>
       <div class="srow"><span></span><span class="cap">Body</span><span class="cap">Border</span><span class="cap">Wick</span></div>
       <div class="srow"><span>Up candles</span><span class="cap">${col('up')}</span><span class="cap">${col('upBorder')}</span><span class="cap">${col('upWick')}</span></div>
       <div class="srow"><span>Down candles</span><span class="cap">${col('down')}</span><span class="cap">${col('downBorder')}</span><span class="cap">${col('downWick')}</span></div>
-      <div class="srow"><span>Volume bars</span>${sw('volume')}</div>
+      <div class="srow"><span>Volume bars</span>${sw('volume')}<span class="cap">${col('volUp')}</span><span class="cap">${col('volDown')}</span></div>
       <div class="srow"><span>Last price line</span>${sw('priceLine')}</div>`,
     canvas: `<h4>Background and grid</h4>
       <div class="srow"><span>Background</span>${col('bg')}</div>
       <div class="srow"><span>Grid lines</span>${sw('grid')}${col('gridColor')}</div>
       <div class="srow"><span>Price scale text (right side)</span>${col('scaleText')}</div>
+      <div class="srow"><span>Scale border lines</span>${col('scaleLine')}</div>
       <div class="srow"><span>Time scale text (bottom)</span>${col('text')}</div>
       <div class="srow"><span>Text size</span><select class="ctl" data-set="fontSize">${[11, 12, 13, 14, 16].map(n => `<option value="${n}" ${+s.fontSize === n ? 'selected' : ''}>${n}px</option>`).join('')}</select></div>`,
     trading: `<h4>Trading</h4>
@@ -2215,7 +2607,8 @@ function setSetting(k, v) {
   applySettings(); save();
 }
 $('#set-main').addEventListener('input', e => { const el = e.target, k = el.dataset.set; if (k) setSetting(k, el.type === 'checkbox' ? el.checked : el.value); });
-$('#set-main').addEventListener('click', e => { const b = e.target.closest('button[data-setcol]'); if (!b) return; const k = b.dataset.setcol;
+$('#set-main').addEventListener('click', e => { const th = e.target.closest('button[data-theme]'); if (th) { Object.assign(SET(), THEMES[th.dataset.theme]); applySettings(); renderSettings(); save(); return; }
+  const b = e.target.closest('button[data-setcol]'); if (!b) return; const k = b.dataset.setcol;
   openColorPop(b, SET()[k], null, (c) => { b.querySelector('i').style.background = c; setSetting(k, c); }); });
 $('#settings').addEventListener('pointerdown', e => { if (!e.target.closest('#epop, #cpick, .dsw')) closePop(); }, true);
 $('#set-reset').addEventListener('click', () => {
@@ -2242,7 +2635,7 @@ function dsTabs(d) {
   const t = [];
   if (!['text', 'measure'].includes(d.type)) t.push('style');
   if (HAS_TEXT(d.type)) t.push('text');
-  t.push('coords', 'vis'); return t;
+  if (!FREE.has(d.type) && d.type !== 'atext') t.push('coords'); t.push('vis'); return t;
 }
 const TABN = { style: 'Style', text: 'Text', coords: 'Coordinates', vis: 'Visibility' };
 const swBtn = (key, col, op) => `<button class="dsw" data-dc="${key}" title="Change colour" aria-label="Change colour"><i style="background:${col};opacity:${op ?? 1}"></i></button>`;
@@ -2331,7 +2724,9 @@ $('#ds-x').addEventListener('click', () => closeDrawSettings(false));
 /* On-chart trade labels: FX Replay style boxes on each position, order, stop and target line */
 function renderTags(P) {
   P.tags.innerHTML = P.lines.map((l, i) => { const g = l.tag; if (!g) return '';
-    return `<div class="ptag${g.drag ? ' drag' : ''}" data-li="${i}" style="--c:${g.c}"><span class="pk">${g.k}</span>${g.q != null ? `<span class="pq">${g.q}</span>` : ''}${g.v != null ? `<span class="pv ${g.v >= 0 ? 'up' : 'dn'}">${fmtUsd(g.v)}</span>` : ''}${g.x ? `<button ${g.x} title="${g.xt}" aria-label="${g.xt}">×</button>` : ''}</div>`; }).join('');
+    const fill = g.f ? `<span class="pc fill">${g.f}</span>` : '', add = (g.adds || []).map(a => `<button class="pc dot" style="--c:${a.c}" ${a.at} title="${a.t}" aria-label="${a.t}">${a.k}</button>`).join('');
+    const main = `<span class="pc main">${g.k ? `<span class="pk">${g.k}</span>` : ''}${g.q != null ? `<span class="pq">${g.q}</span>` : ''}${g.lbl ? `<span class="pl">${g.lbl}</span>` : ''}${g.v != null ? `<span class="pv ${g.v >= 0 ? 'up' : 'dn'}">${fmtUsd(g.v)}</span>` : ''}${g.x ? `<button ${g.x} title="${g.xt}" aria-label="${g.xt}">×</button>` : ''}</span>`;
+    return `<div class="ptag${g.drag ? ' drag' : ''}" data-li="${i}" style="--c:${g.c}">${fill}${add}${main}</div>`; }).join('');
   placeTags(P);
 }
 function placeTags(P) {
@@ -2388,8 +2783,8 @@ $('#b-tf').addEventListener('click', () => { const m = $('#tf-menu'), was = m.hi
 $('#tools').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.grp) {
-    const list = GROUPS.find(g => g[0] === b.dataset.grp)[1];
-    if (list.length === 1) { closeMenus(); setTool(draw.tool === list[0] ? 'cursor' : list[0]); return; }
+    const list = GROUPS.find(g => g[0] === b.dataset.grp)[1], tl = GTOOLS(list);
+    if (tl.length === 1) { closeMenus(); setTool(draw.tool === tl[0] ? 'cursor' : tl[0]); return; }
     openFly(b, b.dataset.grp, list); return;
   }
   const t = b.dataset.tg;
@@ -2470,6 +2865,7 @@ $('#editbar').addEventListener('click', e => {
   closePop();
   if (k === 'settings') openDrawSettings(d);
   else if (k === 'flat') { flatten(d); done(); }
+  else if (k === 'ltext') openDrawSettings(d, 'text');
   else if (k === 'text') { const P = PANES[draw.sel.pane]; geo(P); const [x, y] = toXY(P, d.pts[0]); openText(P, d, x, y); }
   else if (k === 'place') placeFromPos(d);
   else if (k === 'lock') { d.locked = !d.locked; done(); }
@@ -2477,6 +2873,7 @@ $('#editbar').addEventListener('click', e => {
   else if (k === 'del') removeD(d);
 });
 $('#tools-open').addEventListener('click', () => { SET().tools = true; renderTools(); save(); });
+$('#b-draw').addEventListener('click', () => { SET().tools = !SET().tools; renderTools(); renderFavbar(); save(); });
 $('#b-jump').addEventListener('click', () => { const p = $('#jump-pop'), was = p.hidden; closeMenus(); p.hidden = !was; });
 $('#jump-pop').addEventListener('click', e => { const b = e.target.closest('button[data-jump]'); if (b) { closeMenus(); jumpTo(+b.dataset.jump); } });
 window.addEventListener('resize', () => { renderFavbar(); renderSelbars(); });
@@ -2518,8 +2915,9 @@ document.addEventListener('click', e => {
   const slPts = Math.max(0.25, +$('#o-sl').value || 20), tpPts = Math.max(0.25, +$('#o-tp').value || 40);
   if (d.close) { const p = sess.positions.find(x => x.id === d.close); if (p) { closePos(sess, p, priceNow(p.sym), sess.cursorT, 'Manual'); toast('Position closed.'); } }
   else if (d.be) { const p = sess.positions.find(x => x.id === d.be); if (p) { p.sl = p.entry; toast('Stop moved to entry.'); } }
-  else if (d.addsl) { const p = sess.positions.find(x => x.id === d.addsl); if (p) { p.sl = rt(p.entry - p.side * slPts); toast('Stop added ' + slPts + ' points away. Drag the SL line to move it.'); } }
-  else if (d.addtp) { const p = sess.positions.find(x => x.id === d.addtp); if (p) { p.tp = rt(p.entry + p.side * tpPts); toast('Target added ' + tpPts + ' points away. Drag the TP line to move it.'); } }
+  else if (d.addsl) { const p = sess.positions.find(x => x.id === d.addsl), o = sess.orders.find(x => x.id === d.addsl); if (p) p.sl = rt(p.entry - p.side * slPts); else if (o) o.sl = rt(o.price - o.side * slPts); if (p || o) toast('Stop added ' + slPts + ' points away. Drag the SL line to move it.'); }
+  else if (d.addtp) { const p = sess.positions.find(x => x.id === d.addtp), o = sess.orders.find(x => x.id === d.addtp); if (p) p.tp = rt(p.entry + p.side * tpPts); else if (o) o.tp = rt(o.price + o.side * tpPts); if (p || o) toast('Target added ' + tpPts + ' points away. Drag the TP line to move it.'); }
+  else if (d.tsl || d.ttp) { $(d.tsl ? '#o-sl-on' : '#o-tp-on').checked = true; renderTicket(); }
   else if (d.cancel) { sess.orders = sess.orders.filter(x => x.id !== d.cancel); toast('Order cancelled.'); }
   else if (d.rmsl || d.rmtp) { const id = d.rmsl || d.rmtp, x = sess.positions.find(p => p.id === id) || sess.orders.find(o => o.id === id); if (x) { if (d.rmsl) x.sl = null; else x.tp = null; toast(d.rmsl ? 'Stop loss removed.' : 'Take profit removed.'); } }
   else if (d.open) { openSession(d.open); setView('chart'); return; }
@@ -2584,9 +2982,9 @@ let typed = '', typedT = 0;
 document.addEventListener('keydown', e => {
   if (view !== 'chart' || e.target.matches('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
-  if (/^\d$/.test(k)) { typed += k; showTyped(); e.preventDefault(); return; }
-  if (typed && /^[shdwmSHDWM]$/.test(k)) { const n = +typed || 1, u = k.toLowerCase(); typed = ''; hideTyped(); setTf(u === 's' ? n : u === 'h' ? n * 3600 : ({ d: 86400, w: 604800, m: 2592000 })[u]); e.preventDefault(); return; }
-  if (typed && k === 'Enter') { const n = +typed; typed = ''; hideTyped(); setTf(n * 60); e.preventDefault(); return; }
+  if (/^\d$/.test(k) && !/[a-zA-Z]$/.test(typed)) { typed += k; showTyped(); e.preventDefault(); return; }
+  if (typed && /^[shdwmSHDWM]$/.test(k)) { typed = typed.replace(/[a-zA-Z]$/, '') + (k === 'M' ? 'M' : k.toLowerCase()); showTyped(); e.preventDefault(); return; }
+  if (typed && k === 'Enter') { applyTyped(); e.preventDefault(); return; }
   if (typed && (k === 'Escape' || k === 'Backspace')) { typed = k === 'Backspace' ? typed.slice(0, -1) : ''; typed ? showTyped() : hideTyped(); e.preventDefault(); return; }
   if (k === 'Escape') { closeMenus(); if (draw.tool !== 'cursor') setTool('cursor'); else if (draw.sel) select(null); return; }
   if ((k === 'Delete' || k === 'Backspace') && selD()) { removeD(selD()); e.preventDefault(); return; }
@@ -2595,7 +2993,15 @@ document.addEventListener('keydown', e => {
   else if (k === 'b' || k === 'B') quick(1);
   else if (k === 's' || k === 'S') quick(-1);
 });
-function showTyped() { const el = $('#tf-typed'); el.hidden = false; el.textContent = typed + ' …  (Enter = minutes, or S, H, D, W, M)'; clearTimeout(typedT); typedT = setTimeout(hideTyped, 4000); }
+const TYPED_U = { '': ['minute', 60], m: ['minute', 60], s: ['second', 1], h: ['hour', 3600], d: ['day', 86400], w: ['week', 604800], M: ['month', 2592000] };
+function typedSec() { const m = typed.match(/^(\d+)([a-zA-Z]?)$/); if (!m || !+m[1] || !TYPED_U[m[2]]) return null; const n = +m[1], [nm, sec] = TYPED_U[m[2]]; return { sec: n * sec, name: `${n} ${nm}${n === 1 ? '' : 's'}` }; }
+function showTyped() {
+  const el = $('#tf-typed'), r = typedSec(); el.hidden = false;
+  el.innerHTML = `<div class="ti-row"><span class="ti-lb">Interval</span><span class="ti-in">${typed.replace(/[a-z]$/, c => c.toUpperCase()).replace(/M$/, 'M')}<i class="ti-caret"></i></span><button class="ti-ent" id="ti-go" title="Change timeframe" aria-label="Change timeframe">↵</button></div><div class="ti-sub">${r ? r.name : 'Not a valid interval'}</div>`;
+  clearTimeout(typedT); typedT = setTimeout(hideTyped, 6000);
+}
+function applyTyped() { const r = typedSec(); hideTyped(); if (r) setTf(r.sec); }
+$('#tf-typed').addEventListener('click', e => { if (e.target.closest('#ti-go')) applyTyped(); });
 function hideTyped() { typed = ''; $('#tf-typed').hidden = true; }
 
 /* ---------- Boot ---------- */
@@ -2631,7 +3037,7 @@ async function boot() {
   document.body.dataset.view = 'chart';
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, DATA, ptr };
+  window.TapeReplay = { PANES, draw, S, DATA, ptr, TOOLDEF };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
   save();
 }
