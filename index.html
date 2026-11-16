@@ -354,7 +354,7 @@ table.grid input:hover, table.grid input:focus { border-color: var(--line); back
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; }
 .cal .dh { font-size: 10px; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: .06em; }
 .cal .d { background: var(--bg); border-radius: 6px; padding: 6px; min-height: 54px; font-size: 11px; display: flex; flex-direction: column; gap: 2px; }
-.cal .d.w { background: var(--long-soft); } .cal .d.l { background: var(--short-soft); }
+.cal .d.w { background: var(--long-soft); } .cal .d.l { background: var(--short-soft); } .cal .d.b, .lt-cal .d.b { background: rgba(228,180,40,.22); } .cal .d.b .dp, .lt-cal .d.b .dp { color: #e4b428; }
 .cal .d .dn { color: var(--muted); }
 .cal .d .dp { font-family: var(--font-data); font-weight: 600; }
 .cal button.d { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; } .cal button.d:hover { outline: 2px solid var(--accent); }
@@ -944,7 +944,7 @@ body[data-view="live"] .acct { display: none; }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row"><button class="btn" id="tj-be">Count as break even</button></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> PO3 · A plus DOL · AMD · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -987,7 +987,7 @@ body[data-view="live"] .acct { display: none; }
       <div class="tj-row" id="lt-newtag" hidden><input id="lt-newtag-in" class="lt-tagin" placeholder="Type your tag, e.g. Silver Bullet" enterkeyhint="done"><button type="button" class="btn primary" id="lt-newtag-add">Add tag</button><button type="button" class="btn" id="lt-newtag-no">Cancel</button></div>
       <p class="lt-h">Notes</p>
       <div class="tj-row"><button class="btn tj-mic" id="lt-mic" type="button"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="lt-tidy" type="button">Tidy up notes</button><span class="note" id="lt-live"></span></div>
-      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> PO3 · A plus DOL · AMD · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
       <p class="lt-h">Pictures</p>
       <div class="lt-pics" id="lt-pics"></div>
       <input type="file" id="lt-file" accept="image/*" multiple hidden>
@@ -3220,7 +3220,7 @@ function renderAnalytics() {
   for (let i = 0; i < first.getUTCDay(); i++) h += '<div></div>';
   for (let d = 1; d <= days; d++) { const x = byDay[`${calMonth}-${String(d).padStart(2, '0')}`]; if (x) { mp += x.p; mn += x.n; }
     const key = `${calMonth}-${String(d).padStart(2, '0')}`;
-    h += x ? `<button class="d ${x.p >= 0 ? 'w' : 'l'}" data-cday="${key}" title="See the pictures and notes for this day"><span class="dn">${d}${x.j ? ' <span class="cam">📷</span>' : ''}</span><span class="dp ${cls(x.p)}">${fmtUsd(x.p)}</span><span class="mut">${x.n} trade${x.n > 1 ? 's' : ''}</span></button>` : `<div class="d"><span class="dn">${d}</span></div>`; }
+    h += x ? `<button class="d ${x.p > beTh() ? 'w' : x.p < -beTh() ? 'l' : 'b'}" data-cday="${key}" title="See the pictures and notes for this day"><span class="dn">${d}${x.j ? ' <span class="cam">📷</span>' : ''}</span><span class="dp ${cls(x.p)}">${fmtUsd(x.p)}</span><span class="mut">${x.n} trade${x.n > 1 ? 's' : ''}</span></button>` : `<div class="d"><span class="dn">${d}</span></div>`; }
   $('#cal').innerHTML = h + '</div>';
   $('#cal-title').innerHTML = `${first.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })} <span class="${cls(mp)} num" style="font-weight:500;margin-left:8px">${mn ? fmtUsd(mp) + ' · ' + mn + ' trade' + (mn > 1 ? 's' : '') : ''}</span>`;
   // trade frequency
@@ -4263,7 +4263,7 @@ function renderLT() {
   for (let d = 1; d <= days; d++) {
     const key = `${ltMonth}-${pad2(d)}`, x = byDay[key], dow = (first.getUTCDay() + d - 1) % 7;
     if (x) { mp += x.p; mn += x.n; wk.p += x.p; wk.n += x.n; wk.d++; }
-    h += x ? `<button class="d ${x.p > th ? 'w' : x.p < -th ? 'l' : ''}" data-ltday="${key}" title="See the trades, pictures and notes for this day"><span class="dn">${d}${x.j ? ' <span class="cam">📝</span>' : ''}</span><span class="dp ${cls(x.p)}">${fmtUsd(x.p)}</span><span class="mut">${x.n} trade${x.n > 1 ? 's' : ''} · ${x.w + x.l ? Math.round(x.w / (x.w + x.l) * 100) + '%' : 'BE'}</span></button>` : `<div class="d"><span class="dn">${d}</span></div>`;
+    h += x ? `<button class="d ${x.p > th ? 'w' : x.p < -th ? 'l' : 'b'}" data-ltday="${key}" title="See the trades, pictures and notes for this day"><span class="dn">${d}${x.j ? ' <span class="cam">📝</span>' : ''}</span><span class="dp ${cls(x.p)}">${fmtUsd(x.p)}</span><span class="mut">${x.n} trade${x.n > 1 ? 's' : ''} · ${x.w + x.l ? Math.round(x.w / (x.w + x.l) * 100) + '%' : 'BE'}</span></button>` : `<div class="d"><span class="dn">${d}</span></div>`;
     if (dow === 6) h += wkCell(); else if (d === days) { for (let k = dow + 1; k <= 6; k++) h += '<div></div>'; h += wkCell(); }
   }
   $('#lt-cal').innerHTML = h + '</div>';
@@ -4397,7 +4397,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-37';
+const BUILD = '2026-11-16-38';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4606,9 +4606,8 @@ const JT_LONG = [
   ['Where and why for TP and SL', 'Reasoning', String.raw`reasoning|reasonings|reason ing`],
   ['Confidence', 'Confidence', String.raw`confidence|confident's`]];
 const JT_YN = [
-  ['PO3', 'PO3', String.raw`(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3)`],
   ['A+ DOL', 'A plus DOL', String.raw`a\s?(?:\+|plus)\s?DOL`],
-  ['AMD/PO3', 'AMD', String.raw`(?:AMD|a\.?\s?m\.?\s?d\.?)(?:\s*(?:\/|slash|and|or)?\s*(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3))?`],
+  ['AMD/PO3', 'AMD', String.raw`(?:AMD|a\.?\s?m\.?\s?d\.?)(?:\s*(?:\/|slash|and|or)?\s*(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3))?|(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3)(?:\s*(?:\/|slash|and|or)?\s*(?:AMD|a\.?\s?m\.?\s?d\.?))?`],
   ['True Manip', 'True manip', String.raw`true\s+(?:manip(?:ulation|ulated)?|man(?:\s|-)?ip|mani\w*|manny ?p)`],
   ['PD Array', 'PD array', String.raw`PD arrays?`],
   ['HR LR', 'HR LR', String.raw`(?:h\.?\s?r\.?\s*(?:and\s|\/\s?|slash\s|,\s?)?l\.?\s?r\.?|hrlr|high resistance(?: and| \/)? low resistance)`]];
