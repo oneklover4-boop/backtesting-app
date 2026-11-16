@@ -598,6 +598,7 @@ body[data-view="live"] .acct { display: none; }
 .lt-chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: rgba(47,124,246,.18); }
 .lt-chips button.add { border-style: dashed; color: var(--fg); } .lt-chips button.rm { color: var(--short); border-color: var(--short); }
 .lt-tagin { flex: 1; min-width: 160px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--fg); }
+#tjournal .lt-only { display: none; }
 .jt-help { margin: 0; font-size: 12px; line-height: 1.6; }
 .lt-pics { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; min-height: 70px; }
 .lt-pics.drag { border-color: var(--accent); }
@@ -944,7 +945,7 @@ body[data-view="live"] .acct { display: none; }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row"><button class="btn" id="tj-be">Count as break even</button></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence<span class="lt-only"> · Whole idea (say it last, everything after it goes there)</span>. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -987,7 +988,7 @@ body[data-view="live"] .acct { display: none; }
       <div class="tj-row" id="lt-newtag" hidden><input id="lt-newtag-in" class="lt-tagin" placeholder="Type your tag, e.g. Silver Bullet" enterkeyhint="done"><button type="button" class="btn primary" id="lt-newtag-add">Add tag</button><button type="button" class="btn" id="lt-newtag-no">Cancel</button></div>
       <p class="lt-h">Notes</p>
       <div class="tj-row"><button class="btn tj-mic" id="lt-mic" type="button"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="lt-tidy" type="button">Tidy up notes</button><span class="note" id="lt-live"></span></div>
-      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence<span class="lt-only"> · Whole idea (say it last, everything after it goes there)</span>. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
       <p class="lt-h">Pictures</p>
       <div class="lt-pics" id="lt-pics"></div>
       <input type="file" id="lt-file" accept="image/*" multiple hidden>
@@ -4108,7 +4109,7 @@ async function openLive(id) {
   $('#lt-entry').value = v(t && t.entry); $('#lt-exit').value = v(t && t.exit); $('#lt-sl').value = v(t && t.sl); $('#lt-tp').value = v(t && t.tp);
   $('#lt-fees').value = t && t.fees ? t.fees.toFixed(2) : ''; $('#lt-pnl').value = t ? t.pnl.toFixed(2) : ''; $('#lt-be').checked = !!(t && t.reason === 'BE');
   $('#lt-mae').value = v(t && t.mae); $('#lt-mfe').value = v(t && t.mfe); $('#lt-rrp').value = t && t.rrPlan != null ? t.rrPlan : ''; $('#lt-rrm').value = t && t.rManual && t.r != null ? +t.r.toFixed(2) : ''; $('#lt-newtag').hidden = true; ltTagEdit = false;
-  $('#lt-tags').value = t ? t.tags || '' : ''; $('#lt-news').value = t && t.newsOn ? '1' : ''; $('#lt-newsw').value = t && t.news || ''; $('#lt-newsw-l').hidden = !(t && t.newsOn); $('#lt-notes').value = t && t.notes ? t.notes : JT_TEMPLATE(); $('#lt-live').textContent = '';
+  $('#lt-tags').value = t ? t.tags || '' : ''; $('#lt-news').value = t && t.newsOn ? '1' : ''; $('#lt-newsw').value = t && t.news || ''; $('#lt-newsw-l').hidden = !(t && t.newsOn); $('#lt-notes').value = t && t.notes ? t.notes : JT_TEMPLATE(true); $('#lt-live').textContent = '';
   ltSeg(); ltChips(); ltCalc(); ltDelBtn(); ltPics();
   $('#ltedit').hidden = false; $('#ltedit .tj-body').scrollTop = 0;
   if (t && t.shot) { const d = ltDraft, got = []; for (let i = 0; i < (t.shots || 1); i++) { const img = await shotGet(ltKey(t.id, i)); if (img) got.push(img); } if (ltDraft === d) { d.pics = got.concat(d.pics); ltPics(); } }
@@ -4203,7 +4204,7 @@ async function ltSave() {
   save(); ltClose(); toast('Trade saved.'); if (view === 'live') renderLT();
 }
 function ltStopRec() { if (ltRec) { const r = ltRec; ltRec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#lt-mic').classList.remove('rec'); $('#lt-mic span').textContent = 'Speak your notes'; }
-function ltNoteTrade() { const x = ltRead(); return { ...x, r: x.rrMade, exit: x.exit, pnl: x.pnl ?? 0, reason: x.be ? 'BE' : 'Live', openT: x.openT || etNow(), closeT: x.closeT ?? x.openT }; }
+function ltNoteTrade() { const x = ltRead(); return { ...x, live: 1, r: x.rrMade, exit: x.exit, pnl: x.pnl ?? 0, reason: x.be ? 'BE' : 'Live', openT: x.openT || etNow(), closeT: x.closeT ?? x.openT }; }
 function ltClose() {
   ltStopRec(); $('#ltedit').hidden = true; const D = ltDraft; ltDraft = null;
   if (!$('#dayj').hidden && D) { const t = LIVE().trades.find(z => z.id === D.id); calTrades = ltFiltered(); if (t) openDay(dayOf(t.closeT)); else $('#dayj').hidden = true; }
@@ -4387,7 +4388,7 @@ document.addEventListener('paste', e => { if ($('#ltedit').hidden || !e.clipboar
 $('#ltpic').addEventListener('click', () => { $('#ltpic').hidden = true; });
 $('#lt-tidy').addEventListener('click', () => { if (!ltDraft) return; $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value), ltNoteTrade()); });
 $('#lt-mic').addEventListener('click', () => {
-  if (ltRec) { ltStopRec(); const said = ltRecText.trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value) + '. ' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
+  if (ltRec) { ltStopRec(); const said = ltRecText.trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value) + '\n' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#lt-notes').focus(); $('#lt-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   ltRecText = ''; const r = new SR(); ltRec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; let done = '', seg = '';
@@ -4397,7 +4398,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-38';
+const BUILD = '2026-11-16-39';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4438,7 +4439,7 @@ function voiceStop(keep) {
   (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + ' ' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
   if (tg.kind === 'pos') { tg.x.notes = add(tg.x.notes); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
-  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(notesPlain(t.notes || '') + '. ' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
+  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(notesPlain(t.notes || '') + '\n' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
   else { sess.idea = add(sess.idea); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
 }
@@ -4604,7 +4605,9 @@ const JT_LONG = [
   ['My target', 'Goal', String.raw`goal|goals|gold`],
   ['The confirmation', 'Confirmed by', String.raw`confirmed by|confirm by|confirmed buy|confirmed bye`],
   ['Where and why for TP and SL', 'Reasoning', String.raw`reasoning|reasonings|reason ing`],
-  ['Confidence', 'Confidence', String.raw`confidence|confident's`]];
+  ['Confidence', 'Confidence', String.raw`confidence|confident's`],
+  ['Whole idea together', 'Whole idea', String.raw`(?:whole|hole|hold) ideas?(?: together)?`]];   // live trades only
+const WHOLE = JT_LONG.length - 1;
 const JT_YN = [
   ['A+ DOL', 'A plus DOL', String.raw`a\s?(?:\+|plus)\s?DOL`],
   ['AMD/PO3', 'AMD', String.raw`(?:AMD|a\.?\s?m\.?\s?d\.?)(?:\s*(?:\/|slash|and|or)?\s*(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3))?|(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3)(?:\s*(?:\/|slash|and|or)?\s*(?:AMD|a\.?\s?m\.?\s?d\.?))?`],
@@ -4617,19 +4620,21 @@ const JT_OPT = [
   ['CISD', 'CISD', String.raw`CISD`]];
 const YES = String.raw`yes|yeah|yep|yup|ya|yah|yes i did|i did|i had(?: it| that| one)?|had(?: it| one)?|we had(?: it| one)?|got it|tick(?:ed)?|check(?:ed)?|correct|true|present|there was(?: one)?`;
 const NO = String.raw`no|nope|nah|know|i didn'?t(?: have)?(?: it| one)?|didn'?t(?: have)?(?: it| one)?|did not|we didn'?t(?: have)?(?: it| one)?|not really|not|none|nothing|false|there wasn'?t(?: one)?|wasn'?t`;
-function journalParse(text) {
-  const s = ' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ', hits = [];
+function journalParse(text, live) {
+  // a new line means a new recording (or a new notes line); the whole-idea talk-through only ends there
+  const s = ' ' + String(text || '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim() + ' ', hits = [], nl = (j) => j === 0 || /\n\s*$/.test(s.slice(0, j + 1));
   // yes / no lines: the name, then (within a few words) yes or no
   for (const [k, , re] of [...JT_YN, ...JT_OPT])
     for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])(${re})\b[\s,.:\-]*(?:(?:was|is|it was|that was|for that|there|so)\s+)?(?:(?:um|uh|er)\s+)?(${YES}|${NO})\b`, 'gi')))
-      hits.push({ k, yn: new RegExp('^(?:' + YES + ')$', 'i').test(m[2]) ? 'Yes' : 'No', a: m.index + m[0].indexOf(m[1]), b: m.index + m[0].length });
+      hits.push({ k, yn: new RegExp('^(?:' + YES + ')$', 'i').test(m[2]) ? 'Yes' : 'No', a: m.index + m[0].indexOf(m[1]), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index), nl: nl(m.index) });
   // long answers: the keyword
-  JT_LONG.forEach(([k, , re], i) => { for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${re})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi')))
-    hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || m.index === 0 }); });
+  JT_LONG.forEach(([k, , re], i) => { if (i === WHOLE && !live) return; for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${re})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi')))
+    hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index), nl: nl(m.index) }); });
   hits.sort((x, y) => x.a - y.a || (y.b - y.a) - (x.b - x.a));
   const L = []; let cur = -1;
   for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue;
-    if (h.i != null) { if (h.i <= cur && !h.sb) continue; cur = h.i; }   // keywords go forward; going back only after a full stop (a new note)
+    if (cur === WHOLE && !h.nl) continue;   // the whole-idea talk-through keeps everything until a new recording
+    if (h.i != null) { if (h.i <= cur && !h.sb) continue; cur = h.i; } else if (cur === WHOLE) cur = -1;   // keywords go forward; going back only after a full stop (a new note)
     L.push(h); }
   const out = {};
   for (let j = 0; j < L.length; j++) { const h = L[j];
@@ -4641,16 +4646,21 @@ function journalParse(text) {
   return out;
 }
 function tidyNotes(raw, t) {
-  const F = journalParse(fixTerms(String(raw || ''))), line = (k) => `${k}: ${F[k] || ''}`.trimEnd();
-  return [...JT_LONG.map(x => line(x[0])), '', ...JT_YN.map(x => line(x[0])), '', 'Optional:', ...JT_OPT.map(x => line(x[0]))].join('\n');
+  const live = !!(t && t.live), F = journalParse(fixTerms(String(raw || '')), live), line = (k) => `${k}: ${F[k] || ''}`.trimEnd();
+  return [...JT_LONG.slice(0, WHOLE).map(x => line(x[0])), '', ...JT_YN.map(x => line(x[0])), '', 'Optional:', ...JT_OPT.map(x => line(x[0])), ...(live ? ['', line(JT_LONG[WHOLE][0])] : [])].join('\n');
 }
-const JT_TEMPLATE = () => tidyNotes('', null);
+const JT_TEMPLATE = (live) => tidyNotes('', live ? { live: 1 } : null);
 /* Notes text back into spoken form (keyword + answer), so Tidy up notes keeps what you typed */
 const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT].map(x => [x[0].toLowerCase(), x[1]]));
-  return String(v || '').split('\n').map(l => { const m = l.match(/^\s*([^:]{1,40}):\s*(.*)$/); if (!m) return ''; const kw = map.get(m[1].trim().toLowerCase()); if (!kw || !m[2].trim()) return ''; return kw + ' ' + m[2].trim().replace(/[.!?]*$/, '.'); }).filter(Boolean).join(' '); };
+  // a line without a field name (typed on a new line) belongs to the field above it
+  const out = []; let open = false;
+  for (const l of String(v || '').split('\n')) { const m = l.match(/^\s*([^:]{1,40}):\s*(.*)$/), kw = m && map.get(m[1].trim().toLowerCase());
+    if (kw || (m && /^optional$/i.test(m[1].trim()))) { open = !!(kw && m[2].trim()); if (open) out.push(kw + ' ' + m[2].trim().replace(/[.!?]*$/, '.')); continue; }
+    if (open && l.trim()) out[out.length - 1] += ' ' + l.trim().replace(/[.!?]*$/, '.'); else if (!l.trim()) open = false; }
+  return out.join('\n'); };
 function stopRec() { if (rec) { const r = rec; rec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
 $('#tj-mic').addEventListener('click', () => {
-  if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value) + '. ' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
+  if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value) + '\n' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
