@@ -596,6 +596,8 @@ body[data-view="live"] .acct { display: none; }
 .lt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .lt-chips button { background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
 .lt-chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: rgba(47,124,246,.18); }
+.lt-chips button.add { border-style: dashed; color: var(--fg); } .lt-chips button.rm { color: var(--short); border-color: var(--short); }
+.lt-tagin { flex: 1; min-width: 160px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--fg); }
 .lt-pics { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; min-height: 70px; }
 .lt-pics.drag { border-color: var(--accent); }
 .lt-pic { position: relative; width: 150px; height: 96px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); }
@@ -865,6 +867,8 @@ body[data-view="live"] .acct { display: none; }
         </div>
         <div class="card"><h3>Profit and loss</h3><div class="pl-kpis" id="lt-kpis"></div><div id="lt-eq"></div></div>
         <div class="grid4" id="lt-cards"></div>
+        <h2 class="h2s">Risk to reward</h2>
+        <div class="grid4" id="lt-rr"></div>
         <div class="card">
           <div class="headrow" style="margin-bottom:10px"><h3 style="margin:0" id="lt-cal-title">Calendar</h3><div class="right"><button class="btn" id="lt-prev">‹ Previous month</button><button class="btn" id="lt-next">Next month ›</button></div></div>
           <div id="lt-cal"></div>
@@ -968,6 +972,8 @@ body[data-view="live"] .acct { display: none; }
         <label>Fees ($)<input id="lt-fees" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0"></label>
         <label>P&amp;L ($) <span id="lt-pnl-auto" class="mut" style="font-size:11px">worked out for you</span><input id="lt-pnl" type="number" step="0.01" inputmode="decimal"></label>
         <label class="lt-chk"><input type="checkbox" id="lt-be"> Count as break even</label>
+        <label>Planned RR (1 : ?) <span id="lt-rrp-auto" class="mut" style="font-size:11px">from stop and target</span><input id="lt-rrp" type="number" step="0.1" min="0" inputmode="decimal" placeholder="e.g. 3"></label>
+        <label>RR made <span id="lt-rrm-auto" class="mut" style="font-size:11px">from P&amp;L and stop</span><input id="lt-rrm" type="number" step="0.1" inputmode="decimal" placeholder="e.g. 2.5"></label>
         <label title="How many points price went against you while you were in">Most points against you<input id="lt-mae" type="number" step="0.25" min="0" inputmode="decimal" placeholder="optional"></label>
         <label title="How many points price went your way while you were in">Most points in your favour<input id="lt-mfe" type="number" step="0.25" min="0" inputmode="decimal" placeholder="optional"></label>
       </div>
@@ -975,6 +981,7 @@ body[data-view="live"] .acct { display: none; }
       <p class="lt-h">Tags</p>
       <input id="lt-tags" placeholder="e.g. A+ setup, London, FOMO (separate with commas)">
       <div class="lt-chips" id="lt-chips"></div>
+      <div class="tj-row" id="lt-newtag" hidden><input id="lt-newtag-in" class="lt-tagin" placeholder="Type your tag, e.g. Silver Bullet" enterkeyhint="done"><button type="button" class="btn primary" id="lt-newtag-add">Add tag</button><button type="button" class="btn" id="lt-newtag-no">Cancel</button></div>
       <p class="lt-h">Notes</p>
       <div class="tj-row"><button class="btn tj-mic" id="lt-mic" type="button"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="lt-tidy" type="button">Tidy up notes</button><span class="note" id="lt-live"></span></div>
       <textarea class="io" id="lt-notes" rows="8" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
@@ -4084,20 +4091,20 @@ function ltToInput(t, tz) { if (t == null) return ''; if (tz === 'local') { cons
 function ltFromInput(v, tz) { if (!v) return null; if (tz === 'local') { const ms = new Date(v).getTime(); return isFinite(ms) ? utcToEt(Math.floor(ms / 1000)) : null; } const ms = Date.parse(v.slice(0, 16) + ':00Z'); return isFinite(ms) ? ms / 1000 : null; }
 const ltTagList = (s) => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
 const LT_TAGS = ['A+ setup', 'Followed my plan', 'Broke my rules', 'FOMO', 'Revenge trade', 'Early entry', 'Moved my stop', 'London', 'NY AM', 'NY PM'];
-const plannedRR = (t) => t.sl != null && t.tp != null && t.entry !== t.sl ? Math.abs(t.tp - t.entry) / Math.abs(t.entry - t.sl) : null;
+const plannedRR = (t) => t.rrPlan != null ? t.rrPlan : t.sl != null && t.tp != null && t.entry !== t.sl ? Math.abs(t.tp - t.entry) / Math.abs(t.entry - t.sl) : null;
 let ltDraft = null, ltMonth = null, ltEqChart = null, ltEqSeries = null, ltRec = null, ltRecText = '', anScopeWant = null;
 
 /* the add / edit window */
 async function openLive(id) {
   const L = LIVE(), t = id ? L.trades.find(x => x.id === id) : null, tz = SET().liveTz || 'et', v = (x) => x == null ? '' : String(x);
-  ltDraft = { id: t ? t.id : 'L' + uid(), sym: t ? t.sym : (SET().liveSym || 'MNQ'), side: t ? t.side : 1, pics: [], said: t ? t.said || '' : '', pnlManual: !!(t && t.pnlManual), feesManual: !!t, delAsk: false };
+  ltDraft = { rrpManual: !!(t && t.rrPlan != null), rrmManual: !!(t && t.rManual), id: t ? t.id : 'L' + uid(), sym: t ? t.sym : (SET().liveSym || 'MNQ'), side: t ? t.side : 1, pics: [], said: t ? t.said || '' : '', pnlManual: !!(t && t.pnlManual), feesManual: !!t, delAsk: false };
   $('#lt-title').textContent = t ? 'Edit live trade' : 'Add a live trade';
   $('#lt-tz').value = tz; const now = etNow();
   $('#lt-in').value = ltToInput(t ? t.openT : now - now % 60, tz); $('#lt-out').value = t ? ltToInput(t.closeT, tz) : '';
   $('#lt-qty').value = t ? t.qty : (SET().liveQty || 1);
   $('#lt-entry').value = v(t && t.entry); $('#lt-exit').value = v(t && t.exit); $('#lt-sl').value = v(t && t.sl); $('#lt-tp').value = v(t && t.tp);
   $('#lt-fees').value = t && t.fees ? t.fees.toFixed(2) : ''; $('#lt-pnl').value = t ? t.pnl.toFixed(2) : ''; $('#lt-be').checked = !!(t && t.reason === 'BE');
-  $('#lt-mae').value = v(t && t.mae); $('#lt-mfe').value = v(t && t.mfe);
+  $('#lt-mae').value = v(t && t.mae); $('#lt-mfe').value = v(t && t.mfe); $('#lt-rrp').value = t && t.rrPlan != null ? t.rrPlan : ''; $('#lt-rrm').value = t && t.rManual && t.r != null ? +t.r.toFixed(2) : ''; $('#lt-newtag').hidden = true; ltTagEdit = false;
   $('#lt-tags').value = t ? t.tags || '' : ''; $('#lt-notes').value = t ? t.notes || '' : ''; $('#lt-live').textContent = '';
   ltSeg(); ltChips(); ltCalc(); ltDelBtn(); ltPics();
   $('#ltedit').hidden = false; $('#ltedit .tj-body').scrollTop = 0;
@@ -4110,7 +4117,7 @@ function ltSeg() {
 function ltRead() {
   const n = (id) => { const s = $(id).value.trim(); return s === '' || !isFinite(+s) ? null : +s; }, tz = $('#lt-tz').value;
   return { sym: ltDraft.sym, side: ltDraft.side, qty: Math.max(0, Math.floor(n('#lt-qty') || 0)), entry: n('#lt-entry'), exit: n('#lt-exit'), sl: n('#lt-sl'), tp: n('#lt-tp'), fees: Math.max(0, n('#lt-fees') || 0),
-    pnl: n('#lt-pnl'), be: $('#lt-be').checked, mae: n('#lt-mae'), mfe: n('#lt-mfe'), openT: ltFromInput($('#lt-in').value, tz), closeT: ltFromInput($('#lt-out').value, tz) };
+    pnl: n('#lt-pnl'), rrPlan: n('#lt-rrp'), rrMade: n('#lt-rrm'), be: $('#lt-be').checked, mae: n('#lt-mae'), mfe: n('#lt-mfe'), openT: ltFromInput($('#lt-in').value, tz), closeT: ltFromInput($('#lt-out').value, tz) };
 }
 function ltAutoPnl(x) { if (x.be) return 0; if (x.entry == null || x.exit == null || !x.qty) return null; return Math.round((x.side * (x.exit - x.entry) * x.qty * INSTR[x.sym].pv - x.fees) * 100) / 100; }
 function ltCalc() {
@@ -4119,12 +4126,18 @@ function ltCalc() {
   const x = ltRead();
   if (!D.pnlManual || x.be) { const a = ltAutoPnl(x); $('#lt-pnl').value = a == null ? '' : a.toFixed(2); x.pnl = a; }
   $('#lt-pnl').readOnly = x.be;
+  const rpA = x.sl != null && x.tp != null && x.entry != null && x.entry !== x.sl ? Math.abs(x.tp - x.entry) / Math.abs(x.entry - x.sl) : null, riskA = x.sl != null && x.entry != null && x.sl !== x.entry ? Math.abs(x.entry - x.sl) * x.qty * INSTR[x.sym].pv : null, rmA = riskA && x.pnl != null ? x.pnl / riskA : null;
+  if (!D.rrpManual) $('#lt-rrp').value = rpA == null ? '' : +rpA.toFixed(2);
+  if (!D.rrmManual) $('#lt-rrm').value = x.be ? 0 : rmA == null ? '' : +rmA.toFixed(2);
+  $('#lt-rrp-auto').innerHTML = D.rrpManual ? (rpA != null ? '<button type="button" class="linkb" id="lt-rrp-re">use stop and target</button>' : 'your own number') : 'from stop and target';
+  $('#lt-rrm-auto').innerHTML = D.rrmManual ? (rmA != null ? '<button type="button" class="linkb" id="lt-rrm-re">work it out for me</button>' : 'your own number') : 'from P&amp;L and stop';
+  x.rrPlan = D.rrpManual ? x.rrPlan : null;
   $('#lt-pnl-auto').innerHTML = x.be ? 'break even counts as $0' : D.pnlManual ? '<button type="button" class="linkb" id="lt-reauto">work it out for me</button>' : 'worked out for you';
   const pv = INSTR[x.sym].pv, risk = x.sl != null && x.entry != null && x.sl !== x.entry ? Math.abs(x.entry - x.sl) * x.qty * pv : null, rr = plannedRR(x), th = beTh();
   const out = [];
   if (x.pnl != null) out.push(`<b class="${x.be ? '' : cls(x.pnl)}">${x.be || Math.abs(x.pnl) <= th ? 'Break even' : x.pnl > 0 ? 'Win' : 'Loss'} ${fmtUsd(x.pnl)}</b>`);
   if (x.entry != null && x.exit != null) out.push(`${fmtUsd(x.side * (x.exit - x.entry), true).replace('$', '')} pts`);
-  if (risk && x.pnl != null) out.push(`${(x.pnl / risk).toFixed(2)}R`);
+  { const rm = D.rrmManual ? x.rrMade : risk && x.pnl != null ? x.pnl / risk : null; if (rm != null) out.push(`${rm.toFixed(2)}R made`); }
   if (risk) out.push(`risked ${fmtUsd(risk, false)}`);
   if (rr != null) out.push(`planned RR 1:${rr.toFixed(2)}`);
   if (x.openT != null && x.closeT != null && x.closeT >= x.openT) out.push(`held ${fmtDur(x.closeT - x.openT)}`);
@@ -4134,11 +4147,17 @@ function ltCalc() {
   if (x.openT != null && x.closeT != null && x.closeT < x.openT) warn.push('The exit time is before the entry time.');
   $('#lt-sum').innerHTML = (out.join(' · ') || '<span class="mut">Fill in the prices and the result shows here.</span>') + (warn.length ? `<div class="neg" style="margin-top:4px">${warn.join(' ')}</div>` : '');
 }
+let ltTagEdit = false;
+const ltTagBank = () => Array.isArray(SET().liveTags) ? SET().liveTags : LT_TAGS.slice();
+function ltAddTag() { const g = $('#lt-newtag-in').value.trim().replace(/,/g, ' '); if (!g) return; const L = ltTagBank(); if (!L.some(x => x.toLowerCase() === g.toLowerCase())) L.push(g); SET().liveTags = L; save();
+  const cur = ltTagList($('#lt-tags').value); if (!cur.some(x => x.toLowerCase() === g.toLowerCase())) cur.push(g); $('#lt-tags').value = cur.join(', '); $('#lt-newtag').hidden = true; ltChips(); }
 function ltChips() {
   const cur = ltTagList($('#lt-tags').value).map(x => x.toLowerCase()), cnt = new Map();
   for (const t of LIVE().trades) for (const g of ltTagList(t.tags)) cnt.set(g, (cnt.get(g) || 0) + 1);
-  const used = [...cnt.keys()].sort((a, b) => cnt.get(b) - cnt.get(a)), all = [...new Map([...used, ...LT_TAGS].map(x => [x.toLowerCase(), x])).values()].slice(0, 24);
-  $('#lt-chips').innerHTML = all.map(g => `<button type="button" data-ltchip="${esc(g)}" aria-pressed="${cur.includes(g.toLowerCase())}">${esc(g)}</button>`).join('');
+  const bank = ltTagBank(), all = ltTagEdit ? bank : [...new Map([...bank, ...cur.length ? ltTagList($('#lt-tags').value) : []].map(x => [x.toLowerCase(), x])).values()];
+  $('#lt-chips').innerHTML = (ltTagEdit ? all.map(g => `<button type="button" class="rm" data-lttagrm="${esc(g)}" title="Remove from your list">${esc(g)} ×</button>`).join('') + (all.length ? '' : '<span class="mut">Your list is empty.</span>')
+    : all.map(g => `<button type="button" data-ltchip="${esc(g)}" aria-pressed="${cur.includes(g.toLowerCase())}">${esc(g)}</button>`).join(''))
+    + `<button type="button" class="add" id="lt-tagnew">+ New tag</button><button type="button" class="add" id="lt-tagedit">${ltTagEdit ? 'Done' : 'Edit list'}</button>`;
 }
 function ltPics() {
   const P = ltDraft.pics;
@@ -4171,7 +4190,7 @@ async function ltSave() {
   let t = L.trades.find(z => z.id === D.id), oldN = t ? (t.shot ? t.shots || 1 : 0) : 0; if (!t) { t = { id: D.id, created: Date.now() }; L.trades.push(t); }
   const riskUsd = x.sl != null && x.sl !== x.entry ? Math.abs(x.entry - x.sl) * x.qty * pv : null, tags = [...new Map(ltTagList($('#lt-tags').value).map(g => [g.toLowerCase(), g])).values()].join(', ');
   Object.assign(t, { live: 1, sym: x.sym, side: x.side, qty: x.qty, entry: x.entry, exit: x.be ? x.entry : x.exit, sl: x.sl, tp: x.tp, finalSl: x.sl, finalTp: x.tp, openT: x.openT, closeT, pnl, fees: x.be ? 0 : x.fees,
-    riskUsd, r: riskUsd ? pnl / riskUsd : null, mae: x.mae, mfe: x.mfe, reason: x.be ? 'BE' : 'Live', pnlManual: D.pnlManual && !x.be, tags, notes: $('#lt-notes').value.trim() });
+    riskUsd, r: D.rrmManual && x.rrMade != null ? (x.be ? 0 : x.rrMade) : riskUsd ? pnl / riskUsd : null, rManual: D.rrmManual && x.rrMade != null, rrPlan: D.rrpManual && x.rrPlan != null ? x.rrPlan : null, mae: x.mae, mfe: x.mfe, reason: x.be ? 'BE' : 'Live', pnlManual: D.pnlManual && !x.be, tags, notes: $('#lt-notes').value.trim() });
   if (x.be) t.exitReal = x.exit; else delete t.exitReal;
   if (D.said) t.said = D.said;
   for (let i = 0; i < D.pics.length; i++) await shotPut(ltKey(t.id, i), D.pics[i]);
@@ -4181,7 +4200,7 @@ async function ltSave() {
   save(); ltClose(); toast('Trade saved.'); if (view === 'live') renderLT();
 }
 function ltStopRec() { if (ltRec) { const r = ltRec; ltRec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#lt-mic').classList.remove('rec'); $('#lt-mic span').textContent = 'Speak your notes'; }
-function ltNoteTrade() { const x = ltRead(); return { ...x, openT: x.openT || etNow() }; }
+function ltNoteTrade() { const x = ltRead(); return { ...x, r: x.rrMade, exit: x.exit, pnl: x.pnl ?? 0, reason: x.be ? 'BE' : 'Live', openT: x.openT || etNow(), closeT: x.closeT ?? x.openT }; }
 function ltClose() {
   ltStopRec(); $('#ltedit').hidden = true; const D = ltDraft; ltDraft = null;
   if (!$('#dayj').hidden && D) { const t = LIVE().trades.find(z => z.id === D.id); calTrades = ltFiltered(); if (t) openDay(dayOf(t.closeT)); else $('#dayj').hidden = true; }
@@ -4247,6 +4266,14 @@ function renderLT() {
   $('#lt-cal').innerHTML = h + '</div>';
   $('#lt-cal-title').innerHTML = `${first.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })} <span class="${cls(mp)} num" style="font-weight:500;margin-left:8px">${mn ? fmtUsd(mp) + ' · ' + mn + ' trade' + (mn > 1 ? 's' : '') : ''}</span>`;
   renderLTBreakdowns(trades);
+  { const W = trades.filter(t => t.pnl > th), rm = trades.filter(t => t.r != null), rw = W.filter(t => t.r != null), pl = trades.filter(t => plannedRR(t) != null), avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null, f = (v) => v == null ? '–' : v.toFixed(2);
+    const hit = pl.filter(t => t.r != null && t.r >= plannedRR(t) * 0.95), cut = W.filter(t => t.r != null && plannedRR(t) != null && t.r < plannedRR(t) * 0.95), maxT = rm.reduce((a, t) => !a || t.r > a.r ? t : a, null);
+    $('#lt-rr').innerHTML = stat('Average planned RR', pl.length ? '1:' + f(avg(pl.map(plannedRR))) : '–', `from ${pl.length} trade${pl.length === 1 ? '' : 's'} with a stop and target`)
+      + stat('Average RR made', rm.length ? f(avg(rm.map(t => t.r))) + 'R' : '–', 'all trades, losers count as negative', cls(avg(rm.map(t => t.r)) || 0))
+      + stat('Average RR on winners', rw.length ? f(avg(rw.map(t => t.r))) + 'R' : '–', `${rw.length} winning trade${rw.length === 1 ? '' : 's'}`, 'pos')
+      + stat('Biggest RR', maxT ? f(maxT.r) + 'R' : '–', maxT ? `${maxT.sym} ${maxT.side > 0 ? 'long' : 'short'} · ${fmtT(maxT.openT).slice(0, 15)}` : '', 'pos')
+      + stat('Reached planned RR', pl.length ? Math.round(hit.length / pl.length * 100) + '%' : '–', `${hit.length} of ${pl.length} trades hit their target RR`)
+      + stat('Winners closed early', W.length ? cut.length : '–', 'winners that made less than the RR you planned'); }
   // trade list
   const tr = [...trades].sort((a, b) => b.openT - a.openT);
   $('#lt-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th></th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">Planned RR</th><th class="num">Held</th><th>Tags</th><th>Notes</th></tr></thead><tbody>${tr.map(t => {
@@ -4321,6 +4348,13 @@ $('#ltedit').addEventListener('click', e => {
   else if (b.dataset.ltrm) { D.pics.splice(+b.dataset.ltrm, 1); ltPics(); }
   else if (b.dataset.ltview) { $('#ltpic-img').src = D.pics[+b.dataset.ltview]; $('#ltpic').hidden = false; }
   else if (b.id === 'lt-reauto') { D.pnlManual = false; ltCalc(); }
+  else if (b.id === 'lt-rrp-re') { D.rrpManual = false; ltCalc(); }
+  else if (b.id === 'lt-rrm-re') { D.rrmManual = false; ltCalc(); }
+  else if (b.id === 'lt-tagnew') { $('#lt-newtag').hidden = false; $('#lt-newtag-in').value = ''; $('#lt-newtag-in').focus(); }
+  else if (b.id === 'lt-newtag-add') ltAddTag();
+  else if (b.id === 'lt-newtag-no') $('#lt-newtag').hidden = true;
+  else if (b.id === 'lt-tagedit') { ltTagEdit = !ltTagEdit; ltChips(); }
+  else if (b.dataset.lttagrm) { const L = ltTagBank(), k = b.dataset.lttagrm.toLowerCase(); SET().liveTags = L.filter(g => g.toLowerCase() !== k); save(); ltChips(); }
   else if (b.id === 'lt-del') { D.delAsk = true; ltDelBtn(); }
   else if (b.id === 'lt-delno') { D.delAsk = false; ltDelBtn(); }
   else if (b.id === 'lt-delyes') { const L = LIVE(), t = L.trades.find(z => z.id === D.id); if (t) { for (let i = 0; i < (t.shot ? t.shots || 1 : 0); i++) shotDel(ltKey(t.id, i)); L.trades.splice(L.trades.indexOf(t), 1); save(); } ltClose(); toast('Trade deleted.'); if (view === 'live') renderLT(); }
@@ -4331,11 +4365,15 @@ $('#ltedit').addEventListener('input', e => {
   if (!ltDraft) return; const id = e.target.id;
   if (id === 'lt-pnl') { ltDraft.pnlManual = true; ltCalc(); return; }
   if (id === 'lt-fees') ltDraft.feesManual = true;
+  if (id === 'lt-rrp') ltDraft.rrpManual = $('#lt-rrp').value.trim() !== '';
+  if (id === 'lt-rrm') ltDraft.rrmManual = $('#lt-rrm').value.trim() !== '';
+  if (id === 'lt-newtag-in') return;
   if (id === 'lt-tags') { ltChips(); return; }
   if (id === 'lt-notes') return;
   ltCalc();
 });
 $('#lt-tz').addEventListener('change', () => { const was = $('#lt-tz').value === 'et' ? 'local' : 'et', now = $('#lt-tz').value; for (const id of ['#lt-in', '#lt-out']) { const t = ltFromInput($(id).value, was); if (t != null) $(id).value = ltToInput(t, now); } ltCalc(); });
+$('#lt-newtag-in').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ltAddTag(); } });
 $('#lt-file').addEventListener('change', e => { ltAddFiles(e.target.files || []); e.target.value = ''; });
 $('#lt-pics').addEventListener('dragover', e => { e.preventDefault(); $('#lt-pics').classList.add('drag'); });
 $('#lt-pics').addEventListener('dragleave', () => $('#lt-pics').classList.remove('drag'));
@@ -4354,7 +4392,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-33';
+const BUILD = '2026-11-16-34';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4573,7 +4611,7 @@ function keyFacts(s0, t) {
   if (t) { F.Entry = [t.entry != null ? fmtPx(t.entry) : '', F.Entry].filter(Boolean).join(' · ');
     F.Stop = [t.sl != null ? fmtPx(t.sl) : '', F.Stop].filter(Boolean).join(' · ');
     F.Target = t.tp != null ? fmtPx(t.tp) : (mg.includes('no fixed TP') ? 'No fixed TP' : '');
-    F.Result = `${t.pnl >= 0 ? 'Win' : 'Loss'} ${fmtUsd(t.pnl)}${t.r != null ? ' (' + t.r.toFixed(2) + 'R)' : ''} · exit ${fmtPx(t.exit)} (${t.reason})`; }
+    F.Result = `${t.reason === 'BE' || Math.abs(t.pnl) <= beTh() ? 'Break even' : t.pnl > 0 ? 'Win' : 'Loss'} ${fmtUsd(t.pnl)}${t.r != null ? ' (' + t.r.toFixed(2) + 'R)' : ''} · exit ${fmtPx(t.exitReal ?? t.exit)}${t.reason && t.reason !== 'Live' && t.reason !== 'BE' ? ' (' + t.reason + ')' : ''}`; }
   const mind = s.match(/\b(calm|patient|nervous|scared|fomo|confident|greedy|impatient|anxious|frustrated|revenge)\b/gi); if (mind) F.Mindset = uniq(mind.map(x => x.toLowerCase())).join(', ');
   // RR you said ("RR was 3", "3 to 1", "three R"), else worked out from the trade
   const sn = s.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, (w) => ({ one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }[w.toLowerCase()]));
