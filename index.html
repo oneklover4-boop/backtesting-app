@@ -598,6 +598,7 @@ body[data-view="live"] .acct { display: none; }
 .lt-chips button[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); background: rgba(47,124,246,.18); }
 .lt-chips button.add { border-style: dashed; color: var(--fg); } .lt-chips button.rm { color: var(--short); border-color: var(--short); }
 .lt-tagin { flex: 1; min-width: 160px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--fg); }
+.jt-help { margin: 0; font-size: 12px; line-height: 1.6; }
 .lt-pics { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; min-height: 70px; }
 .lt-pics.drag { border-color: var(--accent); }
 .lt-pic { position: relative; width: 150px; height: 96px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); }
@@ -943,7 +944,7 @@ body[data-view="live"] .acct { display: none; }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row"><button class="btn" id="tj-be">Count as break even</button></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <textarea class="io" id="tj-notes" rows="9" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> PO3 · A plus DOL · AMD · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -969,6 +970,8 @@ body[data-view="live"] .acct { display: none; }
         <label>Exit price<input id="lt-exit" type="number" step="0.25" inputmode="decimal"></label>
         <label>Stop loss<input id="lt-sl" type="number" step="0.25" inputmode="decimal" placeholder="optional"></label>
         <label>Take profit<input id="lt-tp" type="number" step="0.25" inputmode="decimal" placeholder="optional"></label>
+        <label>News?<select id="lt-news"><option value="">No news</option><option value="1">Yes, there was news</option></select></label>
+        <label id="lt-newsw-l" hidden>What news?<input id="lt-newsw" placeholder="e.g. CPI 8:30, FOMC"></label>
         <label>Fees ($)<input id="lt-fees" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0"></label>
         <label>P&amp;L ($) <span id="lt-pnl-auto" class="mut" style="font-size:11px">worked out for you</span><input id="lt-pnl" type="number" step="0.01" inputmode="decimal"></label>
         <label class="lt-chk"><input type="checkbox" id="lt-be"> Count as break even</label>
@@ -984,7 +987,7 @@ body[data-view="live"] .acct { display: none; }
       <div class="tj-row" id="lt-newtag" hidden><input id="lt-newtag-in" class="lt-tagin" placeholder="Type your tag, e.g. Silver Bullet" enterkeyhint="done"><button type="button" class="btn primary" id="lt-newtag-add">Add tag</button><button type="button" class="btn" id="lt-newtag-no">Cancel</button></div>
       <p class="lt-h">Notes</p>
       <div class="tj-row"><button class="btn tj-mic" id="lt-mic" type="button"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="lt-tidy" type="button">Tidy up notes</button><span class="note" id="lt-live"></span></div>
-      <textarea class="io" id="lt-notes" rows="8" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence. <b>Then name + yes or no:</b> PO3 · A plus DOL · AMD · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
       <p class="lt-h">Pictures</p>
       <div class="lt-pics" id="lt-pics"></div>
       <input type="file" id="lt-file" accept="image/*" multiple hidden>
@@ -4052,7 +4055,7 @@ let tjTrade = null, rec = null, recText = '', calTrades = [];
 const anyTrade = (id) => S().trades.find(x => x.id === id) || store.sessions.flatMap(s => s.trades).find(x => x.id === id) || LIVE().trades.find(x => x.id === id);
 async function openDay(day) {
   const list = calTrades.filter(t => new Date(t.closeT * 1000).toISOString().slice(0, 10) === day).sort((a, b) => a.openT - b.openT);
-  for (const t of list) if (t.said && t.notes && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
+  for (const t of list) if (t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
   const net = list.reduce((a, t) => a + t.pnl, 0), d = new Date(day + 'T12:00:00Z');
   $('#dj-title').innerHTML = `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]} ${d.getUTCFullYear()} <span class="${cls(net)} num" style="font-weight:500;margin-left:8px">${fmtUsd(net)} · ${list.length} trade${list.length > 1 ? 's' : ''}</span>`;
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">${t.live ? 'Edit trade' : 'Edit notes'}</button></h3>
@@ -4072,8 +4075,8 @@ async function openJournal(id) {
   const t = anyTrade(id); if (!t) return; tjTrade = t;
   $('#tj-title').textContent = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
   $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
-  if (t.said && t.notes && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
-  $('#tj-notes').value = t.notes || ''; $('#tj-live').textContent = '';
+  if (t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
+  $('#tj-notes').value = t.notes || JT_TEMPLATE(); $('#tj-live').textContent = '';
   $('#tj-said').hidden = !t.said; $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
   const img = await shotGet(t.id);
@@ -4105,7 +4108,7 @@ async function openLive(id) {
   $('#lt-entry').value = v(t && t.entry); $('#lt-exit').value = v(t && t.exit); $('#lt-sl').value = v(t && t.sl); $('#lt-tp').value = v(t && t.tp);
   $('#lt-fees').value = t && t.fees ? t.fees.toFixed(2) : ''; $('#lt-pnl').value = t ? t.pnl.toFixed(2) : ''; $('#lt-be').checked = !!(t && t.reason === 'BE');
   $('#lt-mae').value = v(t && t.mae); $('#lt-mfe').value = v(t && t.mfe); $('#lt-rrp').value = t && t.rrPlan != null ? t.rrPlan : ''; $('#lt-rrm').value = t && t.rManual && t.r != null ? +t.r.toFixed(2) : ''; $('#lt-newtag').hidden = true; ltTagEdit = false;
-  $('#lt-tags').value = t ? t.tags || '' : ''; $('#lt-notes').value = t ? t.notes || '' : ''; $('#lt-live').textContent = '';
+  $('#lt-tags').value = t ? t.tags || '' : ''; $('#lt-news').value = t && t.newsOn ? '1' : ''; $('#lt-newsw').value = t && t.news || ''; $('#lt-newsw-l').hidden = !(t && t.newsOn); $('#lt-notes').value = t && t.notes ? t.notes : JT_TEMPLATE(); $('#lt-live').textContent = '';
   ltSeg(); ltChips(); ltCalc(); ltDelBtn(); ltPics();
   $('#ltedit').hidden = false; $('#ltedit .tj-body').scrollTop = 0;
   if (t && t.shot) { const d = ltDraft, got = []; for (let i = 0; i < (t.shots || 1); i++) { const img = await shotGet(ltKey(t.id, i)); if (img) got.push(img); } if (ltDraft === d) { d.pics = got.concat(d.pics); ltPics(); } }
@@ -4190,7 +4193,7 @@ async function ltSave() {
   let t = L.trades.find(z => z.id === D.id), oldN = t ? (t.shot ? t.shots || 1 : 0) : 0; if (!t) { t = { id: D.id, created: Date.now() }; L.trades.push(t); }
   const riskUsd = x.sl != null && x.sl !== x.entry ? Math.abs(x.entry - x.sl) * x.qty * pv : null, tags = [...new Map(ltTagList($('#lt-tags').value).map(g => [g.toLowerCase(), g])).values()].join(', ');
   Object.assign(t, { live: 1, sym: x.sym, side: x.side, qty: x.qty, entry: x.entry, exit: x.be ? x.entry : x.exit, sl: x.sl, tp: x.tp, finalSl: x.sl, finalTp: x.tp, openT: x.openT, closeT, pnl, fees: x.be ? 0 : x.fees,
-    riskUsd, r: D.rrmManual && x.rrMade != null ? (x.be ? 0 : x.rrMade) : riskUsd ? pnl / riskUsd : null, rManual: D.rrmManual && x.rrMade != null, rrPlan: D.rrpManual && x.rrPlan != null ? x.rrPlan : null, mae: x.mae, mfe: x.mfe, reason: x.be ? 'BE' : 'Live', pnlManual: D.pnlManual && !x.be, tags, notes: $('#lt-notes').value.trim() });
+    riskUsd, r: D.rrmManual && x.rrMade != null ? (x.be ? 0 : x.rrMade) : riskUsd ? pnl / riskUsd : null, rManual: D.rrmManual && x.rrMade != null, rrPlan: D.rrpManual && x.rrPlan != null ? x.rrPlan : null, mae: x.mae, mfe: x.mfe, reason: x.be ? 'BE' : 'Live', pnlManual: D.pnlManual && !x.be, newsOn: $('#lt-news').value === '1', news: $('#lt-news').value === '1' ? $('#lt-newsw').value.trim() : '', tags, notes: $('#lt-notes').value.trim() });
   if (x.be) t.exitReal = x.exit; else delete t.exitReal;
   if (D.said) t.said = D.said;
   for (let i = 0; i < D.pics.length; i++) await shotPut(ltKey(t.id, i), D.pics[i]);
@@ -4316,6 +4319,7 @@ function renderLTBreakdowns(trades) {
     card('By trading session (New York time)', tbl(groups(t => sessOf(t), ['Asia', 'London', 'New York', 'After hours']).map(([k, g]) => [`${k} <span class="mut" style="font-size:11px">${SESS_HRS[k]}</span>`, g]))),
     card('By setup and tag', tbl(tagRows, true)), card('By planned risk to reward', tbl(rrRows)),
     card('By result in R', tbl(groups(rres, ['-1R or worse', '-1R to 0R', '0R to 1R', '1R to 2R', '2R to 3R', '3R or more']))), card('By time in the trade', tbl(groups(hold, ['Under 5 min', '5 to 15 min', '15 min to 1 hour', '1 to 4 hours', '4 hours or more']))),
+    card('News or no news', tbl(groups(t => t.newsOn ? 'News' : 'No news', ['News', 'No news']))),
     card('By instrument', tbl(groups(t => t.sym, ['MNQ', 'MES', 'NQ', 'ES']))), card('By side', tbl(groups(t => t.side > 0 ? 'Long' : 'Short', ['Long', 'Short']))),
     card('By number of contracts', tbl(groups(t => t.qty + (t.qty > 1 ? ' contracts' : ' contract')).sort((a, b) => parseInt(a[0]) - parseInt(b[0])))),
     card('By month', tbl(groups(t => new Date(t.closeT * 1000).toISOString().slice(0, 7)).sort((a, b) => a[0] < b[0] ? 1 : -1).map(([k, g]) => [MON[+k.slice(5) - 1] + ' ' + k.slice(0, 4), g]))),
@@ -4372,6 +4376,7 @@ $('#ltedit').addEventListener('input', e => {
   if (id === 'lt-notes') return;
   ltCalc();
 });
+$('#lt-news').addEventListener('change', () => { $('#lt-newsw-l').hidden = $('#lt-news').value !== '1'; if (!$('#lt-newsw-l').hidden) $('#lt-newsw').focus(); });
 $('#lt-tz').addEventListener('change', () => { const was = $('#lt-tz').value === 'et' ? 'local' : 'et', now = $('#lt-tz').value; for (const id of ['#lt-in', '#lt-out']) { const t = ltFromInput($(id).value, was); if (t != null) $(id).value = ltToInput(t, now); } ltCalc(); });
 $('#lt-newtag-in').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ltAddTag(); } });
 $('#lt-file').addEventListener('change', e => { ltAddFiles(e.target.files || []); e.target.value = ''; });
@@ -4380,9 +4385,9 @@ $('#lt-pics').addEventListener('dragleave', () => $('#lt-pics').classList.remove
 $('#lt-pics').addEventListener('drop', e => { e.preventDefault(); $('#lt-pics').classList.remove('drag'); ltAddFiles(e.dataTransfer.files || []); });
 document.addEventListener('paste', e => { if ($('#ltedit').hidden || !e.clipboardData) return; const f = [...e.clipboardData.files || []].filter(x => /^image\//.test(x.type)); if (f.length) { e.preventDefault(); ltAddFiles(f); } });
 $('#ltpic').addEventListener('click', () => { $('#ltpic').hidden = true; });
-$('#lt-tidy').addEventListener('click', () => { if (!ltDraft) return; const v = ltDraft.said || notesPlain($('#lt-notes').value); if (v.trim()) $('#lt-notes').value = tidyNotes(v, ltNoteTrade()); });
+$('#lt-tidy').addEventListener('click', () => { if (!ltDraft) return; $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value), ltNoteTrade()); });
 $('#lt-mic').addEventListener('click', () => {
-  if (ltRec) { ltStopRec(); const said = ltRecText.trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(ltDraft.said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
+  if (ltRec) { ltStopRec(); const said = ltRecText.trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value) + '. ' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#lt-notes').focus(); $('#lt-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   ltRecText = ''; const r = new SR(); ltRec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; let done = '', seg = '';
@@ -4392,7 +4397,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-36';
+const BUILD = '2026-11-16-37';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4433,7 +4438,7 @@ function voiceStop(keep) {
   (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + ' ' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
   if (tg.kind === 'pos') { tg.x.notes = add(tg.x.notes); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
-  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(t.said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
+  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(notesPlain(t.notes || '') + '. ' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
   else { sess.idea = add(sess.idea); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
 }
@@ -4589,79 +4594,64 @@ function tidyClause(c) {
 const NOUN = String.raw`((?:[\w'-]+\s+){0,3}?(?:highs?|lows?|liquidity|BSL|SSL|PDH|PDL|range|level|gap|FVG|iFVG|order block|NWOG|NDOG|equilibrium|EQ|EQH|EQL|PWH|PWL|BPR|breaker|midnight open))\b`;
 /* When you say the field names out loud ("the session was London, manipulation was the Asia low, management was break even at 1R... extra notes ..."),
    each part goes straight into its own field, and everything after "extra notes" goes into Extra notes */
-const SPOKEN = [['Bias', String.raw`bias|daily bias`], ['Session', String.raw`session|kill ?zone`], ['True manipulation', String.raw`true manipulation`], ['Manipulation', String.raw`manipulation`],
-  ['A+ DOL', String.raw`A\+ ?DOL|A ?plus (?:DOL|D\.? ?O\.? ?L\.?|draw on liquidity)|A\+ draw on liquidity`], ['DOL', String.raw`DOL|D\.? ?O\.? ?L\.?|draw on liquidity|draw`],
-  ['Confirmation', String.raw`confirmations?`], ['Time entered', String.raw`time entered|entry time|time (?:I|we) (?:got in|entered)`], ['Time exited', String.raw`time exited|exit time|time (?:I|we) (?:got out|exited)`],
-  ['Entry', String.raw`entry|entries`], ['Stop', String.raw`stop loss|stop|SL`], ['Target', String.raw`target|take profit|TP`], ['Management', String.raw`management|trade management`],
-  ['RR', String.raw`RR|R R|risk to reward|risk reward(?: ratio)?`], ['Mindset', String.raw`mindset|emotions?|psychology|feelings?`], ['Result', String.raw`result|outcome`],
-  ['PO3/AMD', String.raw`PO3 ?(?:and|slash|/) ?AMD|PO3|PO 3|P O 3|power of (?:3|three)|AMD|A M D`], ['LR HR', String.raw`LR ?(?:and |slash |/)?HR|low resistance (?:and |slash |/)?high resistance`],
-  ['iFVG', String.raw`iFVG|inverse FVG|inversion FVG|inverse fair value gap`], ['LRL', String.raw`LRL|L R L|low resistance liquidity`], ['PD array', String.raw`PD arrays?|P D arrays?`],
-  ['Notes', String.raw`extra notes?|additional notes?|other notes|notes`]];
-const CHECK = ['PO3/AMD', 'A+ DOL', 'LR HR', 'iFVG', 'True manipulation', 'LRL', 'PD array'];
-const VFILL = /\b(?:um+|uh+|er+m?|hmm+|you know|i mean|technically|basically|literally|honestly|obviously|actually|pretty much|kind of|sort of|i think|i guess|i'?d say)\b[,]?\s*/gi;
-function spokenFields(text) {
+/* Journal template (the user's own): long answers start with a keyword you say; yes/no lines are the name then yes or no.
+   Only what you say after a keyword goes in; words before the first keyword are left out (they stay under "Everything you said"). */
+const JT_LONG = [
+  ['Bias', 'Bias', String.raw`bias`],
+  ['Idea/key levels', 'Idea', String.raw`ideas?|i dear`],
+  ['DOL', 'DOL', String.raw`DOL|draw`],
+  ['What I took my trade off', 'Trigger', String.raw`trigger|triggers|trigga`],
+  ['My target', 'Goal', String.raw`goal|goals|gold`],
+  ['The confirmation', 'Confirmed by', String.raw`confirmed by|confirm by|confirmed buy|confirmed bye`],
+  ['Where and why for TP and SL', 'Reasoning', String.raw`reasoning|reasonings|reason ing`],
+  ['Confidence', 'Confidence', String.raw`confidence|confident's`]];
+const JT_YN = [
+  ['PO3', 'PO3', String.raw`(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3)`],
+  ['A+ DOL', 'A plus DOL', String.raw`a\s?(?:\+|plus)\s?DOL`],
+  ['AMD/PO3', 'AMD', String.raw`(?:AMD|a\.?\s?m\.?\s?d\.?)(?:\s*(?:\/|slash|and|or)?\s*(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3))?`],
+  ['True Manip', 'True manip', String.raw`true\s+(?:manip(?:ulation|ulated)?|man(?:\s|-)?ip|mani\w*|manny ?p)`],
+  ['PD Array', 'PD array', String.raw`PD arrays?`],
+  ['HR LR', 'HR LR', String.raw`(?:h\.?\s?r\.?\s*(?:and\s|\/\s?|slash\s|,\s?)?l\.?\s?r\.?|hrlr|high resistance(?: and| \/)? low resistance)`]];
+const JT_OPT = [
+  ['SMT', 'SMT', String.raw`SMT(?: divergence)?`],
+  ['LTF LRL', 'LTF LRL', String.raw`(?:LTF|low time ?frame)?\s?(?:LRL|l\.?\s?r\.?\s?l\.?|low resistance liquidity)`],
+  ['CISD', 'CISD', String.raw`CISD`]];
+const YES = String.raw`yes|yeah|yep|yup|ya|yah|yes i did|i did|i had(?: it| that| one)?|had(?: it| one)?|we had(?: it| one)?|got it|tick(?:ed)?|check(?:ed)?|correct|true|present|there was(?: one)?`;
+const NO = String.raw`no|nope|nah|know|i didn'?t(?: have)?(?: it| one)?|didn'?t(?: have)?(?: it| one)?|did not|we didn'?t(?: have)?(?: it| one)?|not really|not|none|nothing|false|there wasn'?t(?: one)?|wasn'?t`;
+function journalParse(text) {
   const s = ' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ', hits = [];
-  const START = String.raw`(?:^\s*|[.!?,;]\s*|\s(?:and|then|so|also|now'?s?|okay|ok|next|right|plus|um|uh)\s+)`, DET = String.raw`(?:(?:my|the|our|for(?: the| my)?|and(?: the| my)?)\s+)?`;
-  const COP = String.raw`(?=\s*(?:was|is|were|are|will be|would be|:|-|—|yes|yeah|yep|yup|no|nope|nah|i had|had|we had|i did|i didn'?t|didn'?t|we didn'?t|there was|there wasn'?t|not)\b|\s*[:\-—])`;
-  for (const [k, lab] of SPOKEN) {
-    for (const m of s.matchAll(new RegExp(START + DET + String.raw`(${lab})\b`, 'gi'))) hits.push({ k, a: m.index + m[0].length - m[1].length, b: m.index + m[0].length });
-    for (const m of s.matchAll(new RegExp(String.raw`\b(${lab})\b` + COP, 'gi'))) hits.push({ k, a: m.index, b: m.index + m[0].length });
-  }
-  for (const [k, re] of [['Notes', /\b(?:extra|additional|other) notes?\b/gi], ['PO3/AMD', /\b(?:PO3 ?(?:and|slash|\/) ?AMD|PO3|power of (?:3|three)|AMD)\b/gi], ['A+ DOL', /(?:\bA\+ ?DOL|\bA ?plus (?:DOL|draw on liquidity))\b/gi],
-    ['LR HR', /\b(?:LR ?(?:and |slash |\/)?HR|low resistance (?:and |slash |\/)?high resistance)\b/gi], ['LRL', /\b(?:LRL|low resistance liquidity)\b/gi], ['True manipulation', /\btrue manipulation\b/gi],
-    ['Manipulation', /\bwe (?:manipulated|swept)\b/gi], ['Management', /\bI managed (?:it|the trade|the position)?(?:\s+by)?\b/gi], ['Mindset', /\bI (?:felt|was feeling)\b/gi]])
-    for (const m of s.matchAll(re)) hits.push({ k, a: m.index, b: m.index + m[0].length });
+  // yes / no lines: the name, then (within a few words) yes or no
+  for (const [k, , re] of [...JT_YN, ...JT_OPT])
+    for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])(${re})\b[\s,.:\-]*(?:(?:was|is|it was|that was|for that|there|so)\s+)?(?:(?:um|uh|er)\s+)?(${YES}|${NO})\b`, 'gi')))
+      hits.push({ k, yn: new RegExp('^(?:' + YES + ')$', 'i').test(m[2]) ? 'Yes' : 'No', a: m.index + m[0].indexOf(m[1]), b: m.index + m[0].length });
+  // long answers: the keyword
+  JT_LONG.forEach(([k, , re], i) => { for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${re})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi')))
+    hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || m.index === 0 }); });
   hits.sort((x, y) => x.a - y.a || (y.b - y.a) - (x.b - x.a));
-  const L = []; for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue; L.push(h); }
-  const tidy = (v) => { let x = v.replace(VFILL, ' ').replace(/\s+/g, ' ').trim().replace(/[.!?](?:\s|$)[\s\S]*$/, '').replace(/,\s+(?:I|I'm|I'll|we|we're|it|it's|then|so|but|and|after)\b[\s\S]*$/i, '');
-    for (let i = 0; i < 4; i++) x = x.replace(/^[\s,.:;\-—]+/, '').replace(/^(?:was|is|were|are|will be|would be|that|like|so|just|it was|it's|it is|of)\b\s*/i, '');
-    for (let i = 0; i < 3; i++) x = x.replace(/[\s,;:\-—.!?]+$/, '').replace(/\s+(?:and|so|then|and then|um|uh|okay|ok|now|also|the|my|our|for|like)$/i, '');
-    const w = x.split(' '); if (w.length > 30) x = w.slice(0, 30).join(' ') + '…'; return x; };
-  const yn = (x) => { const y = /^(?:yes|yeah|yep|yup|i had(?: it| that| one)?|had(?: it)?|we had(?: it| one)?|i did|there was(?: one)?|correct|true|tick(?:ed)?|check(?:ed)?)\b[,.]?\s*/i, n = /^(?:no|nope|nah|i didn'?t(?: have)?(?: it| one)?|didn'?t(?: have)?(?: it| one)?|we didn'?t(?: have)?(?: it| one)?|there wasn'?t(?: one)?|not really|none|false)\b[,.]?\s*/i;
-    const more = (w, r) => { r = r.replace(/^[\s–—\-,.]+/, ''); if (r.split(' ').length > 4) { spill.push(r); return w; } return w + (r ? ' – ' + r : ''); };
-    if (y.test(x)) return more('Yes', x.replace(y, '')); if (n.test(x)) return more('No', x.replace(n, '')); return x; };
-  const spill = [];
-  const fields = {};
-  for (let i = 0; i < L.length; i++) { const h = L[i]; let v = tidy(s.slice(h.b, L[i + 1] ? L[i + 1].a : s.length)); if (!v) continue;
-    if (CHECK.includes(h.k)) v = yn(v); if (!/^[a-z][A-Z]/.test(v)) v = v.charAt(0).toUpperCase() + v.slice(1);
-    fields[h.k] = fields[h.k] && fields[h.k] !== v ? fields[h.k] + '; ' + v : v; }
-  for (const r of spill) { const v = r.charAt(0).toUpperCase() + r.slice(1); fields.Notes = fields.Notes ? fields.Notes + '; ' + v : v; }
-  return { fields, any: L.length > 0 };
-}
-/* Only what you say goes in: "my bias was mainly bearish" -> Bias: mainly bearish. Nothing is guessed from other words.
-   Facts from the trade itself (prices, times, result, RR) are filled in for you. */
-const JOURNAL_KEYS = ['Bias', 'Session', 'Manipulation', 'DOL', 'Confirmation', 'Entry', 'Stop', 'Target', 'RR', 'Time entered', 'Time exited', 'Management', 'Result', 'Mindset'];
-function keyFacts(s0, t) {
-  const SP = spokenFields(fixTerms(s0)).fields, F = {};
-  for (const k of JOURNAL_KEYS) if (SP[k]) F[k] = SP[k];
-  if (t) {
-    const both = (num, v) => [num, v].filter(Boolean).join(' · ');
-    F.Entry = both(t.entry != null ? fmtPx(t.entry) : '', SP.Entry); F.Stop = both(t.sl != null ? fmtPx(t.sl) : '', SP.Stop); F.Target = both(t.tp != null ? fmtPx(t.tp) : '', SP.Target);
-    const plan = plannedRR(t);
-    F.RR = [SP.RR, plan != null ? '1:' + plan.toFixed(1) + ' planned' : '', t.r != null ? t.r.toFixed(2) + 'R made' : ''].filter(Boolean).join(' · ');
-    F['Time entered'] = both(t.openT != null ? fmtT(t.openT).slice(15) + ' ET' : '', SP['Time entered']); F['Time exited'] = both(t.closeT != null ? fmtT(t.closeT).slice(15) + ' ET' : '', SP['Time exited']);
-    if (t.pnl != null) F.Result = both(`${t.reason === 'BE' || Math.abs(t.pnl) <= beTh() ? 'Break even' : t.pnl > 0 ? 'Win' : 'Loss'} ${fmtUsd(t.pnl)}${t.r != null ? ' (' + t.r.toFixed(2) + 'R)' : ''}`, SP.Result);
-  }
-  return JOURNAL_KEYS.map(k => `${k}: ${F[k] || '–'}`);
+  const L = []; let cur = -1;
+  for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue;
+    if (h.i != null) { if (h.i <= cur && !h.sb) continue; cur = h.i; }   // keywords go forward; going back only after a full stop (a new note)
+    L.push(h); }
+  const out = {};
+  for (let j = 0; j < L.length; j++) { const h = L[j];
+    if (h.yn) { out[h.k] = h.yn; continue; }
+    let v = s.slice(h.b, L[j + 1] ? L[j + 1].a : s.length).replace(/\b(?:um+|uh+|erm*)\b[,]?\s*/gi, ' ').replace(/\s+/g, ' ').trim()
+      .replace(/^[\s,.:;\-—]+/, '').replace(/^(?:is|was|are|were)\s+/i, '').replace(/[\s,;:\-—]+$/, '').replace(/\s+(?:and|so|then|now|okay|ok|the|my|next)$/i, '').trim();
+    if (!v) continue; if (!/^[a-z][A-Z]/.test(v)) v = v.charAt(0).toUpperCase() + v.slice(1); if (!/[.!?]$/.test(v)) v += '.';
+    out[h.k] = out[h.k] ? out[h.k] + ' ' + v : v; }
+  return out;
 }
 function tidyNotes(raw, t) {
-  const s = fixTerms(String(raw || '')).replace(/\s+/g, ' ').trim(), SP = spokenFields(s), CK = SP.fields;
-  const head = t ? `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET` : '';
-  const facts = keyFacts(s, t), note = CK.Notes;
-  const body = `TRADE JOURNAL\n${facts.map(x => '• ' + x).join('\n')}\n\nEXTRA NOTES\n${CHECK.map(k => '• ' + k + ': ' + (CK[k] || '–')).join('\n')}` + (note ? `\n• Notes: ${note}` : '');
-  return (head ? head + '\n\n' : '') + body;
+  const F = journalParse(fixTerms(String(raw || ''))), line = (k) => `${k}: ${F[k] || ''}`.trimEnd();
+  return [...JT_LONG.map(x => line(x[0])), '', ...JT_YN.map(x => line(x[0])), '', 'Optional:', ...JT_OPT.map(x => line(x[0]))].join('\n');
 }
-/* Text of the notes without the header, headings and bullets, for re-tidying typed notes */
-const notesPlain = (v) => /TRADE JOURNAL/.test(v) ? v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').split('\n').map(l => {
-    l = l.trim(); if (!l || l === 'TRADE JOURNAL') return ''; if (l === 'EXTRA NOTES') return 'Extra notes:';
-    const m = l.match(/^•\s*([^:]{1,30}):\s*(.*)$/); if (!m) return l.replace(/^•\s*/, '').replace(/^–$/, '');
-    if (/^(Result|Time entered|Time exited)$/.test(m[1])) return '';
-    const val = m[2].split(' · ').filter(x => x !== '–' && !/^-?\d[\d.,]*$/.test(x) && !/(?:planned|made)$/.test(x)).map(x => x.replace(/ \(you said\)$/, '')).join(', ');
-    return val ? `${m[1]}: ${val}` : ''; }).filter(Boolean).map(x => /[.!?]$/.test(x) ? x : x + '.').join(' ')
-  : v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][A-Z ()]+$/gm, '').replace(/^[A-Z][a-z ]+: /gm, '').replace(/^• /gm, '').replace(/\n+/g, '. ');
+const JT_TEMPLATE = () => tidyNotes('', null);
+/* Notes text back into spoken form (keyword + answer), so Tidy up notes keeps what you typed */
+const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT].map(x => [x[0].toLowerCase(), x[1]]));
+  return String(v || '').split('\n').map(l => { const m = l.match(/^\s*([^:]{1,40}):\s*(.*)$/); if (!m) return ''; const kw = map.get(m[1].trim().toLowerCase()); if (!kw || !m[2].trim()) return ''; return kw + ' ' + m[2].trim().replace(/[.!?]*$/, '.'); }).filter(Boolean).join(' '); };
 function stopRec() { if (rec) { const r = rec; rec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
 $('#tj-mic').addEventListener('click', () => {
-  if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(tjTrade.said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
+  if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value) + '. ' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
@@ -4671,7 +4661,7 @@ $('#tj-mic').addEventListener('click', () => {
   r.onend = () => { done += seg; seg = ''; recText = done; if (rec === r) { try { r.start(); } catch (e) {} } };
   try { r.start(); $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.'; } catch (e) { rec = null; $('#tj-live').textContent = 'Could not start the microphone.'; }
 });
-$('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; const v = tjTrade.said || notesPlain($('#tj-notes').value); $('#tj-notes').value = tidyNotes(v, tjTrade); });
+$('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value), tjTrade); });
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
 $('#cal-next').addEventListener('click', () => shiftCal(1));
 document.addEventListener('change', e => {
@@ -4800,7 +4790,7 @@ async function boot() {
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { notesPlain, spokenFields, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { notesPlain, journalParse, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions', 'live'].includes(h)) setView(h);
   save();
 }
