@@ -4101,7 +4101,7 @@ async function openJournal(id) {
   const img = await shotGet(t.id);
   $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
 }
-function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
+function closeJournal() { tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* ---------- Live trades: a journal for your real trades, kept apart from backtest sessions (like TradeZella) ---------- */
 function ensureLive() { if (!store.live || !Array.isArray(store.live.trades)) store.live = { balance0: 50000, trades: [] }; Object.assign(store.live, { id: 'live', name: 'Live trades' }); return store.live; }
 const LIVE = () => ensureLive();
@@ -4203,7 +4203,7 @@ async function ltAddFiles(files) {
 }
 function ltMsg(s) { $('#lt-sum').innerHTML = `<span class="neg">${s}</span>`; }
 async function ltSave() {
-  const D = ltDraft, x = ltRead();
+  ltFlush(); const D = ltDraft, x = ltRead();
   if (x.entry == null || x.exit == null) return ltMsg('Fill in the entry price and the exit price.');
   if (!x.qty) return ltMsg('Fill in how many contracts you traded.');
   if (x.openT == null) return ltMsg('Fill in the entry date and time.');
@@ -4221,7 +4221,9 @@ async function ltSave() {
   const s = SET(); s.liveSym = x.sym; s.liveQty = x.qty; s.liveTz = $('#lt-tz').value; if (D.feesManual && x.qty && !x.be) { s.liveFee = s.liveFee || {}; s.liveFee[x.sym] = Math.round(x.fees / x.qty * 100) / 100; }
   save(); ltClose(); toast('Trade saved.'); if (view === 'live') renderLT();
 }
-function ltStopRec() { if (ltRec) { const r = ltRec; ltRec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#lt-mic').classList.remove('rec'); $('#lt-mic span').textContent = 'Speak your notes'; }
+function ltStopRec() { if (ltRec) { ltRec.cancel(); ltRec = null; } $('#lt-mic').classList.remove('rec'); $('#lt-mic span').textContent = 'Speak your notes'; }
+function ltApply(said) { said = (said || '').trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value) + '\n' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function ltFlush() { if (ltRec) { const said = ltRec.now(); ltRec = null; ltStopRec(); ltApply(said); } }
 function ltNoteTrade() { const x = ltRead(); return { ...x, live: 1, r: x.rrMade, exit: x.exit, pnl: x.pnl ?? 0, reason: x.be ? 'BE' : 'Live', openT: x.openT || etNow(), closeT: x.closeT ?? x.openT }; }
 function ltClose() {
   ltStopRec(); $('#ltedit').hidden = true; const D = ltDraft; ltDraft = null;
@@ -4405,18 +4407,14 @@ $('#lt-pics').addEventListener('drop', e => { e.preventDefault(); $('#lt-pics').
 document.addEventListener('paste', e => { if ($('#ltedit').hidden || !e.clipboardData) return; const f = [...e.clipboardData.files || []].filter(x => /^image\//.test(x.type)); if (f.length) { e.preventDefault(); ltAddFiles(f); } });
 $('#ltpic').addEventListener('click', () => { $('#ltpic').hidden = true; });
 $('#lt-tidy').addEventListener('click', () => { if (!ltDraft) return; $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value), ltNoteTrade()); });
-$('#lt-mic').addEventListener('click', () => {
-  if (ltRec) { ltStopRec(); const said = ltRecText.trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value) + '\n' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { $('#lt-notes').focus(); $('#lt-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
-  ltRecText = ''; const r = new SR(); ltRec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; let done = '', seg = '';
-  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += bestAlt(e.results[i]) + ' '; ltRecText = done + seg; $('#lt-live').textContent = '“' + fixTerms(ltRecText).slice(-90) + '”'; };
-  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { ltStopRec(); $('#lt-notes').focus(); $('#lt-live').textContent = 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; } };
-  r.onend = () => { done += seg; seg = ''; ltRecText = done; if (ltRec === r) { try { r.start(); } catch (e) {} } };
-  try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
+$('#lt-mic').addEventListener('click', async () => {
+  if (ltRec) { const L = ltRec; ltRec = null; $('#lt-mic span').textContent = 'Finishing…'; $('#lt-live').textContent = 'Catching your last words…'; const said = await L.finish(); ltStopRec(); ltApply(said); return; }
+  const L = listen((x) => { $('#lt-live').textContent = '“' + x.slice(-90) + '”'; }, (why) => { ltStopRec(); $('#lt-notes').focus(); $('#lt-live').textContent = why === 'loop' ? 'The microphone kept stopping. Tap Speak your notes to try again, or tap the microphone key on the keyboard to dictate.' : 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; });
+  if (!L) { $('#lt-notes').focus(); $('#lt-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
+  ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-42';
+const BUILD = '2026-11-16-43';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4430,7 +4428,8 @@ async function checkUpdate() {
 setTimeout(checkUpdate, 1500);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 /* Quick voice notes: tap the mic, talk, tap Done. Notes go to your open trade, else your last closed trade, else your next trade */
-let vrec = null, vText = '';
+let vrec = null;
+const vpillOff = () => { $('#vpill').hidden = true; $('#b-voice').classList.remove('rec'); $('#b-voice').setAttribute('aria-pressed', 'false'); };
 const dayOf = (t) => new Date(t * 1000).toISOString().slice(0, 10);
 function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b) => b.openT - a.openT)[0]; if (p) return { kind: 'pos', x: p };
   const last = sess.trades.length ? sess.trades.reduce((a, b) => (b.closeT >= a.closeT ? b : a)) : null;
@@ -4438,24 +4437,19 @@ function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b
   if (last && dayOf(last.closeT) === dayOf(sess.cursorT) && sess.cursorT - last.closeT <= 7200) return { kind: 'trade', x: last };
   return { kind: 'next' }; }
 function voiceStart() {
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
-  vText = ''; let done = '', seg = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
-  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += bestAlt(e.results[i]) + ' '; vText = done + seg; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
-  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { voiceStop(false); micBlocked = true; micHelp(); } };
-  r.onend = () => { done += seg; seg = ''; vText = done; if (vrec === r) { try { r.start(); } catch (e) {} } };
-  try { r.start(); } catch (e) { vrec = null; toast('Could not start the microphone.'); return; }
-  const tg = voiceTarget(); $('#vp-txt').textContent = tg.kind === 'pos' ? 'Listening… talk about this trade' : tg.kind === 'trade' ? 'Listening… talk about your last trade' : 'Listening… talk about your trade idea';
+  const L = listen((x) => { $('#vp-txt').textContent = '“' + x.trim().slice(-70) + '”'; }, (why) => { voiceStop(false); if (why === 'loop') toast('The microphone kept stopping, so I stopped it. Tap the mic to try again.'); else { micBlocked = true; micHelp(); } });
+  if (!L) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
+  vrec = L; const tg = voiceTarget(); $('#vp-txt').textContent = tg.kind === 'pos' ? 'Listening… talk about this trade' : tg.kind === 'trade' ? 'Listening… talk about your last trade' : 'Listening… talk about your trade idea';
   $('#vpill').hidden = false; $('#b-voice').classList.add('rec'); $('#b-voice').setAttribute('aria-pressed', 'true');
 }
-function voiceStop(keep) {
-  const r = vrec; vrec = null; if (r) { r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } }
-  $('#vpill').hidden = true; $('#b-voice').classList.remove('rec'); $('#b-voice').setAttribute('aria-pressed', 'false');
-  if (!keep) return; const said = vText.trim(); vText = '';
+async function voiceStop(keep) {
+  const L = vrec; vrec = null; if (!L) return;
+  if (!keep) { L.cancel(); vpillOff(); return; }
+  $('#vp-txt').textContent = 'Saving… catching your last words'; const said = (await L.finish()).trim(); if (!vrec) vpillOff();
   if (!said) { toast('I didn\'t hear anything, so nothing was saved.'); return; }
   const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
   (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
-  const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + ' ' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
+  const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + '\n' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
   if (tg.kind === 'pos') { tg.x.notes = add(tg.x.notes); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
   else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(notesPlain(t.notes || '') + '\n' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
   else { sess.idea = add(sess.idea); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
@@ -4583,6 +4577,47 @@ function srSetup(r) {
   try { const G = window.SpeechGrammarList || window.webkitSpeechGrammarList; if (G && !r.phrases) { const g = new G(); g.addFromString('#JSGF V1.0; grammar t; public <t> = ' + VOCAB.join(' | ') + ' ;', 1); r.grammars = g; } } catch (e) {}
 }
 const fixTerms = (txt) => TERMS.reduce((acc, [re, to]) => acc.replace(re, to), txt);
+/* Joining what the speech engine sends. iPad Safari often sends the same words again (each result repeats the one before, or a restart
+   re-sends the last sentence), which made notes loop. These keep each word once. */
+const spW = (x) => String(x || '').trim().split(/\s+/).filter(Boolean), spN = (w) => w.toLowerCase().replace(/[^\w+/']/g, '');
+function mergeSpeech(a, b) {
+  const A = spW(a), B = spW(b); if (!B.length) return A.join(' '); if (!A.length) return B.join(' ');
+  const na = A.map(spN), nb = B.map(spN), eq = (i, j, k) => { for (let x = 0; x < k; x++) if (na[i + x] !== nb[j + x]) return false; return true; };
+  if (nb.length >= na.length && eq(0, 0, na.length)) return B.join(' ');                       // b already holds a (it grew)
+  for (let i = Math.max(0, na.length - nb.length - 40); i <= na.length - nb.length; i++) if (eq(i, 0, nb.length) && (nb.length >= 3 || i === na.length - nb.length)) return A.join(' ');   // b was already said
+  for (let k = Math.min(na.length, nb.length) - 1; k >= 2; k--) if (eq(na.length - k, 0, k)) return A.concat(B.slice(k)).join(' ');   // b starts with the end of a
+  return A.concat(B).join(' ');
+}
+function squashRepeats(txt) {   // "bias bearish below the open bias bearish below the open" -> once
+  let W = spW(txt);
+  for (let n = 12; n >= 3; n--) for (let i = 0; i + 2 * n <= W.length; i++) { let same = true; for (let x = 0; x < n && same; x++) same = spN(W[i + x]) === spN(W[i + n + x]); if (same) { W.splice(i + n, n); i--; } }
+  return W.join(' ');
+}
+/* One listener for every mic button: keeps listening through pauses, never loops, and when you tap Done it waits a moment for your last words */
+function listen(onText, onFatal) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return null;
+  const L = { parts: [], cur: '', on: true, quick: 0 }, r = new SR();
+  L.text = () => squashRepeats(L.parts.concat(L.cur ? [L.cur] : []).reduce(mergeSpeech, ''));
+  r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
+  let t0 = 0, got = false, fin = null;
+  const begin = () => { t0 = Date.now(); got = false; try { r.start(); } catch (e) { setTimeout(() => { if (L.on) try { r.start(); } catch (e2) {} }, 300); } };
+  r.onresult = (e) => { let seg = ''; for (let i = 0; i < e.results.length; i++) seg = mergeSpeech(seg, bestAlt(e.results[i])); L.cur = seg; got = true; L.quick = 0; onText && onText(fixTerms(L.text())); };
+  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { L.on = false; if (fin) fin(); onFatal && onFatal(e.error); } };
+  r.onend = () => {
+    if (L.cur) { L.parts.push(L.cur); L.cur = ''; }
+    if (fin) return fin(); if (!L.on) return;
+    if (!got && Date.now() - t0 < 2000) L.quick++; else L.quick = 0;
+    if (L.quick > 6) { L.on = false; onFatal && onFatal('loop'); return; }   // the engine keeps stopping straight away: stop instead of looping
+    setTimeout(() => { if (L.on && !fin) begin(); }, L.quick ? 400 : 60);
+  };
+  L.finish = () => new Promise(res => { if (!L.on && !fin) return res(fixTerms(L.text()));
+    L.on = false; const t = setTimeout(() => fin && fin(), 1800);
+    fin = () => { clearTimeout(t); fin = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) {} res(fixTerms(L.text())); };
+    try { r.stop(); } catch (e) { fin(); } });
+  L.cancel = () => { L.on = false; fin = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) {} };
+  L.now = () => { const x = fixTerms(L.text()); L.cancel(); return x; };
+  begin(); return L;
+}
 /* What goes in the notes, checked in this order; anything that fits none of these is left out */
 /* What goes in the notes, checked in this order; anything that fits none of these is left out */
 const SECTIONS = [
@@ -4638,6 +4673,7 @@ const JT_OPT = [
   ['CISD', 'CISD', String.raw`CISD`]];
 const YES = String.raw`yes|yeah|yep|yup|ya|yah|yes i did|i did|i had(?: it| that| one)?|had(?: it| one)?|we had(?: it| one)?|got it|tick(?:ed)?|check(?:ed)?|correct|true|present|there was(?: one)?`;
 const NO = String.raw`no|nope|nah|know|i didn'?t(?: have)?(?: it| one)?|didn'?t(?: have)?(?: it| one)?|did not|we didn'?t(?: have)?(?: it| one)?|not really|not|none|nothing|false|there wasn'?t(?: one)?|wasn'?t`;
+const HEDGE = /\b(?:i would say|i'd say|i think|i guess|i mean|you know|kind of|sort of|technically|basically|literally|honestly|obviously|pretty much|to be honest|i'm gonna say|i'm going to say|let's say)\b[,]?/gi;
 function journalParse(text, live) {
   // a new line means a new recording (or a new notes line); the whole-idea talk-through only ends there
   const s = ' ' + String(text || '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim() + ' ', hits = [], nl = (j) => j === 0 || /\n\s*$/.test(s.slice(0, j + 1));
@@ -4649,15 +4685,17 @@ function journalParse(text, live) {
   JT_LONG.forEach(([k, , re], i) => { if (i === WHOLE && !live) return; for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${re})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi')))
     hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index), nl: nl(m.index) }); });
   hits.sort((x, y) => x.a - y.a || (y.b - y.a) - (x.b - x.a));
-  const L = []; let cur = -1;
+  const L = [], filled = new Set(); let cur = -1;
   for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue;
     if (cur === WHOLE && !h.nl) continue;   // the whole-idea talk-through keeps everything until a new recording
-    if (h.i != null) { if (h.i <= cur && !h.sb) continue; cur = h.i; } else if (cur === WHOLE) cur = -1;   // keywords go forward; going back only after a full stop (a new note)
+    if (h.i != null) { if (h.i <= cur && !h.sb && filled.has(h.i)) continue; cur = h.i; filled.add(h.i); } else if (cur === WHOLE) cur = -1;   // keywords can come in any order; a field already answered only starts again after a full stop (a new note)
     L.push(h); }
   const out = {};
   for (let j = 0; j < L.length; j++) { const h = L[j];
     if (h.yn) { out[h.k] = h.yn; continue; }
-    let v = s.slice(h.b, L[j + 1] ? L[j + 1].a : s.length).replace(/\b(?:um+|uh+|erm*)\b[,]?\s*/gi, ' ').replace(/\s+/g, ' ').trim()
+    let v = s.slice(h.b, L[j + 1] ? L[j + 1].a : s.length).replace(/\b(?:um+|uh+|erm*)\b[,]?\s*/gi, ' ');
+    if (h.i !== WHOLE) v = v.replace(HEDGE, ' ');   // "my bias was technically mainly bearish" -> "Mainly bearish"
+    v = v.replace(/\s+/g, ' ').trim()
       .replace(/^[\s,.:;\-—]+/, '').replace(/^(?:is|was|are|were)\s+/i, '').replace(/[\s,;:\-—]+$/, '').replace(/\s+(?:and|so|then|now|okay|ok|the|my|next)$/i, '').trim();
     if (!v) continue; if (!/^[a-z][A-Z]/.test(v)) v = v.charAt(0).toUpperCase() + v.slice(1); if (!/[.!?]$/.test(v)) v += '.';
     out[h.k] = out[h.k] ? out[h.k] + ' ' + v : v; }
@@ -4676,17 +4714,14 @@ const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT
     if (kw || (m && /^optional$/i.test(m[1].trim()))) { open = !!(kw && m[2].trim()); if (open) out.push(kw + ' ' + m[2].trim().replace(/[.!?]*$/, '.')); continue; }
     if (open && l.trim()) out[out.length - 1] += ' ' + l.trim().replace(/[.!?]*$/, '.'); else if (!l.trim()) open = false; }
   return out.join('\n'); };
-function stopRec() { if (rec) { const r = rec; rec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
-$('#tj-mic').addEventListener('click', () => {
-  if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value) + '\n' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
-  recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
-  let done = '', seg = '';
-  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += bestAlt(e.results[i]) + ' '; recText = done + seg; $('#tj-live').textContent = '“' + recText.slice(-90) + '”'; };
-  r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; } };
-  r.onend = () => { done += seg; seg = ''; recText = done; if (rec === r) { try { r.start(); } catch (e) {} } };
-  try { r.start(); $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.'; } catch (e) { rec = null; $('#tj-live').textContent = 'Could not start the microphone.'; }
+function stopRec() { if (rec) { rec.cancel(); rec = null; } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
+function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value) + '\n' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function tjFlush() { if (rec) { const said = rec.now(); rec = null; stopRec(); tjApply(said); } }   // closing while still recording keeps what was said
+$('#tj-mic').addEventListener('click', async () => {
+  if (rec) { const L = rec; rec = null; $('#tj-mic span').textContent = 'Finishing…'; $('#tj-live').textContent = 'Catching your last words…'; const said = await L.finish(); stopRec(); tjApply(said); return; }
+  const L = listen((x) => { $('#tj-live').textContent = '“' + x.slice(-90) + '”'; }, (why) => { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = why === 'loop' ? 'The microphone kept stopping. Tap Speak your notes to try again, or tap the microphone key on the keyboard to dictate.' : 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; });
+  if (!L) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
+  rec = L; $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.';
 });
 $('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value), tjTrade); });
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
