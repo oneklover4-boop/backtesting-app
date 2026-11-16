@@ -2738,6 +2738,7 @@ function startMk(P, x, y) {
   if (TOOLDEF[type].pts >= 99) toast('Click to add each point. Click the last point again to finish.');
 }
 function finishD(P, d) {
+  if (d.keepFlat && LINEISH.includes(d.type) && d.pts.length === 2) snapAngle(P, d, 1);
   if (d.type === 'barspat' && !d.src && d.pts.length > 1) {
     const t1 = Math.min(d.pts[0].t, d.pts[1].t), t2 = Math.max(d.pts[0].t, d.pts[1].t), src = P.agg.filter(b => b.time >= t1 && b.time <= t2);
     if (src.length) { const L1 = tToL(P, src[0].time), L2 = tToL(P, src[src.length - 1].time), base = src[0].open; d.src = [src[0].time, src[src.length - 1].time, base];
@@ -2873,6 +2874,7 @@ function bindPane(P) {
       return;
     }
     const A = draw.act; if (!A || A.P !== P) return;
+    if (A.kind === 'handle' && A.d && A.d.keepFlat && LINEISH.includes(A.d.type) && A.i < 2) snapAngle(P, A.d, A.i);
     draw.act = null; lockChart(P, false); el.style.cursor = '';
     if (A.kind === 'line' && !A.moved && !A.btn && A.line.kind === 'psl' && A.line.ref && e.type === 'pointerup') toBreakEven(A.line.ref);
     if (A.kind === 'line') renderAll();
@@ -3941,6 +3943,9 @@ async function openDay(day) {
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">Edit notes</button></h3>
     <div class="dj-shot" data-shotfor="${t.id}"><div class="empty">${t.shot ? 'Loading the chart picture…' : 'No chart picture for this trade.'}</div></div>
     <p class="dj-notes">${t.notes ? esc(t.notes.replace(/^(Long|Short) [\s\S]*?\n\n/, '')) : '<span class="mut">No notes yet. Tap Edit notes, or the microphone, to add some.</span>'}</p></div>`).join('') || '<div class="empty">No trades on this day.</div>';
+  const vl = store.sessions.flatMap(se => (se.voiceLog || []).filter(v => dayOf(v.t) === day)).sort((a, b) => a.t - b.t);
+  if (vl.length) $('#dj-body').insertAdjacentHTML('beforeend', `<div class="dj-card"><h3>Everything you said this day (${vl.length} note${vl.length > 1 ? 's' : ''})</h3><p class="dj-notes">${vl.map(v => '• ' + fmtT(v.t).slice(15) + ' ET  ' + esc(v.txt)).join('\n')}</p></div>`);
+  if (!list.length && vl.length) $('#dj-body .empty') && $('#dj-body .empty').remove();
   $('#dayj').hidden = false;
   for (const t of list) if (t.shot) { const img = await shotGet(t.id), el = $(`#dj-body [data-shotfor="${t.id}"]`); if (el) el.innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade.</div>'; }
 }
@@ -3960,7 +3965,7 @@ async function openJournal(id) {
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-28';
+const BUILD = '2026-11-16-30';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -3975,7 +3980,12 @@ setTimeout(checkUpdate, 1500);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 /* Quick voice notes: tap the mic, talk, tap Done. Notes go to your open trade, else your last closed trade, else your next trade */
 let vrec = null, vText = '';
-function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b) => b.openT - a.openT)[0]; if (p) return { kind: 'pos', x: p }; if (sess.trades.length) return { kind: 'trade', x: sess.trades.reduce((a, b) => (b.closeT >= a.closeT ? b : a)) }; return { kind: 'next' }; }
+const dayOf = (t) => new Date(t * 1000).toISOString().slice(0, 10);
+function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b) => b.openT - a.openT)[0]; if (p) return { kind: 'pos', x: p };
+  const last = sess.trades.length ? sess.trades.reduce((a, b) => (b.closeT >= a.closeT ? b : a)) : null;
+  // right after a trade closes (same day, within 2 hours of replay time) notes go to that trade; otherwise to your next trade
+  if (last && dayOf(last.closeT) === dayOf(sess.cursorT) && sess.cursorT - last.closeT <= 7200) return { kind: 'trade', x: last };
+  return { kind: 'next' }; }
 function voiceStart() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
@@ -3993,10 +4003,11 @@ function voiceStop(keep) {
   if (!keep) return; const said = vText.trim(); vText = '';
   if (!said) { toast('I didn\'t hear anything, so nothing was saved.'); return; }
   const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
+  (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + ' ' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
   if (tg.kind === 'pos') { tg.x.notes = add(tg.x.notes); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
   else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(t.said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
-  else { sess.idea = add(sess.idea); toast('Note saved. It goes with the next trade you take. Tap the mic again to add more.'); }
+  else { sess.idea = add(sess.idea); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
 }
 $('#b-voice').addEventListener('click', () => { if (vrec) voiceStop(true); else if (micBlocked) micHelp(); else voiceStart(); });
@@ -4018,7 +4029,10 @@ $('#tj-be').addEventListener('click', () => { if (!tjTrade) return; markBE(tjTra
 $('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
 /* Speech engines don't know trading words, so common mishearings are fixed here */
 const TERMS = [
+  [/\b(?:fiji|fijis|fiji's|fuji|if\s?vg|if\s?v\s?g|if\s?bg|if\s?pg|ivg|i\s?v\s?g|ifbg|ifpg|ifvgs?|i\s?f\s?v\s?g|eye\s?f\s?v\s?g|i've\s?vg|i've\s?v\s?g|ive\s?vg|I\.?F\.?V\.?G\.?|ifg|iv\s?g|I fee gee)\b/gi, 'iFVG'],
   [/\b(?:i|inverse|inverted)\s*(?:f\.?\s*v\.?\s*g|fvg)s?\b/gi, 'iFVG'],
+  [/\b(?:d\.?\s?o\.?\s?l\.?|doll|dole|dol|dahl|dal)\b/gi, 'DOL'],
+  [/\b(?:r\.?\s?r\.?|r and r|are are|risk to reward|risk reward|risk-reward|r to r)\b/gi, 'RR'],
   [/\b(?:f\.?\s?v\.?\s?g|fbg|fpg|svg|fvd|f\s?b\s?g|ef\s?v\s?g|eff\s?v\s?g|f\s?v\s?gs)\b/gi, 'FVG'],
   [/\b(?:fair value gaps?)\b/gi, 'FVG'],
   [/\b(?:p\.?\s?d\.?\s?(?:a\s?ray|arrays?|arrey|array's)|pd array's|petty arrays?|pede arrays?|p\.d\. arrays?|pda)\b/gi, 'PD array'],
@@ -4082,7 +4096,8 @@ function keyFacts(s0, t) {
   const grab = (re) => uniq([...s.matchAll(new RegExp(re.source + NOUN, 'gi'))].map(m => clean(m[m.length - 1])).filter(x => x.split(' ').length <= 5));
   const has = (re) => re.test(s), out = [];
   const bull = (s.match(/\b(bullish|bull|long|higher|buy-side)\b/gi) || []).length, bear = (s.match(/\b(bearish|bear|short|lower|sell-side)\b/gi) || []).length;
-  const F = {}; if (bull || bear) F.Bias = bull >= bear ? 'Bullish' : 'Bearish';
+  const F = {}; const bx = s.match(/\bbias\s+(?:is|was|for (?:the|to)day|today|for today)?\s*(?:is|was)?\s*(?:going to be\s+)?(bullish|bearish|long|short|neutral|bull|bear)/i);
+  if (bx) F.Bias = /bull|long/i.test(bx[1]) ? 'Bullish' : /bear|short/i.test(bx[1]) ? 'Bearish' : 'Neutral'; else if (bull || bear) F.Bias = bull >= bear ? 'Bullish' : 'Bearish';
   const ses = uniq((s.match(/\b(Asia|London|New York|NY AM|NY PM|killzone|silver bullet)\b/gi) || []).map(x => x.charAt(0).toUpperCase() + x.slice(1))); if (ses.length) F.Session = ses.join(', ');
   const man = grab(/\b(?:swept|re-?swept|sweep(?:ing)?|took out|taken out|taken|took|raided|raid(?:ing)?|ran|grabbed|traded into|trading into|tapped(?: into)?)\s+(?:out\s+)?(?:like\s+|the\s+|a\s+|an\s+|our\s+|some\s+)*/); if (man.length) F.Manipulation = man.join(', ');
   const dol = grab(/\b(?:DOL(?: is| was)?|draw on liquidity(?: is| was)?|target(?:ing|ed)?(?: is| was| at)?|going for|aiming for|towards?|trading (?:up |down )?to|trade (?:up |down )?to|run (?:on|to)|reach(?:ing)? for)\s+(?:like\s+|the\s+|a\s+|an\s+|our\s+|some\s+|nice\s+)*/); if (dol.length) F['DOL'] = dol.join(', ');
@@ -4095,12 +4110,24 @@ function keyFacts(s0, t) {
   const mg = []; if (has(/\bbreak even\b/i)) mg.push('break even'); if (has(/\bpartials?\b/i)) mg.push('partials'); if (has(/\btrail\w*/i)) mg.push('trailed stop'); if (has(/\bone[- ]to[- ]one|\b1R\b/i)) mg.push('hold for 1R');
   if (has(/\b(?:don'?t|didn'?t|no)\s+(?:even\s+)?(?:want to\s+)?(?:TP|take profit|target)\b/i)) mg.push('no fixed TP');
   if (mg.filter(x => x !== 'no fixed TP').length) F.Management = mg.filter(x => x !== 'no fixed TP').join(', ');
-  if (t) { F.Entry = [t.entry != null ? fmtPx(t.entry) + ' at ' + fmtT(t.openT).slice(15) + ' ET' : '', F.Entry].filter(Boolean).join(' · ');
+  if (t) { F.Entry = [t.entry != null ? fmtPx(t.entry) : '', F.Entry].filter(Boolean).join(' · ');
     F.Stop = [t.sl != null ? fmtPx(t.sl) : '', F.Stop].filter(Boolean).join(' · ');
     F.Target = t.tp != null ? fmtPx(t.tp) : (mg.includes('no fixed TP') ? 'No fixed TP' : '');
     F.Result = `${t.pnl >= 0 ? 'Win' : 'Loss'} ${fmtUsd(t.pnl)}${t.r != null ? ' (' + t.r.toFixed(2) + 'R)' : ''} · exit ${fmtPx(t.exit)} (${t.reason})`; }
   const mind = s.match(/\b(calm|patient|nervous|scared|fomo|confident|greedy|impatient|anxious|frustrated|revenge)\b/gi); if (mind) F.Mindset = uniq(mind.map(x => x.toLowerCase())).join(', ');
-  for (const k of ['Bias', 'Session', 'Manipulation', 'DOL', 'Confirmation', 'Entry', 'Stop', 'Target', 'Management', 'Result', 'Mindset']) out.push(`${k}: ${F[k] || '–'}`);
+  // RR you said ("RR was 3", "3 to 1", "three R"), else worked out from the trade
+  const sn = s.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, (w) => ({ one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 }[w.toLowerCase()]));
+  const rr = sn.match(/\bRR\s*(?:is|was|of|:|at|about|around|roughly|like)*\s*(\d+(?:\.\d+)?)(?:\s*(?:to|:)\s*(\d+(?:\.\d+)?))?/i) || sn.match(/\b(\d+(?:\.\d+)?)\s*(?:to|:)\s*(1)\b(?!\s*(?:minute|min|m\b|hour))/i) || sn.match(/\b(\d+(?:\.\d+)?)\s?R\b(?!\s*(?:minute|min))/);
+  const said = rr ? (rr[2] ? `${rr[1]}:${rr[2]}` : `${rr[1]}R`) : '';
+  const plan = t && t.sl != null && t.tp != null && t.entry !== t.sl ? Math.abs(t.tp - t.entry) / Math.abs(t.entry - t.sl) : null;
+  F.RR = [said ? said + ' (you said)' : '', plan != null ? plan.toFixed(1) + 'R planned' : '', t && t.r != null ? t.r.toFixed(2) + 'R made' : ''].filter(Boolean).join(' · ');
+  // times you said ("entered at 9:45", "out at 10:30"), else the trade's own times
+  const tm = (re) => { const m = sn.match(re); return m ? m[1].replace(/\s+/, ':').replace(/^(\d{1,2})$/, '$1:00') + (m[2] ? ' ' + m[2].replace(/\./g, '').toLowerCase() : '') : ''; };
+  const TS = String.raw`\s+(?:at|around|about|on)\s+(\d{1,2}(?:[:.]\d{2}|\s\d{2})?)\s*(a\.?m\.?|p\.?m\.?)?`;
+  const tin = tm(new RegExp(String.raw`\b(?:enter(?:ed)?|entry(?: was)?|got in|went (?:long|short)|bought|sold|filled|took the trade|in)` + TS, 'i')), tout = tm(new RegExp(String.raw`\b(?:exit(?:ed)?|got out|closed(?: it| the trade| out)?|out|took profit|stopped out|hit (?:my )?(?:TP|SL|target|stop))` + TS, 'i'));
+  F['Time entered'] = [tin, t ? fmtT(t.openT).slice(15) + ' ET' : ''].filter(Boolean).join(' · ');
+  F['Time exited'] = [tout, t ? fmtT(t.closeT).slice(15) + ' ET' : ''].filter(Boolean).join(' · ');
+  for (const k of ['Bias', 'DOL', 'Confirmation', 'RR', 'Time entered', 'Time exited', 'Manipulation', 'Session', 'Entry', 'Stop', 'Target', 'Management', 'Result', 'Mindset']) out.push(`${k}: ${F[k] || '–'}`);
   return out;
 }
 function tidyNotes(raw, t) {
@@ -4111,7 +4138,16 @@ function tidyNotes(raw, t) {
   for (const c of clauses) { const hit = SECTIONS.find(([, re]) => re.test(c)); if (!hit) continue; const L = out.get(hit[0]); if (!L.some(y => y.toLowerCase() === c.toLowerCase()) && L.length < 5) L.push(c); }
   const head = t ? `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET` : '';
   const facts = keyFacts(s, t);
-  const body = `TRADE JOURNAL\n${facts.map(x => '• ' + x).join('\n')}\n\nDETAILS (your words, sorted)\n\n` + [...out].filter(([, v]) => v.length).map(([k, v]) => `${k.toUpperCase()}\n${v.map(x => '• ' + x).join('\n')}`).join('\n\n');
+  const FACT = /\b(bias|bullish|bearish|DOL|draw on liquidity|RR|\d(?:\.\d)?R\b|BOS|CHoCH|MSS|SMT|iFVG|displacement|break of structure|change of character|market structure shift|enter(?:ed)? at|exit(?:ed)? at|got (?:in|out) at|out at|in at)\b/i;
+  // whole sentences, lightly cleaned, so the extra detail reads the way you said it; short ones that only state a fact above are left out
+  const extra = [];
+  for (const raw of s.split(/(?<=[.!?])\s+/)) {
+    let c = raw.replace(FILLER, ' ').replace(/\b(\w+) \1\b/gi, '$1').replace(/\bgonna\b/gi, 'going to').replace(/\s+([,.!?])/g, '$1').replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim().replace(/^[,\s]*(?:and|so|but|then|well|okay|um)[,\s]+/i, '').replace(/^[,\s]+/, '');
+    if (c.split(' ').length < 3 || (FACT.test(c) && c.split(' ').length <= 12)) continue;
+    c = c.replace(/\ba (iFVG|FVG|OTE|SMT|MSS|order block|OB)\b/g, 'an $1'); c = c.charAt(0).toUpperCase() + c.slice(1); if (!/[.!?]$/.test(c)) c += '.';
+    if (!extra.some(y => y.toLowerCase() === c.toLowerCase())) extra.push(c);
+  }
+  const body = `TRADE JOURNAL\n${facts.map(x => '• ' + x).join('\n')}` + (extra.length ? `\n\nEXTRA NOTES\n${extra.slice(0, 25).map(x => '• ' + x).join('\n')}` : '');
   return (head ? head + '\n\n' : '') + (body || 'Nothing trade-related was picked up. Your full words are under "Everything you said".');
 }
 /* Text of the notes without the header, headings and bullets, for re-tidying typed notes */
