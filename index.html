@@ -605,6 +605,7 @@ body[data-view="live"] .acct { display: none; }
 #ltpic { z-index: 70; } #ltpic img { max-width: 100%; max-height: calc(100vh - 40px); border-radius: 10px; display: block; }
 .lt-foot-l { margin-right: auto; display: flex; gap: 8px; }
 .lt-row { cursor: pointer; } .lt-row:hover td { background: var(--panel-2); }
+#lt-bk { grid-template-columns: repeat(auto-fit, minmax(min(400px, 100%), 1fr)); }
 .linkb { background: none; border: 0; padding: 0; color: var(--accent); font-size: 11px; text-decoration: underline; }
 </style>
 </head>
@@ -868,6 +869,10 @@ body[data-view="live"] .acct { display: none; }
           <div class="headrow" style="margin-bottom:10px"><h3 style="margin:0" id="lt-cal-title">Calendar</h3><div class="right"><button class="btn" id="lt-prev">‹ Previous month</button><button class="btn" id="lt-next">Next month ›</button></div></div>
           <div id="lt-cal"></div>
         </div>
+        <h2 class="h2s">Breakdowns</h2>
+        <div class="grid4" id="lt-hi"></div>
+        <div class="two" id="lt-bk"></div>
+        <h2 class="h2s">All live trades</h2>
         <div class="card tbl-wrap" style="padding:0" id="lt-tbl"></div>
         <textarea class="io" id="lt-csv-out" hidden aria-label="Live trades CSV" readonly></textarea>
       </div>
@@ -4241,12 +4246,53 @@ function renderLT() {
   }
   $('#lt-cal').innerHTML = h + '</div>';
   $('#lt-cal-title').innerHTML = `${first.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })} <span class="${cls(mp)} num" style="font-weight:500;margin-left:8px">${mn ? fmtUsd(mp) + ' · ' + mn + ' trade' + (mn > 1 ? 's' : '') : ''}</span>`;
+  renderLTBreakdowns(trades);
   // trade list
   const tr = [...trades].sort((a, b) => b.openT - a.openT);
   $('#lt-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th></th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">Planned RR</th><th class="num">Held</th><th>Tags</th><th>Notes</th></tr></thead><tbody>${tr.map(t => {
     const rr = plannedRR(t), note = notesPlain(t.notes || '').replace(/^\.\s*/, '').slice(0, 60);
     return `<tr data-ltedit="${t.id}" class="lt-row"><td><button class="btn jbtn" data-ltedit="${t.id}">${t.shot ? '📷 ' : ''}Open</button></td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exitReal ?? t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td class="num ${cls(t.pnl)}">${t.reason === 'BE' ? 'BE ' : ''}${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${rr != null ? '1:' + rr.toFixed(2) : '–'}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td>${ltTagList(t.tags).map(g => `<span class="pill n">${esc(g)}</span>`).join(' ')}</td><td class="mut">${esc(note)}</td></tr>`; }).join('')}</tbody></table>`
     : `<div class="empty" style="padding:18px">${L.trades.length ? 'No trades match these filters.' : 'No live trades yet. Press <b>+ Add trade</b> at the top to log your first one.'}</div>`;
+}
+
+/* Live trades: breakdowns (times, days, sessions, RR, setups...) */
+function renderLTBreakdowns(trades) {
+  const th = beTh(), wrx = (g) => { const w = g.filter(t => t.pnl > th).length, l = g.filter(t => t.pnl < -th).length; return w + l ? w / (w + l) : null; };
+  const sum = (g) => g.reduce((a, t) => a + t.pnl, 0), avgR = (g) => { const r = g.filter(t => t.r != null); return r.length ? r.reduce((a, t) => a + t.r, 0) / r.length : null; };
+  const groups = (fn, order) => { const m = new Map(); for (const t of trades) { const k = fn(t); if (k == null) continue; if (!m.has(k)) m.set(k, []); m.get(k).push(t); } const keys = order ? order.filter(k => m.has(k)) : [...m.keys()]; return keys.map(k => [k, m.get(k)]); };
+  const tbl = (rows, sortPnl) => { if (!rows.length) return '<div class="empty">No trades yet.</div>'; if (sortPnl) rows = [...rows].sort((a, b) => sum(b[1]) - sum(a[1])); const best = rows.reduce((a, b) => sum(b[1]) > sum(a[1]) ? b : a);
+    return `<table class="grid"><thead><tr><th></th><th class="num">Trades</th><th class="num">Win rate</th><th class="num">Avg R</th><th class="num">Net P&amp;L</th></tr></thead><tbody>${rows.map(([k, g]) => { const w = wrx(g), r = avgR(g), p = sum(g);
+      return `<tr${g === best[1] && p > 0 && rows.length > 1 ? ' class="hl"' : ''}><td>${k}</td><td class="num">${g.length}</td><td class="num">${w == null ? 'BE' : Math.round(w * 100) + '%'}</td><td class="num ${cls(r || 0)}">${r == null ? '–' : r.toFixed(2) + 'R'}</td><td class="num ${cls(p)}" title="${fmtUsd(p / g.length)} per trade"><b>${fmtUsd(p)}</b></td></tr>`; }).join('')}</tbody></table>`; };
+  const hr = (t) => new Date(t.openT * 1000).getUTCHours(), hrs = groups(t => pad2(hr(t)) + ':00', Array.from({ length: 24 }, (_, i) => pad2(i) + ':00'));
+  const dows = groups(t => DOW[new Date(t.openT * 1000).getUTCDay()], ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']);
+  const half = (t) => { const m = ((t.openT % 86400) + 86400) % 86400 / 60, a = Math.floor(m / 30) * 30; return pad2(Math.floor(a / 60)) + ':' + pad2(a % 60); };
+  const prr = (t) => { const v = plannedRR(t); return v == null ? 'No stop or target' : v < 1 ? 'Under 1:1' : v < 2 ? '1:1 to 1:2' : v < 3 ? '1:2 to 1:3' : v < 4 ? '1:3 to 1:4' : '1:4 or more'; };
+  const rres = (t) => t.r == null ? null : t.r <= -1 ? '-1R or worse' : t.r < 0 ? '-1R to 0R' : t.r < 1 ? '0R to 1R' : t.r < 2 ? '1R to 2R' : t.r < 3 ? '2R to 3R' : '3R or more';
+  const hold = (t) => { const s = t.closeT - t.openT; return s < 300 ? 'Under 5 min' : s < 900 ? '5 to 15 min' : s < 3600 ? '15 min to 1 hour' : s < 14400 ? '1 to 4 hours' : '4 hours or more'; };
+  const tagRows = []; { const m = new Map(); for (const t of trades) for (const g of (ltTagList(t.tags).length ? ltTagList(t.tags) : ['No tag'])) { const k = g.toLowerCase(); if (!m.has(k)) m.set(k, [esc(g), []]); m.get(k)[1].push(t); } tagRows.push(...m.values()); }
+  // highlights
+  const pick = (rows, f, min) => rows.filter(r => r[1].length >= (min || 1)).reduce((a, b) => (a == null || f(b) > f(a)) ? b : a, null);
+  const most = pick(hrs, r => r[1].length), bestH = pick(hrs, r => sum(r[1])), worstH = pick(hrs, r => -sum(r[1])), bestD = pick(dows, r => sum(r[1])), worstD = pick(dows, r => -sum(r[1]));
+  const bestTag = pick(tagRows.filter(r => r[0] !== 'No tag'), r => sum(r[1])), rrRows = groups(prr, ['Under 1:1', '1:1 to 1:2', '1:2 to 1:3', '1:3 to 1:4', '1:4 or more', 'No stop or target']), bestRR = pick(rrRows.filter(r => r[0] !== 'No stop or target'), r => sum(r[1]));
+  const bestR = trades.filter(t => t.r != null).reduce((a, t) => !a || t.r > a.r ? t : a, null);
+  const sub = (r) => r ? `${r[1].length} trade${r[1].length > 1 ? 's' : ''} · ${fmtUsd(sum(r[1]))}` : '';
+  $('#lt-hi').innerHTML = !trades.length ? '<div class="card empty">Breakdowns fill in as you log trades.</div>'
+    : stat('Time you trade most', most ? most[0] + ' ET' : '–', sub(most)) + stat('Best time to trade', bestH && sum(bestH[1]) > 0 ? bestH[0] + ' ET' : '–', sub(bestH), 'pos')
+    + stat('Worst time to trade', worstH && sum(worstH[1]) < 0 ? worstH[0] + ' ET' : '–', sub(worstH), 'neg') + stat('Best day of the week', bestD && sum(bestD[1]) > 0 ? bestD[0] : '–', sub(bestD), 'pos')
+    + stat('Worst day of the week', worstD && sum(worstD[1]) < 0 ? worstD[0] : '–', sub(worstD), 'neg') + stat('Best setup (tag)', bestTag && sum(bestTag[1]) > 0 ? bestTag[0] : '–', sub(bestTag), 'pos')
+    + stat('Best planned RR', bestRR && sum(bestRR[1]) > 0 ? bestRR[0] : '–', sub(bestRR), 'pos') + stat('Best trade in R', bestR ? bestR.r.toFixed(2) + 'R' : '–', bestR ? `${bestR.sym} ${bestR.side > 0 ? 'long' : 'short'} · ${fmtT(bestR.openT).slice(0, 15)}` : '', 'pos');
+  const card = (h, body, wide) => `<div class="card"${wide ? ' style="grid-column:1/-1"' : ''}><h3>${h}</h3><div class="tbl-wrap">${body}</div></div>`;
+  const bars = (rows) => { const el = document.createElement('div'); el.className = 'bars'; barRows(el, rows.map(([k, g]) => ({ k, v: sum(g), sub: `${g.length}t · ${wrx(g) == null ? 'BE' : Math.round(wrx(g) * 100) + '%'}` }))); return el.outerHTML; };
+  $('#lt-bk').innerHTML = !trades.length ? '' : [
+    card('Profit by hour you entered (New York time)', bars(hrs)), card('Profit by day of the week', bars(dows)),
+    card('By 30-minute window you entered', tbl(groups(half).sort((a, b) => a[0] < b[0] ? -1 : 1))),
+    card('By trading session (New York time)', tbl(groups(t => sessOf(t), ['Asia', 'London', 'New York', 'After hours']).map(([k, g]) => [`${k} <span class="mut" style="font-size:11px">${SESS_HRS[k]}</span>`, g]))),
+    card('By setup and tag', tbl(tagRows, true)), card('By planned risk to reward', tbl(rrRows)),
+    card('By result in R', tbl(groups(rres, ['-1R or worse', '-1R to 0R', '0R to 1R', '1R to 2R', '2R to 3R', '3R or more']))), card('By time in the trade', tbl(groups(hold, ['Under 5 min', '5 to 15 min', '15 min to 1 hour', '1 to 4 hours', '4 hours or more']))),
+    card('By instrument', tbl(groups(t => t.sym, ['MNQ', 'MES', 'NQ', 'ES']))), card('By side', tbl(groups(t => t.side > 0 ? 'Long' : 'Short', ['Long', 'Short']))),
+    card('By number of contracts', tbl(groups(t => t.qty + (t.qty > 1 ? ' contracts' : ' contract')).sort((a, b) => parseInt(a[0]) - parseInt(b[0])))),
+    card('By month', tbl(groups(t => new Date(t.closeT * 1000).toISOString().slice(0, 7)).sort((a, b) => a[0] < b[0] ? 1 : -1).map(([k, g]) => [MON[+k.slice(5) - 1] + ' ' + k.slice(0, 4), g]))),
+  ].join('');
 }
 $('#lt-add').addEventListener('click', () => openLive(null));
 $('#lt-an').addEventListener('click', () => { anScopeWant = 'live'; setView('analytics'); });
@@ -4308,7 +4354,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-32';
+const BUILD = '2026-11-16-33';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
