@@ -1717,7 +1717,8 @@ function labelGeom(P, ctx, d, q) {
   const t = hz === 'left' ? 0 : hz === 'right' ? 1 : .5, px = L[0] + (R[0] - L[0]) * t, py = L[1] + (R[1] - L[1]) * t;
   let ang = Math.atan2(R[1] - L[1], R[0] - L[0]); if (!isFinite(ang) || ['rect', 'ellipse', 'fib', 'measure', 'long', 'short'].includes(d.type)) ang = 0;
   const lines = String(d.label).split('\n'), lh = (d.fs || 14) * 1.25, off = v === 'top' ? -6 - (lines.length - 1) * lh : v === 'bottom' ? 6 : -(lines.length - 1) * lh / 2;
-  return { px, py, ang, v, hz, lines, lh, off, x: hz === 'left' ? 4 : hz === 'right' ? -4 : 0 };
+  const stub = v === 'middle' && GAP_LINES.has(d.type) ? 18 : 4;   // middle text on a line: leave a short bit of line showing past the words
+  return { px, py, ang, v, hz, lines, lh, off, x: hz === 'left' ? stub : hz === 'right' ? -stub : 0 };
 }
 function drawLabel(P, ctx, d, q) {
   const G = labelGeom(P, ctx, d, q);
@@ -4415,7 +4416,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-41';
+const BUILD = '2026-11-16-42';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
