@@ -2986,7 +2986,7 @@ function stats(trades, start) {
   for (const t of sorted) { eq += t.pnl; if (eq > peak) peak = eq; const dd = peak - eq; if (dd > mdd) { mdd = dd; mddPct = dd / peak; }
     if (t.pnl > th) { cw++; cl = 0; } else if (t.pnl < -th) { cl++; cw = 0; } mcw = Math.max(mcw, cw); mcl = Math.max(mcl, cl); }
   const rs = trades.filter(t => t.r != null).map(t => t.r);
-  return { n, wins: wins.length, losses: losses.length, be: n - wins.length - losses.length, winRate: n ? wins.length / n : 0, net, gp, gl,
+  return { n, wins: wins.length, losses: losses.length, be: n - wins.length - losses.length, winRate: n ? wins.length / n : 0, winRateX: wins.length + losses.length ? wins.length / (wins.length + losses.length) : 0, net, gp, gl,
     pf: gl ? gp / gl : (gp ? Infinity : 0), avgWin: wins.length ? gp / wins.length : 0, avgLoss: losses.length ? gl / losses.length : 0,
     exp: n ? net / n : 0, avgR: rs.length ? rs.reduce((a, b) => a + b, 0) / rs.length : null, totR: rs.reduce((a, b) => a + b, 0),
     best: n ? Math.max(...trades.map(t => t.pnl)) : 0, worst: n ? Math.min(...trades.map(t => t.pnl)) : 0, mdd, mddPct, mcw, mcl,
@@ -3033,7 +3033,8 @@ function renderAnalytics() {
   $('#pl-kpis').innerHTML = [
     kp('Total P&amp;L', fmtUsd(st.net), pct(st.net), cls(st.net)),
     kp('Account balance', fmtUsd(start + st.net, false), 'started at ' + fmtUsd(start, false)),
-    kp('Win rate', st.n ? (st.winRate * 100).toFixed(1) + '%' : '–', `${st.wins} won · ${st.losses} lost`),
+    kp('Win rate with BE', st.n ? (st.winRate * 100).toFixed(1) + '%' : '–', `${st.wins} won of ${st.n} trades`),
+    kp('Win rate without BE', st.wins + st.losses ? (st.winRateX * 100).toFixed(1) + '%' : '–', `${st.wins} won · ${st.losses} lost · ${st.be} BE left out`),
     kp('Total trades', st.n, `${st.be} breakeven`),
     kp('Max drawdown', st.mdd ? '-' + fmtUsd(st.mdd, false) : '$0.00', (st.mddPct * 100).toFixed(2) + '% from the peak', st.mdd ? 'neg' : ''),
     kp('Commissions', fmtUsd(-st.fees), 'paid'),
@@ -3246,7 +3247,7 @@ function renderSessions() {
     return `<div class="card sess ${s.id === store.activeId ? 'active' : ''}">
       <div><strong>${esc(s.name)}</strong>${s.example ? '<span class="tag">Example</span>' : ''}${s.id === store.activeId ? '<span class="tag">Open</span>' : ''}</div>
       <div class="meta"><span>Instruments</span><span>${s.syms.join(', ')}</span><span>Balance</span><span>${fmtUsd(bal, false)}</span><span>Net P&amp;L</span><span class="${cls(st.net)}">${fmtUsd(st.net)}</span>
-      <span>Win rate</span><span>${st.n ? (st.winRate * 100).toFixed(1) + '%' : '–'}</span><span>Trades</span><span>${st.n}</span><span>Replay at</span><span>${fmtT(s.cursorT).slice(4)}</span></div>
+      <span>Win rate with BE</span><span>${st.n ? (st.winRate * 100).toFixed(1) + '%' : '–'}</span><span>Win rate without BE</span><span>${st.wins + st.losses ? (st.winRateX * 100).toFixed(1) + '%' : '–'}</span><span>Trades</span><span>${st.n}</span><span>Replay at</span><span>${fmtT(s.cursorT).slice(4)}</span></div>
       <div class="acts"><button class="btn primary" data-open="${s.id}">Open</button><button class="btn" data-an="${s.id}">Analytics</button>
       ${confirmDel === s.id ? `<button class="btn danger" data-delyes="${s.id}">Delete for good</button><button class="btn" data-delno="1">Keep</button>` : `<button class="btn danger" data-del="${s.id}">Delete</button>`}</div></div>`;
   }).join('');
