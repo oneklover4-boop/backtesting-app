@@ -4392,7 +4392,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-34';
+const BUILD = '2026-11-16-35';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4587,6 +4587,38 @@ function tidyClause(c) {
 }
 /* Pulls the key facts out of what you said: bias, what was swept, the draw on liquidity, confirmations, entry, stop, management */
 const NOUN = String.raw`((?:[\w'-]+\s+){0,3}?(?:highs?|lows?|liquidity|BSL|SSL|PDH|PDL|range|level|gap|FVG|iFVG|order block|NWOG|NDOG|equilibrium|EQ|EQH|EQL|PWH|PWL|BPR|breaker|midnight open))\b`;
+/* When you say the field names out loud ("the session was London, manipulation was the Asia low, management was break even at 1R... extra notes ..."),
+   each part goes straight into its own field, and everything after "extra notes" goes into Extra notes */
+const SPOKEN = [['Bias', String.raw`bias`], ['Session', String.raw`session|kill ?zone`], ['Manipulation', String.raw`manipulation`], ['DOL', String.raw`DOL|D\.? ?O\.? ?L\.?|draw on liquidity|draw`],
+  ['Confirmation', String.raw`confirmations?|confirmation entry`], ['Entry', String.raw`entry|entries`], ['Stop', String.raw`stop loss|stop|SL`], ['Target', String.raw`target|take profit|TP`],
+  ['Management', String.raw`management|trade management`], ['RR', String.raw`RR|R R|risk to reward|risk reward|risk reward ratio`], ['Mindset', String.raw`mindset|emotions?|psychology|feelings?`], ['Result', String.raw`result|outcome`],
+  ['PO3/AMD', String.raw`PO3 ?(?:and|slash|/) ?AMD|PO3|PO 3|P O 3|power of (?:3|three)|AMD|A M D|accumulation manipulation distribution`], ['A+ DOL', String.raw`A\+ ?DOL|A plus (?:DOL|D O L|draw on liquidity)|A\+ draw on liquidity`],
+  ['LR HR', String.raw`LR ?(?:and |slash |/)?HR|low resistance (?:and |slash |/)?high resistance`], ['iFVG', String.raw`iFVG|inverse FVG|inversion FVG|inverse fair value gap`], ['True manipulation', String.raw`true manipulation`],
+  ['LRL', String.raw`LRL|L R L|low resistance liquidity`], ['PD array', String.raw`PD arrays?|P D arrays?|premium (?:and|or) discount arrays?`]];
+const CHECK = ['PO3/AMD', 'A+ DOL', 'LR HR', 'iFVG', 'True manipulation', 'LRL', 'PD array'];
+function spokenFields(text) {
+  const s = ' ' + String(text || '').replace(/\s+/g, ' ').trim() + ' ', hits = [];
+  const add = (k, re) => { for (const m of s.matchAll(re)) hits.push({ k, a: m.index, b: m.index + m[0].length }); };
+  const START = String.raw`(?:^|[.!?,;]\s*|\s(?:and|then|so|also|now|okay|ok|next|um|uh|right|plus)\s+|^\s)`, DET = String.raw`(?:(?:my|the|our|for (?:the|my))\s+)?`, COP = String.raw`(?:\s*(?:was|is|were|are|will be|would be|i'?d say|:|-)\b|\s*[:\-])`;
+  for (const [k, lab] of SPOKEN) {
+    add(k, new RegExp(START + DET + String.raw`(?:${lab})\b` + COP + '?\\s*', 'gi'));            // "... and the session was", "Session: ..."
+    add(k, new RegExp(String.raw`\b(?:my|the|our)\s+(?:${lab})` + COP + '\\s*', 'gi'));           // "... the manipulation was ..."
+  }
+  const verbAt = hits.length;
+  add('Manipulation', /\bwe (?:manipulated|have manipulated|swept)\s+/gi); add('Management', /\bI managed (?:it|the trade|the position)?\s*(?:by\s+)?/gi);
+  add('Mindset', /\bI (?:felt|was feeling)\s+/gi); add('Confirmation', /\b(?:it was |we )?confirmed (?:by|with)\s+/gi);
+  add('Extra', /(?:\b(?:now'?s|now is|now|and|okay|ok)\s+)?(?:the\s+|my\s+|some\s+)?(?:extra|additional|other)\s+notes?\b(?:\s*(?:are|is|:|-))?[\s,.:]*/gi);
+  hits.forEach((h, i) => { h.weak = i >= verbAt && h.k !== 'Extra'; });
+  hits.sort((x, y) => x.a - y.a || (y.b - y.a) - (x.b - x.a));
+  const L = []; let inExtra = false; for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue; if (inExtra && !CHECK.includes(h.k)) continue; L.push(h); if (h.k === 'Extra') inExtra = true; }
+  const fields = {}, tidy = (v) => v.replace(/^[\s,.:;\-]+/, '').replace(/^(?:that|like|basically|it was|was|is)\s+/i, '').replace(/[\s,;:\-]+$/, '').replace(/\s+(?:and|so|then|and then|um|uh|okay|ok|now|also)$/i, '').replace(/[.!?]+$/, '').trim();
+  let extra = null;
+  for (let i = 0; i < L.length; i++) { const h = L[i], end = (L[i + 1] ? L[i + 1].a : s.length), v = s.slice(h.b, end);
+    if (h.k === 'Extra') { extra = s.slice(h.b, L[i + 1] ? L[i + 1].a : s.length).trim(); continue; }
+    const tv = tidy(v); if (!tv || tv.split(' ').length > 40) continue; const val = /^[a-z][A-Z]/.test(tv) ? tv : tv.charAt(0).toUpperCase() + tv.slice(1);
+    fields[h.k] = fields[h.k] ? fields[h.k] + '; ' + val : val; }
+  return { fields, extra, rest: L.length ? s.slice(0, L[0].a).trim() : s.trim(), any: L.some(h => !h.weak) };
+}
 function keyFacts(s0, t) {
   const s = ' ' + s0.replace(FILLER, ' ').replace(/\bgonna\b/gi, 'going to').replace(/\bwanna\b/gi, 'want to').replace(/\s+/g, ' ') + ' ';
   const uniq = (a) => [...new Map(a.map(x => [x.toLowerCase(), x])).values()];
@@ -4625,6 +4657,12 @@ function keyFacts(s0, t) {
   const tin = tm(new RegExp(String.raw`\b(?:enter(?:ed)?|entry(?: was)?|got in|went (?:long|short)|bought|sold|filled|took the trade|in)` + TS, 'i')), tout = tm(new RegExp(String.raw`\b(?:exit(?:ed)?|got out|closed(?: it| the trade| out)?|out|took profit|stopped out|hit (?:my )?(?:TP|SL|target|stop))` + TS, 'i'));
   F['Time entered'] = [tin, t ? fmtT(t.openT).slice(15) + ' ET' : ''].filter(Boolean).join(' · ');
   F['Time exited'] = [tout, t ? fmtT(t.closeT).slice(15) + ' ET' : ''].filter(Boolean).join(' · ');
+  { const SP = spokenFields(fixTerms(s0)).fields, nums = { Entry: t && t.entry != null ? fmtPx(t.entry) : '', Stop: t && t.sl != null ? fmtPx(t.sl) : '', Target: t && t.tp != null ? fmtPx(t.tp) : '' };
+    for (const [k, v] of Object.entries(SP)) {
+      if (k in nums) F[k] = [nums[k], v].filter(Boolean).join(' · ');
+      else if (k === 'RR') F.RR = [v + ' (you said)', plan != null ? plan.toFixed(1) + 'R planned' : '', t && t.r != null ? t.r.toFixed(2) + 'R made' : ''].filter(Boolean).join(' · ');
+      else if (k === 'Result') F.Result = [F.Result, v].filter(Boolean).join(' · ');
+      else F[k] = v; } }
   for (const k of ['Bias', 'DOL', 'Confirmation', 'RR', 'Time entered', 'Time exited', 'Manipulation', 'Session', 'Entry', 'Stop', 'Target', 'Management', 'Result', 'Mindset']) out.push(`${k}: ${F[k] || '–'}`);
   return out;
 }
@@ -4638,18 +4676,24 @@ function tidyNotes(raw, t) {
   const facts = keyFacts(s, t);
   const FACT = /\b(bias|bullish|bearish|DOL|draw on liquidity|RR|\d(?:\.\d)?R\b|BOS|CHoCH|MSS|SMT|iFVG|displacement|break of structure|change of character|market structure shift|enter(?:ed)? at|exit(?:ed)? at|got (?:in|out) at|out at|in at)\b/i;
   // whole sentences, lightly cleaned, so the extra detail reads the way you said it; short ones that only state a fact above are left out
-  const extra = [];
-  for (const raw of s.split(/(?<=[.!?])\s+/)) {
+  const extra = [], SPK = spokenFields(s), said = SPK.any, CK = SPK.fields;
+  for (const raw of (said ? [SPK.rest, SPK.extra || ''].join('. ') : s).split(/(?<=[.!?])\s+/)) {
     let c = raw.replace(FILLER, ' ').replace(/\b(\w+) \1\b/gi, '$1').replace(/\bgonna\b/gi, 'going to').replace(/\s+([,.!?])/g, '$1').replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim().replace(/^[,\s]*(?:and|so|but|then|well|okay|um)[,\s]+/i, '').replace(/^[,\s]+/, '');
-    if (c.split(' ').length < 3 || (FACT.test(c) && c.split(' ').length <= 12)) continue;
+    if (c.split(' ').length < (said ? 2 : 3) || (!said && FACT.test(c) && c.split(' ').length <= 12)) continue;
     c = c.replace(/\ba (iFVG|FVG|OTE|SMT|MSS|order block|OB)\b/g, 'an $1'); c = c.charAt(0).toUpperCase() + c.slice(1); if (!/[.!?]$/.test(c)) c += '.';
     if (!extra.some(y => y.toLowerCase() === c.toLowerCase())) extra.push(c);
   }
-  const body = `TRADE JOURNAL\n${facts.map(x => '• ' + x).join('\n')}` + (extra.length ? `\n\nEXTRA NOTES\n${extra.slice(0, 25).map(x => '• ' + x).join('\n')}` : '');
+  const body = `TRADE JOURNAL\n${facts.map(x => '• ' + x).join('\n')}\n\nEXTRA NOTES\n${extra.length ? extra.slice(0, 25).map(x => '• ' + x).join('\n') : '• –'}\n\n${CHECK.map(k => '• ' + k + ': ' + (CK[k] || '–')).join('\n')}`;
   return (head ? head + '\n\n' : '') + (body || 'Nothing trade-related was picked up. Your full words are under "Everything you said".');
 }
 /* Text of the notes without the header, headings and bullets, for re-tidying typed notes */
-const notesPlain = (v) => v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][A-Z ()]+$/gm, '').replace(/^[A-Z][a-z ]+: /gm, '').replace(/^• /gm, '').replace(/\n+/g, '. ');
+const notesPlain = (v) => /TRADE JOURNAL/.test(v) ? v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').split('\n').map(l => {
+    l = l.trim(); if (!l || l === 'TRADE JOURNAL') return ''; if (l === 'EXTRA NOTES') return 'Extra notes:';
+    const m = l.match(/^•\s*([^:]{1,30}):\s*(.*)$/); if (!m) return l.replace(/^•\s*/, '').replace(/^–$/, '');
+    if (/^(Result|Time entered|Time exited)$/.test(m[1])) return '';
+    const val = m[2].split(' · ').filter(x => x !== '–' && !/^-?\d[\d.,]*$/.test(x) && !/R (?:planned|made)$/.test(x)).map(x => x.replace(/ \(you said\)$/, '')).join(', ');
+    return val ? `${m[1]}: ${val}` : ''; }).filter(Boolean).map(x => /[.!?]$/.test(x) ? x : x + '.').join(' ')
+  : v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][A-Z ()]+$/gm, '').replace(/^[A-Z][a-z ]+: /gm, '').replace(/^• /gm, '').replace(/\n+/g, '. ');
 function stopRec() { if (rec) { const r = rec; rec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
 $('#tj-mic').addEventListener('click', () => {
   if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(tjTrade.said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
@@ -4791,7 +4835,7 @@ async function boot() {
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { notesPlain, spokenFields, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions', 'live'].includes(h)) setView(h);
   save();
 }
