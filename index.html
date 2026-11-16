@@ -1704,7 +1704,7 @@ function fromXY(P, x, y, snap) {
 /* Painting */
 let tagMax = 0;
 const FIB = [[0, '#7f8b99'], [0.236, '#e2554f'], [0.382, '#e4a640'], [0.5, '#26b07a'], [0.618, '#26a69a'], [0.786, '#4c8dff'], [1, '#7f8b99']];
-function drawLabel(P, ctx, d, q) {
+function labelGeom(P, ctx, d, q) {
   const [a, b] = q, W = P.pw, H = P.ph, v = d.tv || 'top', hz = d.th || 'center';
   let L, R;
   if (d.type === 'long' || d.type === 'short') { const x1 = Math.min(a[0], b[0]), x2 = x1 + Math.max(8, Math.abs(b[0] - a[0])), c = q[2], top = Math.min(b[1], c[1]), bot = Math.max(b[1], c[1]), y = v === 'top' ? top - 22 : v === 'bottom' ? bot + 22 : a[1] - 20; L = [x1, y]; R = [x2, y]; }
@@ -1716,12 +1716,28 @@ function drawLabel(P, ctx, d, q) {
   else { L = R = a; }
   const t = hz === 'left' ? 0 : hz === 'right' ? 1 : .5, px = L[0] + (R[0] - L[0]) * t, py = L[1] + (R[1] - L[1]) * t;
   let ang = Math.atan2(R[1] - L[1], R[0] - L[0]); if (!isFinite(ang) || ['rect', 'ellipse', 'fib', 'measure', 'long', 'short'].includes(d.type)) ang = 0;
-  ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.translate(px, py); ctx.rotate(ang);
-  ctx.font = dFont(d); ctx.fillStyle = d.tc || d.color || DCOL[0]; ctx.textAlign = hz;
-  ctx.textBaseline = v === 'top' ? 'bottom' : v === 'bottom' ? 'top' : 'middle';
   const lines = String(d.label).split('\n'), lh = (d.fs || 14) * 1.25, off = v === 'top' ? -6 - (lines.length - 1) * lh : v === 'bottom' ? 6 : -(lines.length - 1) * lh / 2;
-  lines.forEach((ln, i) => ctx.fillText(ln, hz === 'left' ? 4 : hz === 'right' ? -4 : 0, off + i * lh));
+  return { px, py, ang, v, hz, lines, lh, off, x: hz === 'left' ? 4 : hz === 'right' ? -4 : 0 };
+}
+function drawLabel(P, ctx, d, q) {
+  const G = labelGeom(P, ctx, d, q);
+  ctx.save(); ctx.globalAlpha = d.op ?? 1; ctx.translate(G.px, G.py); ctx.rotate(G.ang);
+  ctx.font = dFont(d); ctx.fillStyle = d.tc || d.color || DCOL[0]; ctx.textAlign = G.hz;
+  ctx.textBaseline = G.v === 'top' ? 'bottom' : G.v === 'bottom' ? 'top' : 'middle';
+  G.lines.forEach((ln, i) => ctx.fillText(ln, G.x, G.off + i * G.lh));
   ctx.restore();
+}
+/* Text in the middle of a line: the line stops just before the words and carries on after them, like TradingView */
+const GAP_LINES = new Set(['trend', 'ray', 'ext', 'arrow', 'hline', 'hray', 'vline', 'cross', 'info']);
+function labelGapClip(P, ctx, d, q) {
+  if (!d.label || (d.tv || 'top') !== 'middle' || !GAP_LINES.has(d.type)) return false;
+  const G = labelGeom(P, ctx, d, q); ctx.font = dFont(d);
+  const w = Math.max(...G.lines.map(l => ctx.measureText(l).width)), h = G.lines.length * G.lh, pad = 6;
+  const x0 = (G.hz === 'left' ? G.x : G.hz === 'right' ? G.x - w : -w / 2) - pad, y0 = G.off - G.lh / 2 - 2;
+  const cs = Math.cos(G.ang), sn = Math.sin(G.ang), pt = (x, y) => [G.px + x * cs - y * sn, G.py + x * sn + y * cs];
+  const box = [pt(x0, y0), pt(x0 + w + pad * 2, y0), pt(x0 + w + pad * 2, y0 + h + 4), pt(x0, y0 + h + 4)];
+  ctx.save(); ctx.beginPath(); ctx.rect(-1e4, -1e4, 3e4, 3e4); ctx.moveTo(box[0][0], box[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(box[i][0], box[i][1]); ctx.closePath(); ctx.clip('evenodd');
+  return true;
 }
 function seg(ctx, a, b) { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
 function far(a, b, k = 1e4) { const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1; return [a[0] + dx / n * k, a[1] + dy / n * k]; }
@@ -2443,7 +2459,7 @@ function renderD(P, ctx, d, isSel) {
   const col = d.color || DCOL[0], q = qOf(P, d);
   if (q.some(v => v[1] == null || !isFinite(v[0]))) return;
   ctx.globalAlpha = d.op ?? 1; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = d.w || 2; ctx.setLineDash(d.ls === 'dashed' ? [6, 4] : d.ls === 'dotted' ? [1.5, 3.5] : []);
-  const [a, b, c] = q, W = P.pw, H = P.ph;
+  const [a, b, c] = q, W = P.pw, H = P.ph, gap = labelGapClip(P, ctx, d, q);
   if (RLV[d.type]) { BB.delete(d); const hs = []; HS.set(d, hs); RLV[d.type](P, ctx, d, q, col, hs, isSel); } else
   switch (d.type) {
     case 'trend': seg(ctx, d.ext === 'left' || d.ext === 'both' ? far(b, a) : a, d.ext === 'right' || d.ext === 'both' ? far(a, b) : b); break;
@@ -2507,6 +2523,7 @@ function renderD(P, ctx, d, isSel) {
     default: renderX(P, ctx, d, q, col, isSel);
   }
   ctx.setLineDash([]);
+  if (gap) { ctx.restore(); ctx.globalAlpha = d.op ?? 1; }
   postD(P, ctx, d, q, col);
   if (d.label && HAS_TEXT(d.type) && d.type !== 'text' && !OWN_LABEL.has(d.type)) drawLabel(P, ctx, d, q);
   ctx.globalAlpha = 1;
@@ -4398,7 +4415,7 @@ $('#lt-mic').addEventListener('click', () => {
   try { r.start(); $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.'; } catch (e) { ltRec = null; $('#lt-live').textContent = 'Could not start the microphone.'; }
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-40';
+const BUILD = '2026-11-16-41';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
