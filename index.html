@@ -182,6 +182,7 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .fbar button { height: 32px; min-width: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: none; border: 0; border-radius: 8px; color: var(--fg); padding: 0 8px; font-size: 12px; white-space: nowrap; }
 .fbar button:hover { background: var(--bg); }
 .fbar button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+#editbar button[data-e="flat"] svg { width: 20px; height: 20px; } #editbar button[data-e="flat"][aria-pressed="true"] { background: #fff; color: #131722; }
 .fbar .grip svg { width: 8px; height: 18px; fill: currentColor; stroke: none; }
 #favbar button { padding: 0 3px; } #favbar button svg { width: 25px; height: 25px; stroke-width: 1.5; }
 .fbar .dash svg { width: 32px; height: 10px; }
@@ -1210,9 +1211,14 @@ function fixBreakEvens(st) {
   let n = 0;
   for (const se of (st && st.sessions) || []) for (const t of se.trades || []) {
     if (t.reason === 'BE' || t.finalSl == null || !INSTR[t.sym]) continue;
-    if (Math.abs(t.finalSl - t.entry) <= INSTR[t.sym].tick + 1e-9 && Math.abs(t.exit - t.entry) <= INSTR[t.sym].tick * 8 && /SL|Stop/i.test(t.reason || '')) { markBE(t); n++; }
+    if (Math.abs(t.finalSl - t.entry) <= INSTR[t.sym].tick * 2 + 1e-9 && /SL|Stop/i.test(t.reason || '')) { markBE(t); n++; }
   }
   return n;
+}
+function toBreakEven(p) {
+  if (p.sl === p.entry) { toast('Your stop is already at break even.'); return; }
+  if (p.side * (priceNow(p.sym) - p.entry) <= 0) { toast('Price is not past your entry yet, so the stop can\'t go to break even.'); return; }
+  p.sl = p.entry; p.be = true; save(); toast('Stop moved to break even. If it\'s hit, the trade counts as break even ($0).');
 }
 function markBE(t) { t.exit = t.entry; t.pnl = 0; t.fees = 0; t.r = 0; t.reason = 'BE'; }
 function load() { try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {} return null; }
@@ -1269,7 +1275,7 @@ function processBar(sess, sym, i) {
     p.mae = Math.max(p.mae, adverse); p.mfe = Math.max(p.mfe, favor);
     const slHit = p.sl != null && (p.side > 0 ? l <= p.sl : h >= p.sl);
     const tpHit = p.tp != null && (p.side > 0 ? h >= p.tp : l <= p.tp);
-    if (slHit) closePos(sess, p, p.sl, t, Math.abs(p.sl - p.entry) <= INSTR[p.sym].tick + 1e-9 ? 'BE' : 'SL');
+    if (slHit) closePos(sess, p, p.sl, t, p.be || Math.abs(p.sl - p.entry) <= INSTR[p.sym].tick * 2 + 1e-9 ? 'BE' : 'SL');
     else if (tpHit) { const px = p.side > 0 ? Math.max(p.tp, o) : Math.min(p.tp, o); closePos(sess, p, px, t, 'TP'); }
   }
 }
@@ -1531,9 +1537,22 @@ let HT = 6;
 const dList = (sym) => { const s = S(); s.drawings = s.drawings || {}; return (s.drawings[sym] = s.drawings[sym] || []); };
 const selD = () => draw.sel ? dList(draw.sel.sym).find(d => d.id === draw.sel.id) : null;
 const bump = () => {
-  for (const d of [draw.mk && draw.mk.d, draw.act && draw.act.d]) if (d && d.keepFlat && LINEISH.includes(d.type) && d.pts.length > 1) { const i = draw.act && draw.act.d === d && draw.act.kind === 'handle' ? Math.min(draw.act.i, 1) : 0, p = d.pts[i].p; d.pts[0].p = p; d.pts[1].p = p; }
+  const m = draw.mk, a = draw.act;
+  if (m && m.d.keepFlat && LINEISH.includes(m.d.type) && m.d.pts.length === 2) snapAngle(m.P, m.d, 1);
+  if (a && a.kind === 'handle' && a.d && a.d.keepFlat && LINEISH.includes(a.d.type) && a.i < 2) snapAngle(a.P, a.d, a.i);
   draw.ver++;
 };
+/* Snap a line's moving end so the line sits at 0, 45 or 90 degrees on screen, like TradingView */
+function snapAngle(P, d, i) {
+  if (!P || !P.candles || d.pts.length < 2) return;
+  const j = i ? 0 : 1, A = toXY(P, d.pts[j]), B = toXY(P, d.pts[i]); if (A[1] == null || B[1] == null) return;
+  const dx = B[0] - A[0], dy = B[1] - A[1], len = Math.hypot(dx, dy); if (len < 2) return;
+  const g = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4), c = Math.round(Math.cos(g) * 1e6) / 1e6, sn = Math.round(Math.sin(g) * 1e6) / 1e6;
+  if (sn === 0) { d.pts[i].p = d.pts[j].p; return; }
+  if (c === 0) { d.pts[i].t = d.pts[j].t; return; }
+  const L = Math.abs(dx) > Math.abs(dy) ? Math.abs(dx) : Math.abs(dy), v = fromXY(P, A[0] + Math.sign(c) * L, A[1] + Math.sign(sn) * L, false), p = P.candles.coordinateToPrice(A[1] + Math.sign(sn) * L);
+  if (p != null) d.pts[i] = { t: v.t, p };
+}
 
 /* Time and price <-> pixels. Time maps to a fractional bar index so drawings survive gaps and timeframe changes. */
 function tToL(P, t) {
@@ -1712,6 +1731,25 @@ Object.assign(ICON, {
   plabel: '<path d="M2 9l4-4h10v8H6z"/>',
   signpost: '<path d="M9 16V2M5 3h9l2 2-2 2H5z"/>',
   flag: '<path d="M4 16V2M4 3h10l-2 3 2 3H4"/>',
+});
+Object.assign(ICON, {
+  trend: '<path d="M5.1 12.9l7.8-7.8"/><circle cx="4" cy="14" r="1.6"/><circle cx="14" cy="4" r="1.6"/>',
+  ray: '<path d="M5.1 12.9l2.8-2.8M10.1 7.9L17 1"/><circle cx="4" cy="14" r="1.6"/><circle cx="9" cy="9" r="1.6"/>',
+  ext: '<path d="M1 17l3.9-3.9M7.1 10.9l3.8-3.8M13.1 4.9L17 1"/><circle cx="6" cy="12" r="1.6"/><circle cx="12" cy="6" r="1.6"/>',
+  hline: '<path d="M1 9h6.4M10.6 9H17"/><circle cx="9" cy="9" r="1.6"/>',
+  hray: '<path d="M5.6 9H17"/><circle cx="4" cy="9" r="1.6"/>',
+  vline: '<path d="M9 1v6.4M9 10.6V17"/><circle cx="9" cy="9" r="1.6"/>',
+  cross: '<path d="M9 1v6.4M9 10.6V17M1 9h6.4M10.6 9H17"/><circle cx="9" cy="9" r="1.6"/>',
+  channel: '<path d="M3.1 10.9l6.8-6.8M8.1 14.9l6.8-6.8"/><circle cx="2" cy="12" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="16" cy="7" r="1.5"/>',
+  fib: '<path d="M5 3h11M2 7h14M2 11h14M5 15h11"/><circle cx="3.2" cy="3" r="1.5"/><circle cx="3.2" cy="15" r="1.5"/>',
+  rect: '<path d="M4.6 3h8.8M4.6 15h8.8M3 4.6v8.8M15 4.6v8.8"/><circle cx="3" cy="3" r="1.5"/><circle cx="15" cy="3" r="1.5"/><circle cx="3" cy="15" r="1.5"/><circle cx="15" cy="15" r="1.5"/>',
+  ellipse: '<ellipse cx="9" cy="9" rx="7" ry="5"/><circle cx="2" cy="9" r="1.4"/><circle cx="16" cy="9" r="1.4"/>',
+  long: '<path d="M5 3h11M5 15h11"/><circle cx="3.2" cy="3" r="1.5"/><circle cx="3.2" cy="15" r="1.5"/><path d="M8 6.5v5h3.5"/>',
+  short: '<path d="M5 3h11M5 15h11"/><circle cx="3.2" cy="3" r="1.5"/><circle cx="3.2" cy="15" r="1.5"/><path d="M11.5 6.5H9a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3H7.5"/>',
+  measure: '<path d="M2 13L13 2l3 3L5 16z"/><path d="M5 10l1.5 1.5M7.5 7.5L9 9M10 5l1.5 1.5"/>',
+  path: '<path d="M3.1 13.1l2.8-3.2M7.1 9.1l2.3 2.3M11.1 11.3L15 5"/><circle cx="2" cy="14.3" r="1.4"/><circle cx="6.5" cy="8.5" r="1.4"/><circle cx="10.2" cy="12.3" r="1.4"/><path d="M12.5 5H15.2v2.7"/>',
+  arrow: '<path d="M4.1 13.9L14 4M8.5 4H14v5.5"/><circle cx="3" cy="15" r="1.5"/>',
+  angle: '<path d="M2 15h14M2 15L13 4"/><path d="M8.5 15a6.5 6.5 0 0 0-1.9-4.6"/>',
 });
 const LVCOL = ['#7f8b99', '#e2554f', '#e4a640', '#26b07a', '#26a69a', '#4c8dff', '#7f8b99', '#b07cf0', '#e2554f', '#e91e63', '#9c27b0'];
 const PLAB = { xabcd: ['X', 'A', 'B', 'C', 'D'], cypher: ['X', 'A', 'B', 'C', 'D'], abcd: ['A', 'B', 'C', 'D'], tripat: ['A', 'B', 'C', 'D'], hs: ['', 'LS', '', 'H', '', 'RS', ''],
@@ -2473,7 +2511,7 @@ function renderSelbars() {
   let h = `<span class="grip" data-grip="editPos" title="Drag to move this bar">${GRIP}</span><button data-e="tpl" title="Templates: save this style and text, or apply a saved one" aria-label="Templates">${svg('tpl')}</button>`;
   if (hasColor) h += `<button data-e="color" title="Colour"><span class="swatch" style="background:${d.color || DCOL[0]};opacity:${d.op ?? 1}"></span></button>`;
   if (hasStroke) h += `<button data-e="width" title="Line thickness">${d.w || 2}px</button><button data-e="style" class="dash" title="Line style">${dashSvg(d.ls)}</button>`;
-  if (LINEISH.includes(d.type)) h += `<button data-e="flat" aria-pressed="${!!d.keepFlat}" title="Keep the line flat while you move it">${svg('hline')}Keep flat</button>`;
+  if (LINEISH.includes(d.type)) h += `<button data-e="flat" aria-pressed="${!!d.keepFlat}" title="Snap to angle: the line jumps to flat, 45° or straight up while you move it" aria-label="Snap to angle">${svg('angle')}</button>`;
   if (d.type === 'text') h += '<button data-e="text">Edit text</button>';
   else if (OWN_LABEL.has(d.type)) h += '<button data-e="ltext">Edit text</button>';
   if (d.type === 'long' || d.type === 'short') { const k = posInfo(P.sym, d), s = d.type === 'long' ? 1 : -1, typ = orderTypeFor(s, k.e, priceNow(P.sym), INSTR[P.sym].tick); h += `<button class="go" data-e="place">Place ${s > 0 ? 'buy' : 'sell'} ${typ} · ${k.qty} ${P.sym}</button>`; }
@@ -2738,7 +2776,7 @@ function dragLine(P, A, y) {
   const p = P.candles.coordinateToPrice(y); if (p == null) return;
   const price = rt(p, INSTR[P.sym].tick), l = A.line, k = ticketCalc();
   switch (l.kind) {
-    case 'psl': case 'osl': l.ref.sl = price; break;
+    case 'psl': case 'osl': l.ref.sl = price; if (l.ref.be && price !== l.ref.entry) l.ref.be = false; break;
     case 'ptp': case 'otp': l.ref.tp = price; break;
     case 'order': { const d = price - l.ref.price; l.ref.price = price; if (l.ref.sl != null) l.ref.sl += d; if (l.ref.tp != null) l.ref.tp += d; break; }
     case 'tentry': { $('#o-price').value = price; const t = orderTypeFor(ticket.side, price, priceNow(P.sym), INSTR[P.sym].tick); ticket.type = t === 'market' ? (ticket.type === 'market' ? 'limit' : ticket.type) : t; break; }
@@ -2779,7 +2817,7 @@ function bindPane(P) {
     if (mk && mk.P === P) { grab(P, e); mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); mk.n++; if (mk.n >= mk.need) finishD(P, mk.d); else { mk.d.pts.push(fromXY(P, x, y, true)); bump(); } return; }
     if (draw.tool !== 'cursor') { grab(P, e); startMk(P, x, y); return; }
     const ln = nearLine(P, y, e.target.closest('.ptag') ? (touch ? 24 : 13) : (touch ? 16 : 7));
-    if (ln) { grab(P, e); draw.act = { kind: 'line', P, line: ln }; el.style.cursor = 'ns-resize'; return; }
+    if (ln) { grab(P, e); draw.act = { kind: 'line', P, line: ln, y0: y, moved: false, btn: !!e.target.closest('button') }; el.style.cursor = 'ns-resize'; return; }
     if (!draw.locked && !draw.hidden) {
       const s = selD();
       if (s && draw.sel.pane === P.i && s.sym === P.sym && s.type !== 'text' && !s.locked) {
@@ -2806,7 +2844,7 @@ function bindPane(P) {
     if (mk && mk.P === P) { if (mk.free) { const l = toXY(P, mk.d.pts[mk.d.pts.length - 1]); if (Math.hypot(l[0] - x, l[1] - y) > 2) mk.d.pts.push(fromXY(P, x, y, false)); bump(); return; } mk.d.pts[mk.d.pts.length - 1] = fromXY(P, x, y, true); bump(); return; }
     const A = draw.act;
     if (A && A.P === P) {
-      if (A.kind === 'line') { dragLine(P, A, y); return; }
+      if (A.kind === 'line') { if (!A.moved && Math.abs(y - A.y0) < (e.pointerType === 'touch' ? 8 : 4)) return; A.moved = true; dragLine(P, A, y); return; }
       if (A.kind === 'handle') { const hx = x + A.ox, hy = y + A.oy; if (A.d.type === 'atext') { A.d.fx = hx / P.pw; A.d.fy = hy / P.ph; }
         else if (LSD(A.d)) { const v = fromXY(P, hx, hy, true); if (A.i === 0) setPt(A.d, 0, v); else if (A.i === 3) { if (v.t > A.d.pts[0].t) A.d.pts[1].t = A.d.pts[2].t = v.t; } else A.d.pts[A.i].p = v.p; }
         else setPt(A.d, A.i, fromXY(P, hx, hy, true)); bump(); return; }
@@ -2836,6 +2874,7 @@ function bindPane(P) {
     }
     const A = draw.act; if (!A || A.P !== P) return;
     draw.act = null; lockChart(P, false); el.style.cursor = '';
+    if (A.kind === 'line' && !A.moved && !A.btn && A.line.kind === 'psl' && A.line.ref && e.type === 'pointerup') toBreakEven(A.line.ref);
     if (A.kind === 'line') renderAll();
     if (A.kind !== 'line') renderSelbars();
     save(); bump();
@@ -3822,7 +3861,7 @@ $('#editbar').addEventListener('click', e => {
   }
   closePop();
   if (k === 'settings') openDrawSettings(d);
-  else if (k === 'flat') { d.keepFlat = !d.keepFlat; SET().keepFlat = d.keepFlat; if (d.keepFlat) d.pts[1].p = d.pts[0].p; toast(d.keepFlat ? 'Keep flat is on: this line stays flat, and new lines start flat.' : 'Keep flat is off.'); done(); }
+  else if (k === 'flat') { d.keepFlat = !d.keepFlat; SET().keepFlat = d.keepFlat; if (d.keepFlat) snapAngle(PANES[draw.sel.pane], d, 1); toast(d.keepFlat ? 'Snap to angle is on: lines jump to flat, 45° or straight up as you move them.' : 'Snap to angle is off.'); done(); }
   else if (k === 'ltext') openDrawSettings(d, 'text');
   else if (k === 'text') { const P = PANES[draw.sel.pane]; geo(P); const [x, y] = toXY(P, d.pts[0]); openText(P, d, x, y); }
   else if (k === 'place') placeFromPos(d);
@@ -3920,7 +3959,7 @@ async function openJournal(id) {
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-15-27';
+const BUILD = '2026-11-16-28';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -3939,23 +3978,24 @@ function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b
 function voiceStart() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
-  vText = ''; let done = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
-  r.onresult = (e) => { let live = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) done += x[0].transcript + ' '; else live += x[0].transcript; } vText = done + live; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
+  vText = ''; let done = '', seg = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
+  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += e.results[i][0].transcript + ' '; vText = done + seg; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
   r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { voiceStop(false); micBlocked = true; micHelp(); } };
-  r.onend = () => { if (vrec === r) { vText = done; try { r.start(); } catch (e) {} } };
+  r.onend = () => { done += seg; seg = ''; vText = done; if (vrec === r) { try { r.start(); } catch (e) {} } };
   try { r.start(); } catch (e) { vrec = null; toast('Could not start the microphone.'); return; }
   const tg = voiceTarget(); $('#vp-txt').textContent = tg.kind === 'pos' ? 'Listening… talk about this trade' : tg.kind === 'trade' ? 'Listening… talk about your last trade' : 'Listening… talk about your trade idea';
   $('#vpill').hidden = false; $('#b-voice').classList.add('rec'); $('#b-voice').setAttribute('aria-pressed', 'true');
 }
 function voiceStop(keep) {
-  const r = vrec; vrec = null; if (r) { try { r.stop(); } catch (e) {} }
+  const r = vrec; vrec = null; if (r) { r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } }
   $('#vpill').hidden = true; $('#b-voice').classList.remove('rec'); $('#b-voice').setAttribute('aria-pressed', 'false');
   if (!keep) return; const said = vText.trim(); vText = '';
   if (!said) { toast('I didn\'t hear anything, so nothing was saved.'); return; }
   const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
-  if (tg.kind === 'pos') { tg.x.notes = ((tg.x.notes || '') + ' ' + said).trim(); toast(`Notes saved. They go with your ${nm(tg.x)} trade when it closes.`); }
-  else if (tg.kind === 'trade') { const t = tg.x; t.said = ((t.said || '') + ' ' + said).trim(); t.notes = tidyNotes(t.said, t); toast(`Notes saved to your ${nm(t)} trade. See them in Trades, then Open.`); if (view === 'trades') renderTrades(); }
-  else { sess.idea = ((sess.idea || '') + ' ' + said).trim(); toast('Notes saved. They go with the next trade you take.'); }
+  const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + ' ' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
+  if (tg.kind === 'pos') { tg.x.notes = add(tg.x.notes); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
+  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(t.said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
+  else { sess.idea = add(sess.idea); toast('Note saved. It goes with the next trade you take. Tap the mic again to add more.'); }
   save();
 }
 $('#b-voice').addEventListener('click', () => { if (vrec) voiceStop(true); else if (micBlocked) micHelp(); else voiceStart(); });
@@ -4075,16 +4115,16 @@ function tidyNotes(raw, t) {
 }
 /* Text of the notes without the header, headings and bullets, for re-tidying typed notes */
 const notesPlain = (v) => v.replace(/^(Long|Short) [\s\S]*?\n\n/, '').replace(/^[A-Z][A-Z ()]+$/gm, '').replace(/^[A-Z][a-z ]+: /gm, '').replace(/^• /gm, '').replace(/\n+/g, '. ');
-function stopRec() { if (rec) { const r = rec; rec = null; try { r.stop(); } catch (e) {} } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
+function stopRec() { if (rec) { const r = rec; rec = null; r.onresult = r.onend = r.onerror = null; try { r.abort(); } catch (e) { try { r.stop(); } catch (e2) {} } } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
 $('#tj-mic').addEventListener('click', () => {
   if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(tjTrade.said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
-  let done = '';
-  r.onresult = (e) => { let live = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const x = e.results[i]; if (x.isFinal) done += x[0].transcript + ' '; else live += x[0].transcript; } recText = done + live; $('#tj-live').textContent = '“' + recText.slice(-90) + '”'; };
+  let done = '', seg = '';
+  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += e.results[i][0].transcript + ' '; recText = done + seg; $('#tj-live').textContent = '“' + recText.slice(-90) + '”'; };
   r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; } };
-  r.onend = () => { if (rec === r) { recText = done; try { r.start(); } catch (e) {} } };
+  r.onend = () => { done += seg; seg = ''; recText = done; if (rec === r) { try { r.start(); } catch (e) {} } };
   try { r.start(); $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.'; } catch (e) { rec = null; $('#tj-live').textContent = 'Could not start the microphone.'; }
 });
 $('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; const v = tjTrade.said || notesPlain($('#tj-notes').value); $('#tj-notes').value = tidyNotes(v, tjTrade); });
@@ -4216,7 +4256,7 @@ async function boot() {
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
   save();
 }
