@@ -62,6 +62,12 @@ html.app-mode #b-full { display: none; }
 .tj-mic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .vpill { position: fixed; z-index: 90; top: 62px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: min(560px, calc(100vw - 32px)); background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 6px 6px 14px; box-shadow: 0 10px 28px rgba(0,0,0,.45); }
 .vpill[hidden] { display: none; }
+.vnotes { position: fixed; z-index: 85; right: 16px; bottom: 16px; width: min(440px, calc(100vw - 32px)); max-height: calc(100vh - 120px); display: flex; flex-direction: column; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+.vnotes[hidden] { display: none; }
+.vnotes .vn-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.vnotes #vn-txt { flex: 1; min-height: 160px; font: 13px/1.45 "IBM Plex Mono", ui-monospace, monospace; resize: vertical; }
+.vnotes .vn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.vnotes .note { margin: 0; font-size: 12px; }
 .vpill .vdot { width: 10px; height: 10px; border-radius: 50%; background: var(--short); flex: none; animation: vblink 1.2s infinite; }
 @keyframes vblink { 50% { opacity: .3; } }
 .vpill #vp-txt { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -926,6 +932,7 @@ body[data-view="live"] .acct { display: none; }
   </main>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="vnotes" id="vnotes" hidden><div class="vn-head"><b id="vn-title">Trade notes</b><button class="x" id="vn-x" aria-label="Close notes">×</button></div><textarea class="io" id="vn-txt" rows="14" spellcheck="false" aria-label="Trade notes"></textarea><div class="vn-row"><button class="btn tj-mic" id="vn-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Add more</span></button><button class="btn" id="vn-tidy">Tidy up notes</button></div><p class="note" id="vn-tip">Each time you tap the mic and Done, what you said is sorted into these lines. You can also tap in the box and use the keyboard's microphone, then tap Tidy up notes.</p></div>
 <div class="vpill" id="vpill" hidden role="status"><span class="vdot"></span><span id="vp-txt">Listening… talk about your trade</span><button class="btn" id="vp-cancel">Cancel</button><button class="btn primary" id="vp-done">Done</button></div>
 <div class="flyout" id="fly" hidden></div>
 <div class="pop" id="epop" style="position:fixed" hidden></div>
@@ -1366,7 +1373,7 @@ function closePos(sess, p, px, t, reason) {
   const pnl = be ? 0 : gross - fees;
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
     openT: p.openT, closeT: t, pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
-  if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.notes; tr.notes = tidyNotes(p.notes, tr); }
+  if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.said || (/^Bias:/m.test(p.notes) ? '' : p.notes); tr.notes = tidyNotes(plainOf(p.notes), tr); tr.nNotes = p.nNotes; }
   sess.positions = sess.positions.filter(x => x !== p);
   if (store && SET().tradeShots !== false) SHOTQ.push(sess.trades[sess.trades.length - 1]);
 }
@@ -1374,7 +1381,7 @@ function openPos(sess, o, px, t) {
   const pv = INSTR[o.sym].pv;
   const p = { id: uid(), sym: o.sym, side: o.side, qty: o.qty, entry: px, sl: o.sl, tp: o.tp, initSl: o.sl, initTp: o.tp, openT: t, mae: 0, mfe: 0, fresh: true,
     riskUsd: o.sl != null ? Math.abs(px - o.sl) * o.qty * pv : null };
-  if (sess.idea) { p.notes = sess.idea; sess.idea = ''; }
+  if (sess.idea) { p.notes = sess.idea; p.said = sess.ideaSaid || ''; sess.idea = ''; sess.ideaSaid = ''; }
   sess.positions.push(p);
   return p;
 }
@@ -4414,7 +4421,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-43';
+const BUILD = '2026-11-16-44';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4450,11 +4457,24 @@ async function voiceStop(keep) {
   const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
   (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + '\n' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
-  if (tg.kind === 'pos') { tg.x.notes = add(tg.x.notes); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
+  if (tg.kind === 'pos') { tg.x.said = add(tg.x.said); tg.x.notes = tidyNotes(plainOf(tg.x.notes) + '\n' + said, tg.x); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
   else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(notesPlain(t.notes || '') + '\n' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
-  else { sess.idea = add(sess.idea); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
+  else { sess.ideaSaid = add(sess.ideaSaid); sess.idea = tidyNotes(plainOf(sess.idea) + '\n' + said, null); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
+  vnShow(tg.kind === 'next' ? { kind: 'next' } : { kind: 'id', id: tg.x.id });
 }
+/* Notes panel: shows the filled-in journal for the trade your voice notes went to, the same lines as live trades */
+let vnTarget = null;
+function vnFind() { const sess = S(); if (!vnTarget) return null; if (vnTarget.kind === 'next') return { o: sess, key: 'idea', label: 'Notes for your next trade' };
+  const p = sess.positions.find(x => x.id === vnTarget.id); if (p) return { o: p, key: 'notes', t: p, label: `Notes · ${p.side > 0 ? 'Long' : 'Short'} ${p.sym} (open)` };
+  const t = sess.trades.find(x => x.id === vnTarget.id); if (t) return { o: t, key: 'notes', t, label: `Notes · ${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtUsd(t.pnl)}` }; return null; }
+function vnShow(tg) { vnTarget = tg; const f = vnFind(); if (!f) { $('#vnotes').hidden = true; return; }
+  if (!/^Bias:/m.test(f.o[f.key] || '')) f.o[f.key] = tidyNotes(plainOf(f.o[f.key]), f.t || null);
+  $('#vn-title').textContent = f.label; if (document.activeElement !== $('#vn-txt')) $('#vn-txt').value = f.o[f.key]; $('#vnotes').hidden = false; }
+$('#vn-txt').addEventListener('input', () => { const f = vnFind(); if (f) { f.o[f.key] = $('#vn-txt').value; save(); } });
+$('#vn-tidy').addEventListener('click', () => { const f = vnFind(); if (!f) return; f.o[f.key] = tidyNotes(plainOf($('#vn-txt').value), f.t || null); $('#vn-txt').value = f.o[f.key]; save(); });
+$('#vn-x').addEventListener('click', () => { $('#vnotes').hidden = true; vnTarget = null; });
+$('#vn-mic').addEventListener('click', () => { if (vrec) voiceStop(true); else if (micBlocked) micHelp(); else voiceStart(); });
 $('#b-voice').addEventListener('click', () => { if (vrec) voiceStop(true); else if (micBlocked) micHelp(); else voiceStart(); });
 /* When the browser blocks the microphone, show how to allow it for good instead of asking again and again */
 let micBlocked = false;
@@ -4707,6 +4727,7 @@ function tidyNotes(raw, t) {
 }
 const JT_TEMPLATE = (live) => tidyNotes('', live ? { live: 1 } : null);
 /* Notes text back into spoken form (keyword + answer), so Tidy up notes keeps what you typed */
+const plainOf = (v) => /^Bias:/m.test(v || '') ? notesPlain(v) : String(v || '');   // older notes may still be raw speech
 const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT].map(x => [x[0].toLowerCase(), x[1]]));
   // a line without a field name (typed on a new line) belongs to the field above it
   const out = []; let open = false;
