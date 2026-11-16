@@ -3965,7 +3965,7 @@ async function openJournal(id) {
 }
 function closeJournal() { stopRec(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-30';
+const BUILD = '2026-11-16-31';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -3989,8 +3989,8 @@ function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b
 function voiceStart() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
-  vText = ''; let done = '', seg = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
-  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += e.results[i][0].transcript + ' '; vText = done + seg; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
+  vText = ''; let done = '', seg = ''; const r = new SR(); vrec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
+  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += bestAlt(e.results[i]) + ' '; vText = done + seg; $('#vp-txt').textContent = '“' + fixTerms(vText.trim()).slice(-70) + '”'; };
   r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { voiceStop(false); micBlocked = true; micHelp(); } };
   r.onend = () => { done += seg; seg = ''; vText = done; if (vrec === r) { try { r.start(); } catch (e) {} } };
   try { r.start(); } catch (e) { vrec = null; toast('Could not start the microphone.'); return; }
@@ -4060,6 +4060,77 @@ const TERMS = [
   [/\b(?:liquidity|liquidy)\b/gi, 'liquidity'], [/\b(?:by|bye|buy) side\b/gi, 'buy-side'], [/\bsell side\b/gi, 'sell-side'], [/\b(London|Asia|New York|session|daily|weekly) heights\b/gi, '$1 highs'], [/\bheights\b/gi, 'highs'], [/\bun ?filled\b/gi, 'unfilled'],
   [/\b(?:asia|asian) (?:session|high|low|range)\b/gi, (m) => m.replace(/^asian?/i, 'Asia')], [/\blondon\b/gi, 'London'], [/\bnew york\b/gi, 'New York'],
 ];
+/* More ICT / smart money words and the ways speech engines mishear them. PRE runs before the list above, POST after it */
+const NUMW = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, fifteen: 15, twenty: 20, thirty: 30, forty: 40, 'forty-five': 45, fifty: 50 };
+const num = (w) => { const k = String(w).toLowerCase(); return NUMW[k] != null ? NUMW[k] : k; };
+TERMS.unshift(
+  [/\b(?:inversion|inverse|inverted)\s+(?:fair value gaps?|f\.?\s?v\.?\s?g\.?s?|fvgs?)\b/gi, 'iFVG'],
+  [/\b(?:fiji|fijis|fiji's|fuji|fuji's|ifvgs?|if\s?vg|if\s?v\s?g|if\s?bg|if\s?pg|if\s?eg|ifeg|ivg|i\s?v\s?g|i\s?f\s?v\s?g|ifbg|ifpg|ifg|eye\s?f\s?v\s?g|i've\s?v\s?g|ive\s?vg|ivy\s?g|i\.f\.v\.g\.?|ivf\s?g)\b/gi, 'iFVG'],
+  [/\b(?:fair value gaps?|fair valley gaps?|fair value gap's|for value gaps?|fairy value gaps?|effie\s?g|ef\s?v\s?g|eff\s?v\s?g|eff vee gee|f\s?v\s?g's)\b/gi, 'FVG'],
+  [/\b(?:balanced price ranges?|balance price ranges?|b\.?\s?p\.?\s?r\.?s?|bpm\b(?= (?:entry|is|was|at)))\b/gi, 'BPR'],
+  [/\b(?:change (?:in|of) (?:the )?state of delivery|c\.?\s?i\.?\s?s\.?\s?d\.?|cisd|c\s?i\s?s\s?d|sisd|cis\s?d|sis\s?d)\b/gi, 'CISD'],
+  [/\b(?:change of character|change in character|chalk|chock|chuck|choc|choch)\b(?=\s|[.,]|$)/gi, 'CHoCH'],
+  [/\b(?:market structure shifts?|market structure shift's|m\.?\s?s\.?\s?s\.?)\b/gi, 'MSS'],
+  [/\b(?:breaks? of structure|break in structure|b\.?\s?o\.?\s?s\.?|boss|bos|bose)\b(?=\s|[.,]|$)/gi, 'BOS'],
+  [/\b(?:s\.?\s?m\.?\s?t\.?|smt|s and t|smt's|s m t's)\s+(?:divergence|diversions?|diversion)\b/gi, 'SMT divergence'],
+  [/\b(?:optimal trade entry|o\.?\s?t\.?\s?e\.?)\b/gi, 'OTE'],
+  [/\b(?:buy[- ]?side liquidity|by[- ]?side liquidity|bye[- ]?side liquidity|b\.?\s?s\.?\s?l\.?)\b/gi, 'BSL'],
+  [/\b(?:sell[- ]?side liquidity|cell[- ]?side liquidity|sale[- ]?side liquidity|s\.?\s?s\.?\s?l\.?)\b/gi, 'SSL'],
+  [/\b(?:previous|prior|yesterday'?s?|previous day'?s?|prior day'?s?) (?:day'?s? )?high\b/gi, 'PDH'], [/\b(?:previous|prior|yesterday'?s?|previous day'?s?|prior day'?s?) (?:day'?s? )?low\b/gi, 'PDL'],
+  [/\b(?:pd\s?high|p\.?\s?d\.?\s?h\.?|pdh|pdhs)\b/gi, 'PDH'], [/\b(?:pd\s?low|p\.?\s?d\.?\s?l\.?|pdl|pdls)\b/gi, 'PDL'],
+  [/\b(?:previous|prior|last) week'?s? high\b/gi, 'PWH'], [/\b(?:previous|prior|last) week'?s? low\b/gi, 'PWL'],
+  [/\b(?:p\.?\s?w\.?\s?h\.?|pwh)\b/gi, 'PWH'], [/\b(?:p\.?\s?w\.?\s?l\.?|pwl)\b/gi, 'PWL'],
+  [/\b(?:new week(?:ly)? opening gap|n\.?\s?w\.?\s?o\.?\s?g\.?|nwog|new wog|new wag|n wog)\b/gi, 'NWOG'],
+  [/\b(?:new day opening gap|n\.?\s?d\.?\s?o\.?\s?g\.?|ndog|n dog|and dog|end dog)\b/gi, 'NDOG'],
+  [/\b(?:draw on liquidity|draw of liquidity|drawn liquidity|drawn on liquidity|d\.?\s?o\.?\s?l\.?|doll|dole|dahl|dal|d o l)\b/gi, 'DOL'],
+  [/\b(?:breaker blocks?|braker blocks?|brake her blocks?|breaker)\b/gi, (m) => /s$/i.test(m) ? 'breakers' : 'breaker'],
+  [/\b(?:mitigation blocks?|mitigation block's)\b/gi, 'mitigation block'],
+  [/\b(?:rejection blocks?)\b/gi, 'rejection block'],
+  [/\b(?:propulsion blocks?)\b/gi, 'propulsion block'],
+  [/\b(?:liquidity voids?|liquidity void's)\b/gi, 'liquidity void'],
+  [/\b(?:sibi|cbe|c b i|s i b i|sell side imbalance buy side inefficiency)\b/gi, 'SIBI'], [/\b(?:bisi|b i s i|bc|buy side imbalance sell side inefficiency)\b(?= (?:entry|is|was|at|into|from))/gi, 'BISI'],
+  [/\b(?:this placement|displays meant|display meant|the placement|displace meant)\b/gi, 'displacement'],
+  [/\b(?:judas swing|judah swing|juda swing|judas wing)\b/gi, 'Judas swing'],
+  [/\b(?:silver bullets?)\b/gi, 'silver bullet'],
+  [/\b(?:power of three|power of 3|p\.?\s?o\.?\s?3|po three|po3)\b/gi, 'PO3'],
+  [/\b(?:turtle soup)\b/gi, 'turtle soup'],
+  [/\b(?:market maker (?:buy|sell) models?|m\.?\s?m\.?\s?x\.?\s?m\.?|mmxm|mmbm|mmsm)\b/gi, (m) => /sell|mmsm/i.test(m) ? 'MMSM' : /buy|mmbm/i.test(m) ? 'MMBM' : 'MMXM'],
+  [/\b(?:i\.?\s?p\.?\s?d\.?\s?a\.?|ipda)\b/gi, 'IPDA'],
+  [/\b(?:i\.?\s?c\.?\s?t\.?|ict)\b(?=\s|[.,]|$)/gi, 'ICT'],
+  [/\b(?:equal highs|equal hi's|eq highs|e q h|eqh)\b/gi, 'EQH'], [/\b(?:equal lows|equal low's|eq lows|e q l|eql)\b/gi, 'EQL'],
+  [/\b(?:kill\s?zones?|kills zones?|kilzones?|kill zoned)\b/gi, 'killzone'],
+  [/\b(?:(?:the )?asian? (?:session )?(?:high|hi))\b/gi, 'Asia high'], [/\b(?:(?:the )?asian? (?:session )?low)\b/gi, 'Asia low'],
+  [/\b(?:london (?:session )?(?:high|hi))\b/gi, 'London high'], [/\b(?:london (?:session )?low)\b/gi, 'London low'],
+  [/\b(?:new york|n\.?\s?y\.?|ny) (?:a\.?\s?m\.?|am|morning) (?:session )?(?:high|hi)\b/gi, 'NY AM high'], [/\b(?:new york|n\.?\s?y\.?|ny) (?:a\.?\s?m\.?|am|morning) (?:session )?low\b/gi, 'NY AM low'],
+  [/\b(?:new york|n\.?\s?y\.?|ny) (?:p\.?\s?m\.?|pm|afternoon) (?:session )?(?:high|hi)\b/gi, 'NY PM high'], [/\b(?:new york|n\.?\s?y\.?|ny) (?:p\.?\s?m\.?|pm|afternoon) (?:session )?low\b/gi, 'NY PM low'],
+  [/\b(?:midnight open|midnight opening price)\b/gi, 'midnight open'],
+  [/\b(?:micro (?:nasdaq|n\.?\s?q\.?|nq)|m\.?\s?n\.?\s?q\.?|mnq|mmq|m and q|em and q|m n q)\b/gi, 'MNQ'],
+  [/\b(?:micro (?:s and p|s&p|e\.?\s?s\.?|es)|m\.?\s?e\.?\s?s\.?)\b(?=\s|[.,]|$)/gi, 'MES'],
+  [/\b(?:nasdaq futures|n\.?\s?q\.?|and q|n q)\b(?=\s|[.,]|$)/gi, 'NQ'],
+  [/\b(?:e\.\s?s\.?|e s)\b(?=\s|[.,]|$)/gi, 'ES'],
+);
+TERMS.push(
+  [/\b(?:low time ?frames?)\b/gi, 'LTF'], [/\b(?:high(?:er)? time ?frames?)\b/gi, 'HTF'],
+  [/\b(?:risk to reward|risk reward|risk-reward|r\.?\s?r\.?|r and r|are are|r to r)\b/gi, 'RR'],
+  [/\bRR\s+(?:of|was|is|at|about|around)?\s*(\w+)\s+(?:to|2|two)\s+(\w+)\b/gi, (m, a, b) => `RR ${num(a)}:${num(b)}`],
+  [/\b(\w+)\s+(?:to|2)\s+(\w+)\s+RR\b/gi, (m, a, b) => /^(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)$/i.test(a) ? `RR ${num(a)}:${num(b)}` : m],
+  [/\bhalf (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d{1,2})\b/gi, (m, h) => `${num(h)}:30`],
+  [/\bquarter past (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d{1,2})\b/gi, (m, h) => `${num(h)}:15`],
+  [/\bquarter to (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d{1,2})\b/gi, (m, h) => `${(+num(h) + 11) % 12 + 1}:45`],
+  [/\b(?:at|around|about) (one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve) (fifteen|thirty|forty-five|forty five|fifty|twenty|ten|o'clock)\b/gi, (m, h, mi) => m.split(' ')[0] + ' ' + num(h) + ':' + (/o'clock/i.test(mi) ? '00' : String(num(mi.replace(' ', '-'))).padStart(2, '0'))],
+  [/\b(\d{1,2})[ .](\d{2})\s?(a\.?m\.?|p\.?m\.?)/gi, '$1:$2 $3'],
+);
+/* Words to listen for: shown to speech engines that accept hints, and used to pick the best of several guesses */
+const VOCAB = ['FVG', 'iFVG', 'inversion fair value gap', 'fair value gap', 'BPR', 'balanced price range', 'order block', 'breaker', 'mitigation block', 'MSS', 'market structure shift', 'BOS', 'break of structure', 'CHoCH', 'change of character', 'CISD', 'SMT', 'SMT divergence', 'OTE', 'optimal trade entry', 'premium', 'discount', 'equilibrium', 'displacement', 'liquidity sweep', 'buy side liquidity', 'sell side liquidity', 'BSL', 'SSL', 'PDH', 'PDL', 'previous day high', 'previous day low', 'Asia high', 'Asia low', 'London high', 'London low', 'New York', 'killzone', 'silver bullet', 'Judas swing', 'NWOG', 'NDOG', 'DOL', 'draw on liquidity', 'PD array', 'RR', 'risk to reward', 'break even', 'take profit', 'stop loss', 'MNQ', 'MES', 'NQ', 'ES', 'bias', 'bullish', 'bearish', 'HTF', 'LTF', 'SIBI', 'BISI', 'EQH', 'EQL', 'IPDA', 'PO3'];
+const KNOWN = /\b(FVG|iFVG|BPR|order blocks?|breakers?|MSS|BOS|CHoCH|CISD|SMT|OTE|premium|discount|equilibrium|displacement|BSL|SSL|PDH|PDL|PWH|PWL|Asia (?:high|low)|London (?:high|low)|NY [AP]M (?:high|low)|killzone|silver bullet|Judas swing|NWOG|NDOG|DOL|PD array|RR|break even|TP|SL|MNQ|MES|NQ|ES|bias|bullish|bearish|HTF|LTF|SIBI|BISI|EQH|EQL|IPDA|PO3|liquidity|sweep\w*|swept)\b/g;
+const termScore = (txt) => (fixTerms(txt).match(KNOWN) || []).length;
+/* The phone gives a few guesses for each phrase; keep the one with the most trading words (ties keep its first guess) */
+function bestAlt(res) { let best = res[0], bs = termScore(res[0].transcript); for (let k = 1; k < res.length; k++) { const sc = termScore(res[k].transcript); if (sc > bs) { best = res[k]; bs = sc; } } return best.transcript; }
+function srSetup(r) {
+  r.maxAlternatives = 5;
+  try { if (window.SpeechRecognitionPhrase) r.phrases = VOCAB.map(w => new SpeechRecognitionPhrase(w, 5)); } catch (e) {}
+  try { const G = window.SpeechGrammarList || window.webkitSpeechGrammarList; if (G && !r.phrases) { const g = new G(); g.addFromString('#JSGF V1.0; grammar t; public <t> = ' + VOCAB.join(' | ') + ' ;', 1); r.grammars = g; } } catch (e) {}
+}
 const fixTerms = (txt) => TERMS.reduce((acc, [re, to]) => acc.replace(re, to), txt);
 /* What goes in the notes, checked in this order; anything that fits none of these is left out */
 /* What goes in the notes, checked in this order; anything that fits none of these is left out */
@@ -4088,7 +4159,7 @@ function tidyClause(c) {
   return x ? x.charAt(0).toUpperCase() + x.slice(1).replace(/\bi\b/g, 'I') : '';
 }
 /* Pulls the key facts out of what you said: bias, what was swept, the draw on liquidity, confirmations, entry, stop, management */
-const NOUN = String.raw`((?:[\w'-]+\s+){0,3}?(?:highs?|lows?|liquidity|BSL|SSL|PDH|PDL|range|level|gap|FVG|iFVG|order block|NWOG|NDOG|equilibrium|EQ))\b`;
+const NOUN = String.raw`((?:[\w'-]+\s+){0,3}?(?:highs?|lows?|liquidity|BSL|SSL|PDH|PDL|range|level|gap|FVG|iFVG|order block|NWOG|NDOG|equilibrium|EQ|EQH|EQL|PWH|PWL|BPR|breaker|midnight open))\b`;
 function keyFacts(s0, t) {
   const s = ' ' + s0.replace(FILLER, ' ').replace(/\bgonna\b/gi, 'going to').replace(/\bwanna\b/gi, 'want to').replace(/\s+/g, ' ') + ' ';
   const uniq = (a) => [...new Map(a.map(x => [x.toLowerCase(), x])).values()];
@@ -4101,9 +4172,9 @@ function keyFacts(s0, t) {
   const ses = uniq((s.match(/\b(Asia|London|New York|NY AM|NY PM|killzone|silver bullet)\b/gi) || []).map(x => x.charAt(0).toUpperCase() + x.slice(1))); if (ses.length) F.Session = ses.join(', ');
   const man = grab(/\b(?:swept|re-?swept|sweep(?:ing)?|took out|taken out|taken|took|raided|raid(?:ing)?|ran|grabbed|traded into|trading into|tapped(?: into)?)\s+(?:out\s+)?(?:like\s+|the\s+|a\s+|an\s+|our\s+|some\s+)*/); if (man.length) F.Manipulation = man.join(', ');
   const dol = grab(/\b(?:DOL(?: is| was)?|draw on liquidity(?: is| was)?|target(?:ing|ed)?(?: is| was| at)?|going for|aiming for|towards?|trading (?:up |down )?to|trade (?:up |down )?to|run (?:on|to)|reach(?:ing)? for)\s+(?:like\s+|the\s+|a\s+|an\s+|our\s+|some\s+|nice\s+)*/); if (dol.length) F['DOL'] = dol.join(', ');
-  const conf = uniq((s.match(/\b(displacement|BOS|CHoCH|MSS|SMT(?: divergence)?|iFVG|break of structure|change of character|market structure shift|rejection|engulfing|reclaim(?:ed)?|LTF beating HTF|low time ?frame (?:is )?(?:beating|over) high time ?frame)\b/gi) || []).map(x => /low time/i.test(x) ? 'LTF beating HTF' : x));
+  const conf = uniq((s.match(/\b(displacement|BOS|CHoCH|MSS|CISD|SMT(?: divergence)?|iFVG|turtle soup|Judas swing|break of structure|change of character|market structure shift|rejection|engulfing|reclaim(?:ed)?|LTF beating HTF|low time ?frame (?:is )?(?:beating|over) high time ?frame)\b/gi) || []).map(x => /low time/i.test(x) ? 'LTF beating HTF' : x));
   if (conf.length) F.Confirmation = conf.join(', ');
-  const ent = [...s.matchAll(/\b(?:enter(?:ed|ing)?|entry|got in|went long|went short|bought|sold)\s+(?:on|at|off|from|in|into)?\s*(?:the\s+|a\s+|an\s+|our\s+)?((?:[\w'-]+\s+){0,2}?(?:iFVG|FVG|order block|OB|breaker|OTE|BPR|retest|PD array|equilibrium|EQ|discount|premium|open|level))\b/gi)].map(m => clean(m[1]));
+  const ent = [...s.matchAll(/\b(?:enter(?:ed|ing)?|entry|got in|went long|went short|bought|sold)\s+(?:on|at|off|from|in|into)?\s*(?:the\s+|a\s+|an\s+|our\s+)?((?:[\w'-]+\s+){0,2}?(?:iFVG|FVG|order block|OB|breaker|OTE|BPR|SIBI|BISI|mitigation block|rejection block|retest|PD array|equilibrium|EQ|discount|premium|open|level))\b/gi)].map(m => clean(m[1]));
   if (ent.length) F.Entry = uniq(ent).join(', ');
   const stp = [...s.matchAll(/\b(?:stop|SL)(?: loss)?\s+(?:is |was |at |goes )?(under|below|above|over|behind)\s+(?:the\s+|a\s+|an\s+|our\s+|that\s+)?((?:[\w'-]+\s+){0,3}?(?:highs?|lows?|candle|wick|FVG|iFVG|swing|level|range))\b/gi)].map(m => m[1] + ' ' + clean(m[2]));
   if (stp.length) F.Stop = uniq(stp).join(', ');
@@ -4157,9 +4228,9 @@ $('#tj-mic').addEventListener('click', () => {
   if (rec) { stopRec(); const said = recText.trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(tjTrade.said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : ''; return; }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
-  recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true;
+  recText = ''; const r = new SR(); rec = r; r.lang = navigator.language || 'en-GB'; r.continuous = true; r.interimResults = true; srSetup(r);
   let done = '', seg = '';
-  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += e.results[i][0].transcript + ' '; recText = done + seg; $('#tj-live').textContent = '“' + recText.slice(-90) + '”'; };
+  r.onresult = (e) => { seg = ''; for (let i = 0; i < e.results.length; i++) seg += bestAlt(e.results[i]) + ' '; recText = done + seg; $('#tj-live').textContent = '“' + recText.slice(-90) + '”'; };
   r.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; } };
   r.onend = () => { done += seg; seg = ''; recText = done; if (rec === r) { try { r.start(); } catch (e) {} } };
   try { r.start(); $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.'; } catch (e) { rec = null; $('#tj-live').textContent = 'Could not start the microphone.'; }
@@ -4293,7 +4364,7 @@ async function boot() {
   applySettings(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions'].includes(h)) setView(h);
   save();
 }
