@@ -905,7 +905,7 @@ body[data-view="live"] .acct { display: none; }
         <div class="card">
           <h3>Voice notes</h3>
           <p class="note" id="vk-status"></p>
-          <div class="headrow" style="margin-top:10px"><input class="ctl" id="vk-in" type="password" autocomplete="off" placeholder="Paste your OpenAI key (starts with sk-)" aria-label="OpenAI key" style="flex:1;min-width:220px"><button class="btn primary" id="vk-save">Save key</button><button class="btn" id="vk-del">Remove key</button></div>
+          <div class="headrow" style="margin-top:10px"><input class="ctl" id="vk-in" type="password" autocomplete="off" placeholder="Access code for the shared mic, or your own OpenAI key" aria-label="Access code or OpenAI key" style="flex:1;min-width:220px"><button class="btn primary" id="vk-save">Save</button><button class="btn" id="vk-del">Remove</button></div>
         </div>
         <div class="card">
           <h3>Market data</h3>
@@ -4419,7 +4419,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-17-48';
+const BUILD = '2026-11-17-49';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4607,13 +4607,20 @@ function squashRepeats(txt) {   // "bias bearish below the open bias bearish bel
    Turned on by pasting a key in Sessions > Voice notes. The key stays on this device only (never in the data file). */
 const VKEY = 'tape-replay.voicekey';
 const voiceKey = () => { try { return localStorage.getItem(VKEY) || ''; } catch (e) { return ''; } };
+/* Shared mic: friends get the cloud speech engine with an access code. The OpenAI key lives in a small Cloudflare helper (voice-helper/), never in this page */
+const VPROXY = '';   // the helper's address, filled in once it is deployed
+const VCODE = 'tape-replay.voicecode';
+const voiceCode = () => { try { return localStorage.getItem(VCODE) || ''; } catch (e) { return ''; } };
+const cloudOn = () => !!(voiceKey() || (VPROXY && voiceCode()));
+(() => { try { const u = new URL(location.href), c = u.searchParams.get('mic'); if (c) { localStorage.setItem(VCODE, c.trim()); u.searchParams.delete('mic'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch (e) {} })();
 const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Note headings said aloud: Bias, Idea, key levels, DOL, Trigger, What I took my trade off, Goal, My target, Confirmed by, The confirmation, Reasoning, Where and why for TP and SL, Confidence, Whole idea together, A plus DOL, AMD/PO3, True manip, PD array, HR LR, SMT, LTF LRL, CISD. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
 async function transcribe(blob) {
   const ext = /mp4|m4a|aac/.test(blob.type) ? 'm4a' : /ogg/.test(blob.type) ? 'ogg' : /wav/.test(blob.type) ? 'wav' : 'webm';
   const fd = new FormData(); fd.append('file', blob, 'note.' + ext); fd.append('model', 'gpt-4o-transcribe'); fd.append('language', 'en'); fd.append('prompt', CLOUD_PROMPT);
-  const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + voiceKey() }, body: fd });
+  const own = voiceKey(), r = own ? await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + own }, body: fd })
+    : await fetch(VPROXY.replace(/\/$/, '') + '/transcribe', { method: 'POST', headers: { 'X-Access-Code': voiceCode() }, body: fd });
   if (!r.ok) { let m = ''; try { m = (await r.json()).error.message || ''; } catch (e) {}
-    throw new Error(r.status === 401 ? 'the voice key wasn\'t accepted. Check it in Sessions > Voice notes.' : r.status === 429 ? 'the OpenAI account has no credit left. Add credit at platform.openai.com > Billing.' : 'the speech service said: ' + (m || 'error ' + r.status)); }
+    throw new Error(r.status === 401 ? (own ? 'the voice key wasn\'t accepted. Check it in Sessions > Voice notes.' : 'the access code wasn\'t accepted. Check it in Sessions > Voice notes.') : r.status === 429 ? (own ? 'the OpenAI account has no credit left. Add credit at platform.openai.com > Billing.' : 'the shared mic has run out of credit. Ask the person who shared it.') : 'the speech service said: ' + (m || 'error ' + r.status)); }
   return String((await r.json()).text || '').trim();
 }
 let lastTake = null;   // the last recording, kept so a failed upload can be tried again
@@ -4634,13 +4641,19 @@ function cloudListen(onText, onFatal) {
   L.text = () => '';
   return L;
 }
-function vkRender() { const k = voiceKey(); $('#vk-status').innerHTML = k ? '<b>Cloud speech engine is on.</b> Every mic uses it: your voice is sent to OpenAI when you tap Done and written down with your trading words. About 1p for every 3 minutes of talking. Key ending …' + k.slice(-4) + ' is saved on this device only.' : 'The mic uses the browser\'s built-in speech engine, which often mishears trading words. For far better results, paste an OpenAI key here (about 1p for every 3 minutes of talking). The key is saved on this device only.'; }
-$('#vk-save').addEventListener('click', () => { const k = $('#vk-in').value.trim(); if (!/^sk-[\w-]{10,}$/.test(k)) { toast('That doesn\'t look like an OpenAI key. It starts with sk-'); return; } try { localStorage.setItem(VKEY, k); } catch (e) {} $('#vk-in').value = ''; vkRender(); toast('Key saved. The mic now uses the cloud speech engine.'); });
-$('#vk-del').addEventListener('click', () => { try { localStorage.removeItem(VKEY); } catch (e) {} vkRender(); toast('Key removed. The mic is back to the browser\'s speech engine.'); });
+function vkRender() { const k = voiceKey(), c = voiceCode();
+  $('#vk-status').innerHTML = k ? '<b>Cloud speech engine is on.</b> Every mic uses it: your voice is sent to OpenAI when you tap Done and written down with your trading words. About 1p for every 3 minutes of talking. Key ending …' + k.slice(-4) + ' is saved on this device only.'
+    : c && VPROXY ? '<b>Shared cloud speech engine is on.</b> Every mic uses it: your voice is sent to OpenAI when you tap Done and written down with your trading words. Your access code is saved on this device only.'
+    : c ? 'Your access code is saved, but the shared mic isn\'t switched on yet. The mic uses the browser\'s built-in speech engine for now.'
+    : 'The mic uses the browser\'s built-in speech engine, which often mishears trading words. For far better results, type the access code you were given (or paste your own OpenAI key) and tap Save. It is saved on this device only.'; }
+$('#vk-save').addEventListener('click', () => { const k = $('#vk-in').value.trim(); if (!k) { toast('Type the access code first.'); return; }
+  if (/^sk-/.test(k)) { if (!/^sk-[\w-]{10,}$/.test(k)) { toast('That doesn\'t look like an OpenAI key.'); return; } try { localStorage.setItem(VKEY, k); } catch (e) {} $('#vk-in').value = ''; vkRender(); toast('Key saved. The mic now uses the cloud speech engine.'); return; }
+  try { localStorage.setItem(VCODE, k); } catch (e) {} $('#vk-in').value = ''; vkRender(); toast(VPROXY ? 'Access code saved. The mic now uses the cloud speech engine.' : 'Access code saved.'); });
+$('#vk-del').addEventListener('click', () => { try { localStorage.removeItem(VKEY); localStorage.removeItem(VCODE); } catch (e) {} vkRender(); toast('Removed. The mic is back to the browser\'s speech engine.'); });
 vkRender();
 /* One listener for every mic button: keeps listening through pauses, never loops, and when you tap Done it waits a moment for your last words */
 function listen(onText, onFatal) {
-  if (voiceKey() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder) return cloudListen(onText, onFatal);
+  if (cloudOn() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder) return cloudListen(onText, onFatal);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) return null;
   const L = { parts: [], cur: '', on: true, quick: 0 }, r = new SR();
   L.text = () => squashRepeats(L.parts.concat(L.cur ? [L.cur] : []).reduce(mergeSpeech, ''));

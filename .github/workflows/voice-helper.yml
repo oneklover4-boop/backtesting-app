@@ -1,0 +1,32 @@
+name: Deploy shared mic helper
+on:
+  push:
+    branches: [main]
+    paths: ['voice-helper/**', '.github/workflows/voice-helper.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the secrets are there
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          VOICE_ACCESS_CODES: ${{ secrets.VOICE_ACCESS_CODES }}
+        run: |
+          miss=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || miss="$miss CLOUDFLARE_API_TOKEN"
+          [ -n "$OPENAI_API_KEY" ] || miss="$miss OPENAI_API_KEY"
+          [ -n "$VOICE_ACCESS_CODES" ] || miss="$miss VOICE_ACCESS_CODES"
+          if [ -n "$miss" ]; then echo "::error::Missing GitHub secrets:$miss"; exit 1; fi
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: voice-helper
+          secrets: |
+            OPENAI_API_KEY
+            VOICE_ACCESS_CODES
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          VOICE_ACCESS_CODES: ${{ secrets.VOICE_ACCESS_CODES }}
