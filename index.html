@@ -4419,7 +4419,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-16-47';
+const BUILD = '2026-11-17-48';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4607,7 +4607,7 @@ function squashRepeats(txt) {   // "bias bearish below the open bias bearish bel
    Turned on by pasting a key in Sessions > Voice notes. The key stays on this device only (never in the data file). */
 const VKEY = 'tape-replay.voicekey';
 const voiceKey = () => { try { return localStorage.getItem(VKEY) || ''; } catch (e) { return ''; } };
-const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
+const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Note headings said aloud: Bias, Idea, key levels, DOL, Trigger, What I took my trade off, Goal, My target, Confirmed by, The confirmation, Reasoning, Where and why for TP and SL, Confidence, Whole idea together, A plus DOL, AMD/PO3, True manip, PD array, HR LR, SMT, LTF LRL, CISD. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
 async function transcribe(blob) {
   const ext = /mp4|m4a|aac/.test(blob.type) ? 'm4a' : /ogg/.test(blob.type) ? 'ogg' : /wav/.test(blob.type) ? 'wav' : 'webm';
   const fd = new FormData(); fd.append('file', blob, 'note.' + ext); fd.append('model', 'gpt-4o-transcribe'); fd.append('language', 'en'); fd.append('prompt', CLOUD_PROMPT);
@@ -4696,15 +4696,17 @@ const NOUN = String.raw`((?:[\w'-]+\s+){0,3}?(?:highs?|lows?|liquidity|BSL|SSL|P
    each part goes straight into its own field, and everything after "extra notes" goes into Extra notes */
 /* Journal template (the user's own): long answers start with a keyword you say; yes/no lines are the name then yes or no.
    Only what you say after a keyword goes in; words before the first keyword are left out (they stay under "Everything you said"). */
+// [line in the notes, spoken keyword, keyword patterns, weaker patterns that only count at the start of a sentence]
+// You can say the short keyword or the line's own name ("confirmation", "where and why for TP and SL"...)
 const JT_LONG = [
   ['Bias', 'Bias', String.raw`bias`],
-  ['Idea/key levels', 'Idea', String.raw`ideas?|i dear`],
-  ['DOL', 'DOL', String.raw`DOL|draw`],
-  ['What I took my trade off', 'Trigger', String.raw`trigger|triggers|trigga`],
-  ['My target', 'Goal', String.raw`goal|goals|gold`],
-  ['The confirmation', 'Confirmed by', String.raw`confirmed by|confirm by|confirmed buy|confirmed bye`],
-  ['Where and why for TP and SL', 'Reasoning', String.raw`reasoning|reasonings|reason ing`],
-  ['Confidence', 'Confidence', String.raw`confidence|confident's`],
+  ['Idea/key levels', 'Idea', String.raw`ideas?(?:\s*(?:\/|and|slash|or)\s*key levels?)?|i dear`, String.raw`key levels?`],
+  ['DOL', 'DOL', String.raw`DOL`, String.raw`draw`],
+  ['What I took my trade off', 'Trigger', String.raw`trigger|triggers|trigga|what i took (?:my|the) trade off|what i took (?:my|the) trade|what i took it off|took (?:my|the) trade off`, String.raw`entry|my entry`],
+  ['My target', 'Goal', String.raw`goal|goals|gold|my target|my targets`, String.raw`targets?`],
+  ['The confirmation', 'Confirmed by', String.raw`confirmed by|confirm by|confirmed buy|confirmed bye|the confirmation|my confirmation|the conformation`, String.raw`confirmations?|conformation`],
+  ['Where and why for TP and SL', 'Reasoning', String.raw`reasoning|reasonings|reason ing|where and why(?:\s+for\s+(?:the\s+)?(?:TP|take profit|target)\s+and\s+(?:the\s+)?(?:SL|stop(?: loss)?))?|why for (?:the )?TP and (?:the )?SL`, String.raw`TP and SL|stop and target`],
+  ['Confidence', 'Confidence', String.raw`confidence(?: level)?|confident's`],
   ['Whole idea together', 'Whole idea', String.raw`(?:whole|hole|hold) ideas?(?: together)?`]];   // live trades only
 const WHOLE = JT_LONG.length - 1;
 const JT_YN = [
@@ -4712,12 +4714,12 @@ const JT_YN = [
   ['AMD/PO3', 'AMD', String.raw`(?:AMD|a\.?\s?m\.?\s?d\.?)(?:\s*(?:\/|slash|and|or)?\s*(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3))?|(?:p\.?\s?[o0]\.?\s?(?:3|three)|PO3)(?:\s*(?:\/|slash|and|or)?\s*(?:AMD|a\.?\s?m\.?\s?d\.?))?`],
   ['True Manip', 'True manip', String.raw`true\s+(?:manip(?:ulation|ulated)?|man(?:\s|-)?ip|mani\w*|manny ?p)`],
   ['PD Array', 'PD array', String.raw`PD arrays?`],
-  ['HR LR', 'HR LR', String.raw`(?:h\.?\s?r\.?\s*(?:and\s|\/\s?|slash\s|,\s?)?l\.?\s?r\.?|hrlr|high resistance(?: and| \/)? low resistance)`]];
+  ['HR LR', 'HR LR', String.raw`(?:h[\s.\-]?r\.?[\s,\/\-]*(?:(?:and|slash|or|to)[\s,\-]*)?l[\s.\-]?r\.?|hrlr|high resistance(?: and| \/| to)? low resistance)`]];
 const JT_OPT = [
   ['SMT', 'SMT', String.raw`SMT(?: divergence)?`],
-  ['LTF LRL', 'LTF LRL', String.raw`(?:LTF|low time ?frame)?\s?(?:LRL|l\.?\s?r\.?\s?l\.?|low resistance liquidity)`],
+  ['LTF LRL', 'LTF LRL', String.raw`(?:LTF|l[\s.\-]?t[\s.\-]?f\.?|low time ?frame)?[\s,\/\-]*(?:LRL|l[\s.\-]?r[\s.\-]?l\.?|low resistance liquidity)`],
   ['CISD', 'CISD', String.raw`CISD`]];
-const YES = String.raw`yes|yeah|yep|yup|ya|yah|yes i did|i did|i had(?: it| that| one)?|had(?: it| one)?|we had(?: it| one)?|got it|tick(?:ed)?|check(?:ed)?|correct|true|present|there was(?: one)?`;
+const YES = String.raw`yes|it was there|was there|it was|there|valid|yeah|yep|yup|ya|yah|yes i did|i did|i had(?: it| that| one)?|had(?: it| one)?|we had(?: it| one)?|got it|tick(?:ed)?|check(?:ed)?|correct|true|present|there was(?: one)?`;
 const NO = String.raw`no|nope|nah|know|i didn'?t(?: have)?(?: it| one)?|didn'?t(?: have)?(?: it| one)?|did not|we didn'?t(?: have)?(?: it| one)?|not really|not|none|nothing|false|there wasn'?t(?: one)?|wasn'?t`;
 const HEDGE = /\b(?:i would say|i'd say|i think|i guess|i mean|you know|kind of|sort of|technically|basically|literally|honestly|obviously|pretty much|to be honest|i'm gonna say|i'm going to say|let's say)\b[,]?/gi;
 /* Said the natural way round: "I've got a bullish bias for today" -> "bias bullish" */
@@ -4742,11 +4744,12 @@ function journalParse(text, live) {
   const s = ' ' + String(text || '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim() + ' ', hits = [], nl = (j) => j === 0 || /\n\s*$/.test(s.slice(0, j + 1));
   // yes / no lines: the name, then (within a few words) yes or no
   for (const [k, , re] of [...JT_YN, ...JT_OPT])
-    for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])(${re})\b[\s,.:\-]*(?:(?:was|is|it was|that was|for that|there|so)\s+)?(?:(?:um|uh|er)\s+)?(${YES}|${NO})\b`, 'gi')))
+    for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])(${re})\b[\s,.:\-]*(?:(?:was|is|it was|that was|for that|there|so|and|i|we|it|then|um|uh|er|definitely|honestly|probably)[\s,]+){0,3}(${YES}|${NO})\b`, 'gi')))
       hits.push({ k, yn: new RegExp('^(?:' + YES + ')$', 'i').test(m[2]) ? 'Yes' : 'No', a: m.index + m[0].indexOf(m[1]), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index), nl: nl(m.index) });
   // long answers: the keyword
-  JT_LONG.forEach(([k, , re], i) => { if (i === WHOLE && !live) return; for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${re})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi')))
-    hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index), nl: nl(m.index) }); });
+  JT_LONG.forEach(([k, , re, weak], i) => { if (i === WHOLE && !live) return; for (const [rx, wk] of [[re, 0], ...(weak ? [[weak, 1]] : [])]) for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${rx})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi'))) {
+    const sb = /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index); if (wk && !sb) continue;   // "target", "confirmation"... only count as a keyword when they start a sentence
+    hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb, nl: nl(m.index) }); } });
   hits.sort((x, y) => x.a - y.a || (y.b - y.a) - (x.b - x.a));
   const L = [], filled = new Set(); let cur = -1;
   for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue;
