@@ -916,7 +916,7 @@ body[data-view="live"] .acct { display: none; }
             <input type="file" id="imp-file" accept=".csv,.txt,.zip" multiple aria-label="CSV files">
           </div>
           <p class="note" id="imp-progress" style="margin-top:8px" hidden></p>
-          <div class="headrow" style="margin-top:12px"><button class="btn" id="b-data-save">Save data file</button><button class="btn" id="b-data-open">Open data file</button><input type="file" id="data-file" hidden></div>
+          <div class="headrow" style="margin-top:12px"><button class="btn" id="b-data-save">Save data file</button><button class="btn" id="b-data-parts">Save in small parts</button><button class="btn" id="b-data-open">Open data file</button><input type="file" id="data-file" hidden></div>
           <p class="note" style="margin-top:8px">To use your imported data on another device, like your iPad: press Save data file here, send the file to the other device (AirDrop works), then press Open data file there and pick it.</p>
           <p class="note" style="margin-top:8px">Works with Databento downloads (the .zip as it arrives, or the CSV files inside it; OHLCV-1m or OHLCV-1s), FirstRate Data, and any CSV with <span class="num">time,open,high,low,close,volume</span> columns. You can pick several files at once, like one per year. 1-second files are combined into 15-second bars. If a file holds several contract months, the app keeps the most active contract each day. Imported data replaces the sample for that instrument and stays in this browser only. Don't upload market data files to your public GitHub repo, because data licenses don't allow sharing them.</p>
         </div>
@@ -4419,7 +4419,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-52';
+const BUILD = '2026-11-18-53';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4835,6 +4835,17 @@ $('#b-data-save').addEventListener('click', async () => {
   const pr = $('#imp-progress'); pr.hidden = false; pr.textContent = 'Packing ' + syms.join(' and ') + '…';
   try { const b = await dataFileBlob(syms), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'tape-replay-data.tape'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
     pr.textContent = `Saved tape-replay-data.tape (${Math.max(1, Math.round(b.size / 1048576))} MB) with ${syms.join(' and ')}. It is in your Downloads folder.`; }
+  catch (err) { pr.textContent = 'Could not save the data file: ' + (err.message || err); }
+});
+/* Same data file cut into 20 MB pieces, one button per piece, for sending where big files aren't allowed */
+$('#b-data-parts').addEventListener('click', async () => {
+  const syms = SYMS.filter(s => !DATA[s].sample); if (!syms.length) { toast('There is no imported data in this browser yet.'); return; }
+  const pr = $('#imp-progress'); pr.hidden = false; pr.textContent = 'Packing ' + syms.join(' and ') + '…';
+  try { const b = await dataFileBlob(syms), P = 20 * 1048576, n = Math.ceil(b.size / P);
+    pr.innerHTML = `Your data is in ${n} parts. Tap each one to save it (they go in Downloads):<br>`;
+    for (let i = 0; i < n; i++) { const btn = document.createElement('button'); btn.className = 'btn'; btn.style.margin = '6px 6px 0 0'; btn.textContent = `Save part ${i + 1} of ${n}`;
+      btn.addEventListener('click', () => { const a = document.createElement('a'); a.href = URL.createObjectURL(b.slice(i * P, (i + 1) * P)); a.download = `tape-replay-data-part${i + 1}-of-${n}.tape`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 60000); btn.textContent = `Part ${i + 1} saved ✓`; });
+      pr.appendChild(btn); } }
   catch (err) { pr.textContent = 'Could not save the data file: ' + (err.message || err); }
 });
 $('#b-data-open').addEventListener('click', () => $('#data-file').click());
