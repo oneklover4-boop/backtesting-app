@@ -4419,7 +4419,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-53';
+const BUILD = '2026-11-18-54';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4954,6 +4954,12 @@ async function sharedData() {
     const got = await readDataFile(new Blob(parts));
     for (const s of need) { const X = got[s]; if (!X) continue; X.shared = 1; X.sharedVer = M.version; DATA[s] = X; await idbPut(s, X); setBackAdj(X, SET().backAdj);
       for (const ss of store.sessions) if (ss.syms.includes(s) && (ss.cursorT < X.t[0] || ss.cursorT > X.t[X.t.length - 1])) ss.cursorT = X.t[Math.min(X.t.length - 1, 200)]; }
+    // A first-time visitor only has the example session made from sample prices: swap it for a clean session on the real data
+    if (store.sessions.length === 1 && store.sessions[0].example && need.includes('MNQ')) {
+      const T = DATA.MNQ.t, day = Math.floor((T[T.length - 1] - 30 * 86400) / 86400) * 86400 - 6 * 3600;   // 18:00 ET, about a month before the end
+      const ns = newSession({ name: 'My session', syms: ['MNQ', 'MES'], balance: 25000, startT: Math.max(T[0], day), risk: 1, comm: 0.62 }); ns.chartSym = 'MNQ'; ns.tf = 300;
+      store.sessions = [ns]; store.activeId = ns.id;
+    }
     openSession(store.activeId); renderSessions(); save();
     toast('Chart data loaded: ' + need.map(s => `${s} ${fmtT(DATA[s].t[0]).slice(4, 14)} to ${fmtT(DATA[s].t[DATA[s].t.length - 1]).slice(4, 14)}`).join(', ') + '.');
   } catch (e) { console.warn('shared data', e); }
