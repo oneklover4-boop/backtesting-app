@@ -30,3 +30,12 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           VOICE_ACCESS_CODES: ${{ secrets.VOICE_ACCESS_CODES }}
+      - name: Check the helper answers
+        run: |
+          sleep 5
+          U=https://tape-voice.oneklover4.workers.dev
+          curl -sS "$U/" | tee /tmp/h; echo
+          grep -q '"ready":true' /tmp/h || { echo "::error::Helper is not ready (no OpenAI key?)"; exit 1; }
+          code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H 'X-Access-Code: not-a-real-code' -F file=@voice-helper/wrangler.toml "$U/transcribe")
+          echo "wrong code -> $code"; [ "$code" = 401 ] || { echo "::error::Wrong code was not refused"; exit 1; }
+          curl -sS -o /dev/null -D - -X OPTIONS -H 'Origin: https://oneklover4-boop.github.io' "$U/transcribe" | grep -i '^access-control-allow-origin'
