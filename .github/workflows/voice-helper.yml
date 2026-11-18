@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check the secrets are there
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFARE_API_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           VOICE_ACCESS_CODES: ${{ secrets.VOICE_ACCESS_CODES }}
         run: |
@@ -22,7 +22,7 @@ jobs:
           if [ -n "$miss" ]; then echo "::error::Missing GitHub secrets:$miss"; exit 1; fi
       - uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN || secrets.CLOUDFARE_API_TOKEN }}
           workingDirectory: voice-helper
           secrets: |
             OPENAI_API_KEY
