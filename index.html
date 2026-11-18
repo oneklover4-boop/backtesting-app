@@ -4419,7 +4419,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-17-49';
+const BUILD = '2026-11-18-50';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4608,7 +4608,7 @@ function squashRepeats(txt) {   // "bias bearish below the open bias bearish bel
 const VKEY = 'tape-replay.voicekey';
 const voiceKey = () => { try { return localStorage.getItem(VKEY) || ''; } catch (e) { return ''; } };
 /* Shared mic: friends get the cloud speech engine with an access code. The OpenAI key lives in a small Cloudflare helper (voice-helper/), never in this page */
-const VPROXY = '';   // the helper's address, filled in once it is deployed
+const VPROXY = 'https://tape-voice.oneklover4.workers.dev';   // the shared mic helper (voice-helper/)
 const VCODE = 'tape-replay.voicecode';
 const voiceCode = () => { try { return localStorage.getItem(VCODE) || ''; } catch (e) { return ''; } };
 const cloudOn = () => !!(voiceKey() || (VPROXY && voiceCode()));
