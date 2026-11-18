@@ -966,7 +966,7 @@ body.notpl .jt-help { display: none; }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row"><button class="btn" id="tj-be">Count as break even</button><span id="tj-delwrap"></span></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <p class="note jt-help"><b>Just talk about the trade.</b> The key level, confirmation, bias, TP and stop loss and DOL are picked out at the top, and everything you said goes underneath word for word. Saying the names (key level, confirmation, bias, TP and stop loss, DOL) helps.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <p class="note jt-help"><b>Just talk about the trade.</b> Short answers for confirmation, bias, what price manipulated into and DOL go at the top, and everything you said goes underneath word for word. Saying the names (confirmation, bias, manipulated into, DOL) helps.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -4483,7 +4483,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-63';
+const BUILD = '2026-11-18-64';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4705,7 +4705,7 @@ const voiceKey = () => { try { return localStorage.getItem(VKEY) || ''; } catch 
 /* Shared mic: everyone on the site gets the cloud speech engine, with daily limits. The OpenAI key lives in a small Cloudflare helper (voice-helper/), never in this page */
 const VPROXY = 'https://tape-voice.oneklover4.workers.dev';   // the shared mic helper (voice-helper/)
 const cloudOn = () => !!(voiceKey() || VPROXY);   // everyone gets the shared engine; your own key is used instead if you saved one
-const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Note headings said aloud: Key level, Confirmation, TP and stop loss, stop loss, take profit, Bias, Idea, key levels, DOL, Trigger, What I took my trade off, Goal, My target, Confirmed by, The confirmation, Reasoning, Where and why for TP and SL, Confidence, Whole idea together, A plus DOL, AMD/PO3, True manip, PD array, HR LR, SMT, LTF LRL, CISD. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
+const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Note headings said aloud: Confirmation, Daily bias, Manipulated into, Manipulation, Bias, Idea, key levels, DOL, Trigger, What I took my trade off, Goal, My target, Confirmed by, The confirmation, Reasoning, Where and why for TP and SL, Confidence, Whole idea together, A plus DOL, AMD/PO3, True manip, PD array, HR LR, SMT, LTF LRL, CISD. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
 async function transcribe(blob) {
   const ext = /mp4|m4a|aac/.test(blob.type) ? 'm4a' : /ogg/.test(blob.type) ? 'ogg' : /wav/.test(blob.type) ? 'wav' : 'webm';
   const fd = new FormData(); fd.append('file', blob, 'note.' + ext); fd.append('model', 'gpt-4o-transcribe'); fd.append('language', 'en'); fd.append('prompt', CLOUD_PROMPT);
@@ -4886,11 +4886,25 @@ function tidyNotes(raw, t) {
 /* Backtest notes (owner template): a short summary at the top, then everything you said, word for word, at the bottom.
    The summary is picked out by keyword straight away, then (with the cloud engine) rewritten by a language model that reads the whole of what you said. */
 const BT_F = [
-  ['Key level', 'Key level', String.raw`key levels?(?:\s+(?:that\s+)?i took (?:my|the|this) trade off(?:\s+(?:of|from))?)?|(?:i\s+)?took (?:my|the|this) trade off(?:\s+(?:of|from))?|(?:i\s+)?took (?:it|the trade|my trade) (?:off|from)(?:\s+(?:of|from))?|ideas?\s*(?:\/|and|slash|or)\s*key levels?|what i took (?:my|the) trade off|what i took (?:my|the) trade|what i took it off|took (?:my|the) trade off|took (?:it|the trade) off|trigger|triggers|trigga`, String.raw`level|entry|my entry|ideas?`],
   ['Confirmation', 'Confirmation', String.raw`confirmed by|confirm by|confirmed buy|the confirmation|my confirmation|the conformation|my confirmations|the confirmations`, String.raw`confirmations?|conformation`],
-  ['Bias', 'Bias', String.raw`bias`],
-  ['TP and stop loss', 'TP and stop loss', String.raw`(?:the\s+)?(?:TP|take profit|target)\s+and\s+(?:the\s+)?(?:SL|stop(?: loss)?)|(?:the\s+)?(?:SL|stop(?: loss)?)\s+and\s+(?:the\s+)?(?:TP|take profit|target)|where and why(?:\s+for\s+(?:the\s+)?(?:TP|take profit|target)\s+and\s+(?:the\s+)?(?:SL|stop(?: loss)?))?|reasoning|reasonings|stop loss|take profit|my target|my targets|my stop|my TP|my SL|goal|goals`, String.raw`targets?|TP|SL|stop|stops`, String.raw`stop loss|take profit|my target|my targets|my stop|my TP|my SL|targets?|TP|SL|stop|stops`],
+  ['Bias', 'Bias', String.raw`daily bias|bias`],
+  ['Manipulated into', 'Manipulated into', String.raw`manipulated into|manipulated|manipulation|manip|manny p|we manipulated(?: into)?|price manipulated(?: into)?|manipulat\w*`, String.raw`swept|sweep|we swept|raided|took out|ran`],
   ['DOL', 'DOL', String.raw`DOL|D\.? ?O\.? ?L\.?|draw on liquidity|draw on liq`, String.raw`draw`]];
+/* One or two word answers: the trading terms in what you said ("SMT with ES and then a CISD on the 1 minute" -> "SMT with ES, 1m CISD") */
+const BT_TF = String.raw`(?:1|2|3|5|15|30)m|1H|4H|daily|weekly|monthly|HTF|LTF`;
+const BT_TERM = String.raw`iFVG|FVG|BPR|SIBI|BISI|SMT(?: divergence)?(?: (?:with|on|vs\.?|against) (?:ES|NQ|MES|MNQ|YM))?|CISD|MSS|BOS|CHoCH|OTE|order blocks?|OB|breakers?(?: blocks?)?|mitigation blocks?|PD arrays?|NWOG|NDOG|BSL|SSL|EQH|EQL|PDH|PDL|PWH|PWL|PMH|PML|(?:Asia|Asian|London|NY AM|NY PM|NY lunch|NY|New York|midnight|pre-?market|session|daily|weekly|swing|old|previous day|previous week)(?: session)? (?:highs?|lows?|opens?)|equal (?:highs|lows)|relative equal (?:highs|lows)|buy-side(?: liquidity)?|sell-side(?: liquidity)?|liquidity void|displacement|rejection block|wick|premium|discount|equilibrium|true day open|daily open|weekly open|midnight open|opening gap|volume imbalance|turtle soup|stop hunt|Judas swing`;
+function btShort(v, k) {
+  v = fixTerms(String(v || '')); if (k === 'Bias') return btDir(v);
+  const re = new RegExp(String.raw`(?:\b(${BT_TF})\s+)?\b(${BT_TERM})\b(?:\s+(?:on|of|in)\s+(?:the\s+)?(${BT_TF})(?:\s+(?:chart|time ?frame|candle))?)?`, 'gi'), out = [];
+  let end = -1;
+  for (const m of v.matchAll(re)) { const tf = m[1] || m[3] || '', x = (tf ? tf + ' ' : '') + m[2].replace(/^(asian)/i, 'Asia'), gap = end >= 0 ? v.slice(end, m.index) : '';
+    const join = out.length && /^\s+(under|below|above|at|into|in|of|inside)\s+(?:the\s+)?$/i.exec(gap); end = m.index + m[0].length;   // "SSL under the PDL" stays together
+    if (join) { out[out.length - 1] += ' ' + join[1].toLowerCase() + ' ' + x; continue; }
+    if (!out.some(o => o.toLowerCase() === x.toLowerCase() || o.toLowerCase().endsWith(' ' + x.toLowerCase()))) out.push(x); }
+  if (out.length) return out.slice(0, 3).join(', ');
+  const w = tidyAnswer(v, k).replace(/[.!?]+$/, '').replace(/^(?:the|a|an|into|in|to|was|is|at)\s+/i, '').split(/\s+/).filter(Boolean);
+  return w.slice(0, 3).join(' ') + (w.length > 3 ? '…' : '');
+}
 const BT_SAID = 'Everything I said:', RE_SAID = /^Everything I said:/m;
 const btMode = (t) => useTpl() && !(t && t.live);
 const btDir = (v) => { const m = String(v || '').match(/\b(bullish|bearish|long|short)\b/i); return !m ? '' : /bull|long/i.test(m[1]) ? 'Bullish' : 'Bearish'; };
@@ -4906,7 +4920,7 @@ function btSplit(v) {   // notes text back into { fields, said }
 }
 function btParse(text) {
   text = fixTerms(String(text || '')); const F = journalParse(text, false, BT_F, false);
-  for (const k in F) F[k] = F[k].replace(/^(?:the|my)\s+(?=\S)/i, '').replace(/^./, c => c.toUpperCase());
+  for (const k in F) { F[k] = btShort(F[k], k); F[k] = F[k] ? F[k].charAt(0).toUpperCase() + F[k].slice(1) : ''; if (!F[k]) delete F[k]; }
   F.Bias = btDir(F.Bias) || (() => { const d = new Set((text.match(/\b(?:bullish|bearish)\b/gi) || []).map(x => x.toLowerCase())); return d.size === 1 ? btDir([...d][0]) : ''; })();
   if (!F.Bias) delete F.Bias;
   return F;
@@ -4918,13 +4932,13 @@ function btMerge(prev, said) {
   if (prev && !RE_SAID.test(prev) && /^Bias:/m.test(prev)) P = { f: btParse(notesPlain(prev)), said: '' };   // notes in the older template
   else if (prev && !RE_SAID.test(prev)) P = { f: btParse(prev), said: String(prev).split('\n').map(btSaidLine).filter(Boolean).join('\n') };   // typed or spoken text with no headings yet
   const F = btParse(said);
-  for (const [k] of BT_F) if (F[k]) { const o = P.f[k] || ''; P.f[k] = k === 'Bias' || !o ? F[k] : o.toLowerCase().includes(F[k].toLowerCase().replace(/\.$/, '')) ? o : o + ' ' + F[k]; }
+  for (const [k] of BT_F) if (F[k]) { const o = P.f[k] || ''; P.f[k] = k === 'Bias' || !o ? F[k] : o.toLowerCase().includes(F[k].toLowerCase()) ? o : o + ', ' + F[k]; }
   const add = String(said || '').split('\n').map(btSaidLine).filter(Boolean).join('\n');
   return btFormat(P.f, [P.said, add].filter(Boolean).join('\n'));
 }
 function addNotes(prev, said, t) { return btMode(t) ? btMerge(prev || '', said) : tidyNotes(plainOf(prev || '') + '\n' + said, t); }
 /* The summary, written by a language model from everything you said (shared mic helper, or your own OpenAI key). Same instructions as voice-helper/worker.js */
-const NOTES_SYS = 'You write short backtesting journal notes for an ICT-style futures trader (MNQ, MES, NQ, ES). You get everything the trader said about one trade, word for word, and the current notes. Return JSON with exactly these keys: "key_level", "confirmation", "bias", "tp_sl", "dol". key_level: the key level or PD array they took the trade off (for example "15m FVG after the Asia low sweep"). confirmation: what confirmed the entry (for example "SMT with ES, 1m iFVG, CISD"). bias: exactly "Bullish" or "Bearish", or "" if they did not say. tp_sl: a short summary of where the take profit and the stop loss were and why, keeping every important detail they gave (levels, R multiple, reasons, management such as break even or partials). dol: the draw on liquidity (where price is drawn to). Rules: use only what they said and never invent anything; "" for a field they did not talk about; note style, short fragments, no full sentences, no "I", no filler, no hedging; keep their own trading words and use shorthand: FVG, iFVG, BPR, SMT, CISD, MSS, BOS, OTE, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, DOL, HTF, LTF, 1m, 5m, 15m, 1H, 4H, Asia, London, NY AM, NY PM. The current notes may hold things the trader typed: keep them unless what they said changes them.';
+const NOTES_SYS = 'You fill in the top of a backtesting journal entry for an ICT-style futures trader (MNQ, MES, NQ, ES). You get everything the trader said about one trade (or a day with no trade), word for word, and the current answers. Return JSON with exactly these keys: "confirmation", "bias", "manipulation", "dol". Each answer is one to four words, the way a trader writes a journal: confirmation = what confirmed the entry (for example "SMT with ES, 1m CISD" or "5m iFVG"); bias = exactly "Bullish" or "Bearish", or "" if they did not say; manipulation = what price manipulated into or swept before the move (for example "Asia high" or "4H FVG"); dol = the draw on liquidity (for example "BSL above PDH" or "PWL"). Rules: only what they said, never invent; "" for anything they did not mention; no sentences, no reasons, no "I", no filler (the full words are kept separately); use shorthand: FVG, iFVG, BPR, SMT, CISD, MSS, BOS, OTE, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, 1m, 5m, 15m, 1H, 4H, Asia, London, NY AM, NY PM. Keep a current answer unless what they said changes it.';
 const btAiAsk = (said, f) => 'Current notes:\n' + BT_F.map(x => `${x[0]}: ${f[x[0]] || ''}`).join('\n') + '\n\nEverything they said:\n' + said;
 async function btAi(said, f) {
   const own = voiceKey(); let out;
@@ -4934,8 +4948,7 @@ async function btAi(said, f) {
   else { const r = await fetch(VPROXY.replace(/\/$/, '') + '/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ said, notes: f }) });
     if (!r.ok) throw new Error('notes ' + r.status); out = (await r.json()).notes; }
   const g = (k) => typeof out[k] === 'string' ? fixTerms(out[k].trim()).replace(/^./, c => c.toUpperCase()) : '';
-  const n = { 'Key level': g('key_level'), 'Confirmation': g('confirmation'), 'Bias': btDir(g('bias')), 'TP and stop loss': g('tp_sl'), 'DOL': g('dol') };
-  for (const k in n) if (n[k] && k !== 'Bias' && !/[.!?]$/.test(n[k])) n[k] += '.';
+  const n = { 'Confirmation': g('confirmation').replace(/[.!?]+$/, ''), 'Bias': btDir(g('bias')), 'Manipulated into': g('manipulation').replace(/[.!?]+$/, ''), 'DOL': g('dol').replace(/[.!?]+$/, '') };
   return n;
 }
 /* After a recording: ask for the better summary, and put it in only if the notes haven't changed in the meantime */

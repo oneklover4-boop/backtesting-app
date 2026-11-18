@@ -38,5 +38,5 @@ jobs:
           echo "site, no recording -> $code $(cat /tmp/b)"; [ "$code" = 400 ] || { echo "::error::Unexpected answer"; exit 1; }
           curl -sS -o /dev/null -D - -X OPTIONS -H 'Origin: https://oneklover4-boop.github.io' "$U/transcribe" | grep -i '^access-control-allow-origin'
           # backtest notes summary: a real sample, the answer must pick out the bias
-          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"said":"I have a bullish bias today. The key level I took my trade off was the 15 minute FVG. My confirmation was SMT with ES. My stop loss is under the swing low and TP is the Asia high. My DOL is the buy side liquidity above the Asia high."}' "$U/notes" | tee /tmp/n; echo
+          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"said":"Okay so I have a bullish bias today because we are above the daily open. Price manipulated into the 4H FVG and swept the London low. My confirmation was SMT with ES and then a CISD on the 1 minute. My stop loss is under the swing low and TP is the Asia high. My DOL is the buy side liquidity above the Asia high."}' "$U/notes" | tee /tmp/n; echo
           grep -q '"bias":"Bullish"' /tmp/n || { echo "::error::The notes summary did not answer properly"; exit 1; }
