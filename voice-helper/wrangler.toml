@@ -4,8 +4,8 @@ compatibility_date = "2025-09-01"
 workers_dev = true
 
 [vars]
-PER_IP_DAY = "40"    # recordings per person per day
-TOTAL_DAY = "400"    # recordings for everyone together per day
+PER_IP_CENTS = "50"   # spend per person (internet address) per day, in US cents
+TOTAL_CENTS = "500"   # spend for everyone together per day, in US cents
 
 [[durable_objects.bindings]]
 name = "LIMITER"
