@@ -3400,7 +3400,7 @@ function renderSessions() {
   const D = DATA.MNQ, mn = new Date(lo * 1000).toISOString().slice(0, 10), mx = new Date(hi * 1000).toISOString().slice(0, 10);
   const di = $('#ns-date'); di.min = mn; di.max = mx; if (!di.value || di.value < mn || di.value > mx) di.value = new Date((lo + 86400 * 2) * 1000).toISOString().slice(0, 10);
   $('#imp-sym').innerHTML = SYMS.map(s => `<option>${s}</option>`).join('');
-  $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : 'your imported data' + (X.rolls && X.rolls.length ? (X.rule !== 'tv2' ? ', <b>import again to match TradingView</b>' : '') + (X.adj ? ', back-adjusted for ' + X.rolls.length + ' contract roll' + (X.rolls.length > 1 ? 's' : '') : ', real contract prices') : '')}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
+  $('#data-status').innerHTML = SYMS.map(s => { const X = DATA[s]; return `<b>${s}</b>: ${X.sample ? 'sample data' : (X.shared ? 'chart data from the site' : 'your imported data') + (X.rolls && X.rolls.length ? (X.rule !== 'tv2' ? ', <b>import again to match TradingView</b>' : '') + (X.adj ? ', back-adjusted for ' + X.rolls.length + ' contract roll' + (X.rolls.length > 1 ? 's' : '') : ', real contract prices') : '')}, ${tfLabel(X.base)} bars, ${fmtT(X.t[0]).slice(4, 14)} to ${fmtT(X.t[X.t.length - 1]).slice(4, 14)}`; }).join('<br>')
     + '<br><span>The sample is generated, realistic-looking price action for practice. It is not real market history. Import real data below to backtest for real.</span>';
 }
 
@@ -4419,7 +4419,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-51';
+const BUILD = '2026-11-18-52';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4929,6 +4929,23 @@ async function boot() {
   window.TapeReplay = { notesPlain, journalParse, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions', 'live'].includes(h)) setView(h);
   save();
+  sharedData();
+}
+/* Chart data for everyone: the site carries the MNQ/MES history (data/market.json + parts). It loads by itself the first time,
+   is kept on the device, and updates when a newer version is put on the site. Data you import yourself is never replaced. */
+async function sharedData() {
+  try {
+    const r = await fetch('data/market.json', { cache: 'no-cache' }); if (!r.ok) return; const M = await r.json();
+    const need = (M.syms || []).filter(s => INSTR[s] && (DATA[s].sample || (DATA[s].shared && DATA[s].sharedVer !== M.version)));
+    if (!need.length) return;
+    toast('Loading chart data (' + need.join(' and ') + ') for the first time. This takes a minute…');
+    const parts = []; for (const f of M.parts) { const x = await fetch('data/' + f, { cache: 'no-cache' }); if (!x.ok) throw new Error('missing ' + f); parts.push(await x.blob()); }
+    const got = await readDataFile(new Blob(parts));
+    for (const s of need) { const X = got[s]; if (!X) continue; X.shared = 1; X.sharedVer = M.version; DATA[s] = X; await idbPut(s, X); setBackAdj(X, SET().backAdj);
+      for (const ss of store.sessions) if (ss.syms.includes(s) && (ss.cursorT < X.t[0] || ss.cursorT > X.t[X.t.length - 1])) ss.cursorT = X.t[Math.min(X.t.length - 1, 200)]; }
+    openSession(store.activeId); renderSessions(); save();
+    toast('Chart data loaded: ' + need.map(s => `${s} ${fmtT(DATA[s].t[0]).slice(4, 14)} to ${fmtT(DATA[s].t[DATA[s].t.length - 1]).slice(4, 14)}`).join(', ') + '.');
+  } catch (e) { console.warn('shared data', e); }
 }
 boot();
 })();
