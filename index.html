@@ -600,6 +600,7 @@ body[data-view="live"] .acct { display: none; }
 .lt-tagin { flex: 1; min-width: 160px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; color: var(--fg); }
 #tjournal .lt-only { display: none; }
 .jt-help { margin: 0; font-size: 12px; line-height: 1.6; }
+body.notpl .jt-help { display: none; }
 .lt-pics { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; border: 1px dashed var(--line); border-radius: 10px; padding: 10px; min-height: 70px; }
 .lt-pics.drag { border-color: var(--accent); }
 .lt-pic { position: relative; width: 150px; height: 96px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: var(--bg); }
@@ -904,6 +905,7 @@ body[data-view="live"] .acct { display: none; }
         </div>
         <div class="card">
           <h3>Voice notes</h3>
+          <label class="mut" style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" id="jtpl-on"> Fill my notes into my journal template (Bias, Idea, DOL, Trigger…). Off: notes are written down as you say them.</label>
           <p class="note" id="vk-status"></p>
           <div class="headrow" style="margin-top:10px"><input class="ctl" id="vk-in" type="password" autocomplete="off" placeholder="Optional: your own OpenAI key (starts with sk-)" aria-label="OpenAI key" style="flex:1;min-width:220px"><button class="btn primary" id="vk-save">Save</button><button class="btn" id="vk-del">Remove</button></div>
         </div>
@@ -1323,6 +1325,8 @@ function initSettings() {
   const o = store.settings || {};
   // Charts still on the old dark default switch once to the FX Replay look; a custom background is left alone.
   if (!o.themeV) { if (!o.bg || o.bg === '#0a0a0b') for (const k of Object.keys(THEMES.fxr)) delete o[k]; o.themeV = 5; }
+  // The journal template is the owner's own: devices that already used it keep it, everyone else gets plain notes
+  if (o.jtpl === undefined) { const has = (n) => /^Bias:/m.test(n || ''); o.jtpl = (store.sessions || []).some(ss => (ss.trades || []).some(t => has(t.notes)) || (ss.positions || []).some(x => has(x.notes)) || has(ss.idea)) || ((store.live && store.live.trades) || []).some(t => has(t.notes)); }
   store.settings = Object.assign({}, DEF_SET, o);
   if (!store.settings.tvLook) { store.settings.tvLook = 1; store.settings.xColor = '#9c9c9c'; store.settings.xStyle = 2; }
 }
@@ -4079,7 +4083,7 @@ let tjTrade = null, rec = null, recText = '', calTrades = [];
 const anyTrade = (id) => S().trades.find(x => x.id === id) || store.sessions.flatMap(s => s.trades).find(x => x.id === id) || LIVE().trades.find(x => x.id === id);
 async function openDay(day) {
   const list = calTrades.filter(t => new Date(t.closeT * 1000).toISOString().slice(0, 10) === day).sort((a, b) => a.openT - b.openT);
-  for (const t of list) if (t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
+  for (const t of list) if (useTpl() && t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
   const net = list.reduce((a, t) => a + t.pnl, 0), d = new Date(day + 'T12:00:00Z');
   $('#dj-title').innerHTML = `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]} ${d.getUTCFullYear()} <span class="${cls(net)} num" style="font-weight:500;margin-left:8px">${fmtUsd(net)} · ${list.length} trade${list.length > 1 ? 's' : ''}</span>`;
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">${t.live ? 'Edit trade' : 'Edit notes'}</button></h3>
@@ -4099,7 +4103,7 @@ async function openJournal(id) {
   const t = anyTrade(id); if (!t) return; tjTrade = t;
   $('#tj-title').textContent = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
   $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
-  if (t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
+  if (useTpl() && t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
   $('#tj-notes').value = t.notes || JT_TEMPLATE(); $('#tj-live').textContent = '';
   $('#tj-said').hidden = !t.said; $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
@@ -4227,7 +4231,7 @@ async function ltSave() {
   save(); ltClose(); toast('Trade saved.'); if (view === 'live') renderLT();
 }
 function ltStopRec() { if (ltRec) { ltRec.cancel(); ltRec = null; } $('#lt-mic').classList.remove('rec'); $('#lt-mic span').textContent = 'Speak your notes'; }
-function ltApply(said) { said = (said || '').trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value) + '\n' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function ltApply(said) { said = (said || '').trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(plainOf($('#lt-notes').value) + '\n' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
 async function ltFlush() { if (ltRec) { const L = ltRec; ltRec = null; ltStopRec(); ltApply(await L.finish()); } }
 function ltNoteTrade() { const x = ltRead(); return { ...x, live: 1, r: x.rrMade, exit: x.exit, pnl: x.pnl ?? 0, reason: x.be ? 'BE' : 'Live', openT: x.openT || etNow(), closeT: x.closeT ?? x.openT }; }
 function ltClose() {
@@ -4306,7 +4310,7 @@ function renderLT() {
   // trade list
   const tr = [...trades].sort((a, b) => b.openT - a.openT);
   $('#lt-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th></th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">Planned RR</th><th class="num">Held</th><th>Tags</th><th>Notes</th></tr></thead><tbody>${tr.map(t => {
-    const rr = plannedRR(t), note = notesPlain(t.notes || '').replace(/^\.\s*/, '').slice(0, 60);
+    const rr = plannedRR(t), note = plainOf(t.notes || '').replace(/^\.\s*/, '').slice(0, 60);
     return `<tr data-ltedit="${t.id}" class="lt-row"><td><button class="btn jbtn" data-ltedit="${t.id}">${t.shot ? '📷 ' : ''}Open</button></td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exitReal ?? t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td class="num ${cls(t.pnl)}">${t.reason === 'BE' ? 'BE ' : ''}${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${rr != null ? '1:' + rr.toFixed(2) : '–'}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td>${ltTagList(t.tags).map(g => `<span class="pill n">${esc(g)}</span>`).join(' ')}</td><td class="mut">${esc(note)}</td></tr>`; }).join('')}</tbody></table>`
     : `<div class="empty" style="padding:18px">${L.trades.length ? 'No trades match these filters.' : 'No live trades yet. Press <b>+ Add trade</b> at the top to log your first one.'}</div>`;
 }
@@ -4411,7 +4415,7 @@ $('#lt-pics').addEventListener('dragleave', () => $('#lt-pics').classList.remove
 $('#lt-pics').addEventListener('drop', e => { e.preventDefault(); $('#lt-pics').classList.remove('drag'); ltAddFiles(e.dataTransfer.files || []); });
 document.addEventListener('paste', e => { if ($('#ltedit').hidden || !e.clipboardData) return; const f = [...e.clipboardData.files || []].filter(x => /^image\//.test(x.type)); if (f.length) { e.preventDefault(); ltAddFiles(f); } });
 $('#ltpic').addEventListener('click', () => { $('#ltpic').hidden = true; });
-$('#lt-tidy').addEventListener('click', () => { if (!ltDraft) return; $('#lt-notes').value = tidyNotes(notesPlain($('#lt-notes').value), ltNoteTrade()); });
+$('#lt-tidy').addEventListener('click', () => { if (!ltDraft) return; $('#lt-notes').value = tidyNotes(plainOf($('#lt-notes').value), ltNoteTrade()); });
 $('#lt-mic').addEventListener('click', async () => {
   if (ltRec) { const L = ltRec; ltRec = null; $('#lt-mic span').textContent = 'Finishing…'; $('#lt-live').textContent = L.cloud ? 'Writing down what you said…' : 'Catching your last words…'; const said = await L.finish(); ltStopRec(); ltApply(said); if (L.failed) $('#lt-live').textContent = L.failed; return; }
   const L = listen((x, st) => { $('#lt-live').textContent = st || '“' + x.slice(-90) + '”'; }, (why) => { ltStopRec(); $('#lt-notes').focus(); $('#lt-live').textContent = why === 'loop' ? 'The microphone kept stopping. Tap Speak your notes to try again, or tap the microphone key on the keyboard to dictate.' : 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; });
@@ -4419,7 +4423,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-54';
+const BUILD = '2026-11-18-60';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4456,7 +4460,7 @@ async function voiceStop(keep) {
   (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + '\n' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
   if (tg.kind === 'pos') { tg.x.said = add(tg.x.said); tg.x.notes = tidyNotes(plainOf(tg.x.notes) + '\n' + said, tg.x); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
-  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(notesPlain(t.notes || '') + '\n' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
+  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(plainOf(t.notes || '') + '\n' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
   else { sess.ideaSaid = add(sess.ideaSaid); sess.idea = tidyNotes(plainOf(sess.idea) + '\n' + said, null); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
 }
@@ -4645,6 +4649,8 @@ function vkRender() { const k = voiceKey();
 $('#vk-save').addEventListener('click', () => { const k = $('#vk-in').value.trim(); if (!/^sk-[\w-]{10,}$/.test(k)) { toast('That doesn\'t look like an OpenAI key. It starts with sk-'); return; } try { localStorage.setItem(VKEY, k); } catch (e) {} $('#vk-in').value = ''; vkRender(); toast('Key saved. The mic now uses your own key.'); });
 $('#vk-del').addEventListener('click', () => { try { localStorage.removeItem(VKEY); } catch (e) {} vkRender(); toast(VPROXY ? 'Key removed. The mic uses the shared cloud engine.' : 'Key removed. The mic is back to the browser\'s speech engine.'); });
 vkRender();
+function jtplRender() { $('#jtpl-on').checked = useTpl(); document.body.classList.toggle('notpl', !useTpl()); }
+$('#jtpl-on').addEventListener('change', () => { SET().jtpl = $('#jtpl-on').checked; save(); jtplRender(); toast(SET().jtpl ? 'Notes will be filled into your journal template.' : 'Notes will be written down as you say them, with no template.'); });
 /* One listener for every mic button: keeps listening through pauses, never loops, and when you tap Done it waits a moment for your last words */
 function listen(onText, onFatal) {
   if (cloudOn() && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder) return cloudListen(onText, onFatal);
@@ -4774,11 +4780,17 @@ function journalParse(text, live) {
     out[h.k] = out[h.k] ? out[h.k] + ' ' + v : v; }
   return out;
 }
+const useTpl = () => !!(store && store.settings && store.settings.jtpl);
+function plainNotes(raw) {   // no template: what was said, cleaned up, one line per note
+  return String(raw || '').split('\n').map(l => { let v = fixTerms(l).replace(TALK, ' ').replace(LIKE, '$1').replace(/\b(\w+)(?:\s+\1\b)+/gi, '$1').replace(/\s+/g, ' ').replace(/\s+([,.!?])/g, '$1').replace(/^[\s,.;:\-]+/, '').trim();
+    if (!v) return ''; if (!/^[a-z][A-Z]/.test(v)) v = v.charAt(0).toUpperCase() + v.slice(1); return /[.!?]$/.test(v) ? v : v + '.'; }).filter(Boolean).join('\n');
+}
 function tidyNotes(raw, t) {
+  if (!useTpl()) return plainNotes(raw);
   const live = !!(t && t.live), F = journalParse(fixTerms(String(raw || '')), live), line = (k) => `${k}: ${F[k] || ''}`.trimEnd();
   return [...JT_LONG.slice(0, WHOLE).map(x => line(x[0])), '', ...JT_YN.map(x => line(x[0])), '', 'Optional:', ...JT_OPT.map(x => line(x[0])), ...(live ? ['', line(JT_LONG[WHOLE][0])] : [])].join('\n');
 }
-const JT_TEMPLATE = (live) => tidyNotes('', live ? { live: 1 } : null);
+const JT_TEMPLATE = (live) => useTpl() ? tidyNotes('', live ? { live: 1 } : null) : '';
 /* Notes text back into spoken form (keyword + answer), so Tidy up notes keeps what you typed */
 const plainOf = (v) => /^Bias:/m.test(v || '') ? notesPlain(v) : String(v || '');   // older notes may still be raw speech
 const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT].map(x => [x[0].toLowerCase(), x[1]]));
@@ -4789,7 +4801,7 @@ const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT
     if (open && l.trim()) out[out.length - 1] += ' ' + l.trim().replace(/[.!?]*$/, '.'); else if (!l.trim()) open = false; }
   return out.join('\n'); };
 function stopRec() { if (rec) { rec.cancel(); rec = null; } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
-function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value) + '\n' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(plainOf($('#tj-notes').value) + '\n' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
 async function tjFlush() { if (rec) { const L = rec; rec = null; stopRec(); tjApply(await L.finish()); } }   // closing while still recording keeps what was said
 $('#tj-mic').addEventListener('click', async () => {
   if (rec) { const L = rec; rec = null; $('#tj-mic span').textContent = 'Finishing…'; $('#tj-live').textContent = L.cloud ? 'Writing down what you said…' : 'Catching your last words…'; const said = await L.finish(); stopRec(); tjApply(said); if (L.failed) $('#tj-live').textContent = L.failed; return; }
@@ -4797,7 +4809,7 @@ $('#tj-mic').addEventListener('click', async () => {
   if (!L) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
   rec = L; $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.';
 });
-$('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; $('#tj-notes').value = tidyNotes(notesPlain($('#tj-notes').value), tjTrade); });
+$('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; $('#tj-notes').value = tidyNotes(plainOf($('#tj-notes').value), tjTrade); });
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
 $('#cal-next').addEventListener('click', () => shiftCal(1));
 document.addEventListener('change', e => {
@@ -4934,7 +4946,7 @@ async function boot() {
   PANES.push(makePane(0), makePane(1));
   migrate(S()); syncPtrs(S());
   document.body.dataset.view = 'chart';
-  applySettings(); rebuildAll(true); renderAll(); renderFavbar();
+  applySettings(); jtplRender(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
   window.TapeReplay = { notesPlain, journalParse, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
