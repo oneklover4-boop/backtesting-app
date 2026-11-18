@@ -952,7 +952,7 @@ body.notpl .jt-help { display: none; }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row"><button class="btn" id="tj-be">Count as break even</button></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <p class="note jt-help"><b>Say the keyword, then your answer:</b> Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence<span class="lt-only"> · Whole idea (say it last, everything after it goes there)</span>. <b>Then name + yes or no:</b> AMD (or PO3) · A plus DOL · True manip · PD array · HR LR · SMT · LTF LRL · CISD.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <p class="note jt-help"><b>Just talk about the trade.</b> The key level, confirmation, bias, TP and stop loss and DOL are picked out at the top, and everything you said goes underneath word for word. Saying the names (key level, confirmation, bias, TP and stop loss, DOL) helps.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -4105,7 +4105,7 @@ async function openJournal(id) {
   $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
   if (useTpl() && t.said && t.notes && !/^Bias:/m.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
   $('#tj-notes').value = t.notes || JT_TEMPLATE(); $('#tj-live').textContent = '';
-  $('#tj-said').hidden = !t.said; $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
+  $('#tj-said').hidden = !t.said || btMode(t); $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
   const img = await shotGet(t.id);
   $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
@@ -4231,7 +4231,7 @@ async function ltSave() {
   save(); ltClose(); toast('Trade saved.'); if (view === 'live') renderLT();
 }
 function ltStopRec() { if (ltRec) { ltRec.cancel(); ltRec = null; } $('#lt-mic').classList.remove('rec'); $('#lt-mic span').textContent = 'Speak your notes'; }
-function ltApply(said) { said = (said || '').trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = tidyNotes(plainOf($('#lt-notes').value) + '\n' + said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function ltApply(said) { said = (said || '').trim(); if (said && ltDraft) { ltDraft.said = ((ltDraft.said || '') + ' ' + said).trim(); $('#lt-notes').value = addNotes($('#lt-notes').value, said, ltNoteTrade()); } $('#lt-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
 async function ltFlush() { if (ltRec) { const L = ltRec; ltRec = null; ltStopRec(); ltApply(await L.finish()); } }
 function ltNoteTrade() { const x = ltRead(); return { ...x, live: 1, r: x.rrMade, exit: x.exit, pnl: x.pnl ?? 0, reason: x.be ? 'BE' : 'Live', openT: x.openT || etNow(), closeT: x.closeT ?? x.openT }; }
 function ltClose() {
@@ -4423,7 +4423,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-60';
+const BUILD = '2026-11-18-61';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4459,10 +4459,13 @@ async function voiceStop(keep) {
   const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
   (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + '\n' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
-  if (tg.kind === 'pos') { tg.x.said = add(tg.x.said); tg.x.notes = tidyNotes(plainOf(tg.x.notes) + '\n' + said, tg.x); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
-  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = tidyNotes(plainOf(t.notes || '') + '\n' + said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
-  else { sess.ideaSaid = add(sess.ideaSaid); sess.idea = tidyNotes(plainOf(sess.idea) + '\n' + said, null); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
+  if (tg.kind === 'pos') { tg.x.said = add(tg.x.said); tg.x.notes = addNotes(tg.x.notes, said, tg.x); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
+  else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = addNotes(t.notes || '', said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
+  else { sess.ideaSaid = add(sess.ideaSaid); sess.idea = addNotes(sess.idea, said, null); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
+  // then the better summary, written from everything you said
+  if (tg.kind === 'next') btAiFill(() => sess.idea, v => { sess.idea = v; save(); }, null);
+  else btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (tjTrade === tg.x && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, tg.x);
 }
 /* A new session (next New York, London or Asia open, or a new day): notes for the next trade start empty again */
 let vnDay = null;
@@ -4614,7 +4617,7 @@ const voiceKey = () => { try { return localStorage.getItem(VKEY) || ''; } catch 
 /* Shared mic: everyone on the site gets the cloud speech engine, with daily limits. The OpenAI key lives in a small Cloudflare helper (voice-helper/), never in this page */
 const VPROXY = 'https://tape-voice.oneklover4.workers.dev';   // the shared mic helper (voice-helper/)
 const cloudOn = () => !!(voiceKey() || VPROXY);   // everyone gets the shared engine; your own key is used instead if you saved one
-const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Note headings said aloud: Bias, Idea, key levels, DOL, Trigger, What I took my trade off, Goal, My target, Confirmed by, The confirmation, Reasoning, Where and why for TP and SL, Confidence, Whole idea together, A plus DOL, AMD/PO3, True manip, PD array, HR LR, SMT, LTF LRL, CISD. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
+const CLOUD_PROMPT = 'Trading journal for ICT-style futures trading on MNQ and MES. Note headings said aloud: Key level, Confirmation, TP and stop loss, stop loss, take profit, Bias, Idea, key levels, DOL, Trigger, What I took my trade off, Goal, My target, Confirmed by, The confirmation, Reasoning, Where and why for TP and SL, Confidence, Whole idea together, A plus DOL, AMD/PO3, True manip, PD array, HR LR, SMT, LTF LRL, CISD. Words used: Bias, bullish, bearish, Idea, key levels, DOL, draw on liquidity, Trigger, Goal, Confirmed by, Reasoning, Confidence, Whole idea, A plus DOL, AMD, PO3, true manip, PD array, HR LR, SMT, LTF LRL, CISD, iFVG, FVG, BPR, displacement, PDH, PDL, PWH, PWL, BSL, SSL, buy side, sell side, liquidity, Asia high, Asia low, London high, London low, NY AM, killzone, order block, breaker, OTE, MSS, BOS, CHoCH, NWOG, NDOG, 1 minute, 5 minute, 15 minute, 4H.';
 async function transcribe(blob) {
   const ext = /mp4|m4a|aac/.test(blob.type) ? 'm4a' : /ogg/.test(blob.type) ? 'ogg' : /wav/.test(blob.type) ? 'wav' : 'webm';
   const fd = new FormData(); fd.append('file', blob, 'note.' + ext); fd.append('model', 'gpt-4o-transcribe'); fd.append('language', 'en'); fd.append('prompt', CLOUD_PROMPT);
@@ -4751,29 +4754,30 @@ function tidyAnswer(v, k) {
     if (m) { const rest = v.slice(m[0].length); v = m[1] + (!rest ? '' : m[2] === '.' ? '. ' + rest.charAt(0).toUpperCase() + rest.slice(1) : ' ' + rest); } }
   return v.replace(/,\s*$/, '');
 }
-function journalParse(text, live) {
+function journalParse(text, live, LONG = JT_LONG, yn = true) {
   text = sayOrder(String(text || '').replace(TALK, ' ').replace(LIKE, '$1').replace(/[^\S\n]+/g, ' '));
   // a new line means a new recording (or a new notes line); the whole-idea talk-through only ends there
   const s = ' ' + String(text || '').replace(/[^\S\n]+/g, ' ').replace(/ *\n\s*/g, '\n').trim() + ' ', hits = [], nl = (j) => j === 0 || /\n\s*$/.test(s.slice(0, j + 1));
   // yes / no lines: the name, then (within a few words) yes or no
-  for (const [k, , re] of [...JT_YN, ...JT_OPT])
+  for (const [k, , re] of (yn ? [...JT_YN, ...JT_OPT] : []))
     for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])(${re})\b[\s,.:\-]*(?:(?:was|is|it was|that was|for that|there|so|and|i|we|it|then|um|uh|er|definitely|honestly|probably)[\s,]+){0,3}(${YES}|${NO})\b`, 'gi')))
       hits.push({ k, yn: new RegExp('^(?:' + YES + ')$', 'i').test(m[2]) ? 'Yes' : 'No', a: m.index + m[0].indexOf(m[1]), b: m.index + m[0].length, sb: /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index), nl: nl(m.index) });
   // long answers: the keyword
-  JT_LONG.forEach(([k, , re, weak], i) => { if (i === WHOLE && !live) return; for (const [rx, wk] of [[re, 0], ...(weak ? [[weak, 1]] : [])]) for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${rx})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi'))) {
+  LONG.forEach(([k, , re, weak], i) => { if (LONG === JT_LONG && i === WHOLE && !live) return; for (const [rx, wk] of [[re, 0], ...(weak ? [[weak, 1]] : [])]) for (const m of s.matchAll(new RegExp(String.raw`(?:^|[^\w+])((?:my|the|and|so|now|next|okay|ok)\s+)?(${rx})\b[\s,.:\-]*(?:(?:is|was|are|were)\b)?`, 'gi'))) {
     const sb = /[.!?]\s*$/.test(s.slice(0, m.index + 1)) || nl(m.index); if (wk && !sb) continue;   // "target", "confirmation"... only count as a keyword when they start a sentence
-    hits.push({ k, i, a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb, nl: nl(m.index) }); } });
+    hits.push({ k, i, kw: m[2], a: m.index + (m[0].length - m[0].replace(/^[^\w+]/, '').length), b: m.index + m[0].length, sb, nl: nl(m.index) }); } });
   hits.sort((x, y) => x.a - y.a || (y.b - y.a) - (x.b - x.a));
   const L = [], filled = new Set(); let cur = -1;
   for (const h of hits) { const p = L[L.length - 1]; if (p && h.a < p.b) continue;
-    if (cur === WHOLE && !h.nl) continue;   // the whole-idea talk-through keeps everything until a new recording
+    if (LONG === JT_LONG && cur === WHOLE && !h.nl) continue;   // the whole-idea talk-through keeps everything until a new recording
     if (h.i != null) { if (h.i <= cur && !h.sb && filled.has(h.i)) continue; cur = h.i; filled.add(h.i); } else if (cur === WHOLE) cur = -1;   // keywords can come in any order; a field already answered only starts again after a full stop (a new note)
     L.push(h); }
   const out = {};
   for (let j = 0; j < L.length; j++) { const h = L[j];
     if (h.yn) { out[h.k] = h.yn; continue; }
     let v = s.slice(h.b, L[j + 1] ? L[j + 1].a : s.length).replace(/\b(?:um+|uh+|erm*)\b[,]?\s*/gi, ' ');
-    if (h.i !== WHOLE) v = tidyAnswer(v, h.k);   // "I've got a bullish bias for today, like, the reason for this is..." -> "Bullish, because..."
+    if (LONG[h.i] && LONG[h.i][4] && new RegExp('^(?:' + LONG[h.i][4] + ')$', 'i').test(h.kw)) v = h.kw.replace(/^my\s+/i, '') + ' ' + v;   // "stop loss above the high": the keyword is part of the note
+    if (LONG !== JT_LONG || h.i !== WHOLE) v = tidyAnswer(v, h.k);   // "I've got a bullish bias for today, like, the reason for this is..." -> "Bullish, because..."
     v = v.replace(/\s+/g, ' ').trim()
       .replace(/^[\s,.:;\-—]+/, '').replace(/^(?:is|was|are|were)\s+/i, '').replace(/[\s,;:\-—]+$/, '').replace(/\s+(?:and|so|then|now|okay|ok|the|my|next)$/i, '').trim();
     if (!v) continue; if (!/^[a-z][A-Z]/.test(v)) v = v.charAt(0).toUpperCase() + v.slice(1); if (!/[.!?]$/.test(v)) v += '.';
@@ -4787,12 +4791,76 @@ function plainNotes(raw) {   // no template: what was said, cleaned up, one line
 }
 function tidyNotes(raw, t) {
   if (!useTpl()) return plainNotes(raw);
+  if (btMode(t)) return RE_SAID.test(raw || '') ? btMerge(raw, '') : btMerge('', raw);
   const live = !!(t && t.live), F = journalParse(fixTerms(String(raw || '')), live), line = (k) => `${k}: ${F[k] || ''}`.trimEnd();
   return [...JT_LONG.slice(0, WHOLE).map(x => line(x[0])), '', ...JT_YN.map(x => line(x[0])), '', 'Optional:', ...JT_OPT.map(x => line(x[0])), ...(live ? ['', line(JT_LONG[WHOLE][0])] : [])].join('\n');
 }
+/* Backtest notes (owner template): a short summary at the top, then everything you said, word for word, at the bottom.
+   The summary is picked out by keyword straight away, then (with the cloud engine) rewritten by a language model that reads the whole of what you said. */
+const BT_F = [
+  ['Key level', 'Key level', String.raw`key levels?(?:\s+(?:that\s+)?i took (?:my|the|this) trade off(?:\s+(?:of|from))?)?|(?:i\s+)?took (?:my|the|this) trade off(?:\s+(?:of|from))?|(?:i\s+)?took (?:it|the trade|my trade) (?:off|from)(?:\s+(?:of|from))?|ideas?\s*(?:\/|and|slash|or)\s*key levels?|what i took (?:my|the) trade off|what i took (?:my|the) trade|what i took it off|took (?:my|the) trade off|took (?:it|the trade) off|trigger|triggers|trigga`, String.raw`level|entry|my entry|ideas?`],
+  ['Confirmation', 'Confirmation', String.raw`confirmed by|confirm by|confirmed buy|the confirmation|my confirmation|the conformation|my confirmations|the confirmations`, String.raw`confirmations?|conformation`],
+  ['Bias', 'Bias', String.raw`bias`],
+  ['TP and stop loss', 'TP and stop loss', String.raw`(?:the\s+)?(?:TP|take profit|target)\s+and\s+(?:the\s+)?(?:SL|stop(?: loss)?)|(?:the\s+)?(?:SL|stop(?: loss)?)\s+and\s+(?:the\s+)?(?:TP|take profit|target)|where and why(?:\s+for\s+(?:the\s+)?(?:TP|take profit|target)\s+and\s+(?:the\s+)?(?:SL|stop(?: loss)?))?|reasoning|reasonings|stop loss|take profit|my target|my targets|my stop|my TP|my SL|goal|goals`, String.raw`targets?|TP|SL|stop|stops`, String.raw`stop loss|take profit|my target|my targets|my stop|my TP|my SL|targets?|TP|SL|stop|stops`],
+  ['DOL', 'DOL', String.raw`DOL|D\.? ?O\.? ?L\.?|draw on liquidity|draw on liq`, String.raw`draw`]];
+const BT_SAID = 'Everything I said:', RE_SAID = /^Everything I said:/m;
+const btMode = (t) => useTpl() && !(t && t.live);
+const btDir = (v) => { const m = String(v || '').match(/\b(bullish|bearish|long|short)\b/i); return !m ? '' : /bull|long/i.test(m[1]) ? 'Bullish' : 'Bearish'; };
+const btSaidLine = (x) => { let v = fixTerms(String(x || '')).replace(/\b(?:hmm+|mm+|uh+|um+|erm*|ah+)\b[,]?/gi, ' ').replace(/\s+([,.!?])/g, '$1').replace(/\s+/g, ' ').replace(/^[\s,.;:\-]+/, '').trim();
+  if (!v) return ''; v = v.charAt(0).toUpperCase() + v.slice(1); return /[.!?]$/.test(v) ? v : v + '.'; };
+function btSplit(v) {   // notes text back into { fields, said }
+  v = String(v || ''); const i = v.search(RE_SAID), top = i < 0 ? v : v.slice(0, i), said = i < 0 ? '' : v.slice(i + BT_SAID.length).trim(), f = {};
+  let open = null;
+  for (const l of top.split('\n')) { const m = l.match(/^\s*([^:]{1,30}):\s*(.*)$/), k = m && BT_F.find(x => x[0].toLowerCase() === m[1].trim().toLowerCase());
+    if (k) { open = k[0]; f[open] = m[2].trim(); continue; }
+    if (open && l.trim()) f[open] = (f[open] + ' ' + l.trim()).trim(); else if (!l.trim()) open = null; }
+  return { f, said };
+}
+function btParse(text) {
+  text = fixTerms(String(text || '')); const F = journalParse(text, false, BT_F, false);
+  for (const k in F) F[k] = F[k].replace(/^(?:the|my)\s+(?=\S)/i, '').replace(/^./, c => c.toUpperCase());
+  F.Bias = btDir(F.Bias) || (() => { const d = new Set((text.match(/\b(?:bullish|bearish)\b/gi) || []).map(x => x.toLowerCase())); return d.size === 1 ? btDir([...d][0]) : ''; })();
+  if (!F.Bias) delete F.Bias;
+  return F;
+}
+const btFormat = (f, said) => [...BT_F.map(x => `${x[0]}: ${f[x[0]] || ''}`.trimEnd()), '', BT_SAID, said || ''].join('\n').trimEnd();
+function btMerge(prev, said) {
+  let P = btSplit(prev);
+  if (prev && !RE_SAID.test(prev) && /^Bias:/m.test(prev)) P = { f: btParse(notesPlain(prev)), said: '' };   // notes in the older template
+  else if (prev && !RE_SAID.test(prev)) P = { f: btParse(prev), said: String(prev).split('\n').map(btSaidLine).filter(Boolean).join('\n') };   // typed or spoken text with no headings yet
+  const F = btParse(said);
+  for (const [k] of BT_F) if (F[k]) { const o = P.f[k] || ''; P.f[k] = k === 'Bias' || !o ? F[k] : o.toLowerCase().includes(F[k].toLowerCase().replace(/\.$/, '')) ? o : o + ' ' + F[k]; }
+  const add = String(said || '').split('\n').map(btSaidLine).filter(Boolean).join('\n');
+  return btFormat(P.f, [P.said, add].filter(Boolean).join('\n'));
+}
+function addNotes(prev, said, t) { return btMode(t) ? btMerge(prev || '', said) : tidyNotes(plainOf(prev || '') + '\n' + said, t); }
+/* The summary, written by a language model from everything you said (shared mic helper, or your own OpenAI key). Same instructions as voice-helper/worker.js */
+const NOTES_SYS = 'You write short backtesting journal notes for an ICT-style futures trader (MNQ, MES, NQ, ES). You get everything the trader said about one trade, word for word, and the current notes. Return JSON with exactly these keys: "key_level", "confirmation", "bias", "tp_sl", "dol". key_level: the key level or PD array they took the trade off (for example "15m FVG after the Asia low sweep"). confirmation: what confirmed the entry (for example "SMT with ES, 1m iFVG, CISD"). bias: exactly "Bullish" or "Bearish", or "" if they did not say. tp_sl: a short summary of where the take profit and the stop loss were and why, keeping every important detail they gave (levels, R multiple, reasons, management such as break even or partials). dol: the draw on liquidity (where price is drawn to). Rules: use only what they said and never invent anything; "" for a field they did not talk about; note style, short fragments, no full sentences, no "I", no filler, no hedging; keep their own trading words and use shorthand: FVG, iFVG, BPR, SMT, CISD, MSS, BOS, OTE, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, DOL, HTF, LTF, 1m, 5m, 15m, 1H, 4H, Asia, London, NY AM, NY PM. The current notes may hold things the trader typed: keep them unless what they said changes them.';
+const btAiAsk = (said, f) => 'Current notes:\n' + BT_F.map(x => `${x[0]}: ${f[x[0]] || ''}`).join('\n') + '\n\nEverything they said:\n' + said;
+async function btAi(said, f) {
+  const own = voiceKey(); let out;
+  if (own) { let r; for (const model of ['gpt-4.1-mini', 'gpt-4o-mini']) { r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { Authorization: 'Bearer ' + own, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, temperature: 0, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: NOTES_SYS }, { role: 'user', content: btAiAsk(said, f) }] }) }); if (r.ok || (r.status !== 404 && r.status !== 400)) break; }
+    if (!r.ok) throw new Error('notes ' + r.status); out = JSON.parse((await r.json()).choices[0].message.content); }
+  else { const r = await fetch(VPROXY.replace(/\/$/, '') + '/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ said, notes: f }) });
+    if (!r.ok) throw new Error('notes ' + r.status); out = (await r.json()).notes; }
+  const g = (k) => typeof out[k] === 'string' ? fixTerms(out[k].trim()).replace(/^./, c => c.toUpperCase()) : '';
+  const n = { 'Key level': g('key_level'), 'Confirmation': g('confirmation'), 'Bias': btDir(g('bias')), 'TP and stop loss': g('tp_sl'), 'DOL': g('dol') };
+  for (const k in n) if (n[k] && k !== 'Bias' && !/[.!?]$/.test(n[k])) n[k] += '.';
+  return n;
+}
+/* After a recording: ask for the better summary, and put it in only if the notes haven't changed in the meantime */
+async function btAiFill(get, put, t) {
+  if (!btMode(t) || !cloudOn()) return; const cur = get(); if (!RE_SAID.test(cur || '')) return;
+  const P = btSplit(cur); if (!P.said) return;
+  let n; try { n = await btAi(P.said, P.f); } catch (e) { return; }
+  if (get() !== cur) return;
+  for (const [k] of BT_F) if (n[k]) P.f[k] = n[k];
+  put(btFormat(P.f, P.said));
+}
 const JT_TEMPLATE = (live) => useTpl() ? tidyNotes('', live ? { live: 1 } : null) : '';
 /* Notes text back into spoken form (keyword + answer), so Tidy up notes keeps what you typed */
-const plainOf = (v) => /^Bias:/m.test(v || '') ? notesPlain(v) : String(v || '');   // older notes may still be raw speech
+const plainOf = (v) => RE_SAID.test(v || '') ? String(v) : /^Bias:/m.test(v || '') ? notesPlain(v) : String(v || '');   // older notes may still be raw speech
 const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT].map(x => [x[0].toLowerCase(), x[1]]));
   // a line without a field name (typed on a new line) belongs to the field above it
   const out = []; let open = false;
@@ -4801,7 +4869,7 @@ const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT
     if (open && l.trim()) out[out.length - 1] += ' ' + l.trim().replace(/[.!?]*$/, '.'); else if (!l.trim()) open = false; }
   return out.join('\n'); };
 function stopRec() { if (rec) { rec.cancel(); rec = null; } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
-function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = tidyNotes(plainOf($('#tj-notes').value) + '\n' + said, tjTrade); $('#tj-said').hidden = false; $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = addNotes($('#tj-notes').value, said, tjTrade); $('#tj-said').hidden = btMode(tjTrade); const T = tjTrade; btAiFill(() => $('#tj-notes').value, v => { if (tjTrade === T && !$('#tjournal').hidden) $('#tj-notes').value = v; else { T.notes = v; save(); } }, T); $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
 async function tjFlush() { if (rec) { const L = rec; rec = null; stopRec(); tjApply(await L.finish()); } }   // closing while still recording keeps what was said
 $('#tj-mic').addEventListener('click', async () => {
   if (rec) { const L = rec; rec = null; $('#tj-mic span').textContent = 'Finishing…'; $('#tj-live').textContent = L.cloud ? 'Writing down what you said…' : 'Catching your last words…'; const said = await L.finish(); stopRec(); tjApply(said); if (L.failed) $('#tj-live').textContent = L.failed; return; }
@@ -4949,7 +5017,7 @@ async function boot() {
   applySettings(); jtplRender(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
-  window.TapeReplay = { notesPlain, journalParse, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
+  window.TapeReplay = { notesPlain, journalParse, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, addNotes, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions', 'live'].includes(h)) setView(h);
   save();
   sharedData();
