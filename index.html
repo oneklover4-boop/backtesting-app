@@ -357,6 +357,8 @@ table.grid input:hover, table.grid input:focus { border-color: var(--line); back
 .cal .d.w { background: var(--long-soft); } .cal .d.l { background: var(--short-soft); } .cal .d.b, .lt-cal .d.b { background: rgba(228,180,40,.22); } .cal .d.b .dp, .lt-cal .d.b .dp { color: #e4b428; }
 .cal .d .dn { color: var(--muted); }
 .cal .d.nt { background: rgba(140,150,170,.16); } .cal .d.nt .dp { color: var(--muted); font-weight: 500; }
+.ws-card { margin-bottom: 14px; } .ws-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .ws-row input { flex: 1 1 220px; min-width: 0; } .ws-row select { width: auto; }
+.ws-sum { margin-top: 12px; } .ws-hit { padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; } .ws-hit .q { color: var(--muted); margin: 4px 0 0; line-height: 1.5; } .ws-hit mark { background: rgba(228,180,40,.35); color: inherit; border-radius: 3px; padding: 0 2px; }
 .nt-list { margin-top: 14px; } .nt-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-top: 1px solid var(--line); } .nt-row:first-of-type { border-top: 0; } .nt-row p { margin: 2px 0 0; white-space: pre-wrap; color: var(--muted); font-size: 13px; flex: 1; } .nt-row b { white-space: nowrap; }
 .cal .d .dp { font-family: var(--font-data); font-weight: 600; }
 .cal button.d { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; } .cal button.d:hover { outline: 2px solid var(--accent); }
@@ -772,6 +774,14 @@ body.notpl .jt-help { display: none; }
             <button data-f="all" aria-pressed="true">All</button><button data-f="win" aria-pressed="false">Wins</button><button data-f="loss" aria-pressed="false">Losses</button><button data-f="long" aria-pressed="false">Long</button><button data-f="short" aria-pressed="false">Short</button>
           </div>
           <div class="right"><button class="btn" id="b-csv">Copy as CSV</button></div>
+        </div>
+        <div class="card ws-card">
+          <div class="ws-row"><b>Search what you said</b><input class="io" id="ws-q" placeholder="Words to find, for example iFVG, SMT, CISD" autocomplete="off">
+            <select class="io" id="ws-when"><option value="0">Any time</option><option value="7">Said in the last 7 days</option><option value="30" selected>Said in the last 30 days</option><option value="90">Said in the last 90 days</option></select>
+            <select class="io" id="ws-scope"><option value="s">This session</option><option value="all">All sessions</option></select>
+            <button class="btn primary" id="ws-go">Search</button><button class="btn" id="ws-copy" hidden>Copy results</button></div>
+          <p class="note" style="margin:6px 0 0">Looks through everything you said and your notes on each backtest trade (and no-trade days). Separate words with commas to compare them.</p>
+          <div id="ws-out"></div>
         </div>
         <div class="card tbl-wrap" style="padding:0" id="trades-tbl"></div>
         <div class="card nt-list" style="padding:0" id="nt-list" hidden></div>
@@ -1378,7 +1388,7 @@ function closePos(sess, p, px, t, reason) {
   const be = reason === 'BE', fees = be ? 0 : sess.comm * p.qty * 2;
   const pnl = be ? 0 : gross - fees;
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
-    openT: p.openT, closeT: t, pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
+    openT: p.openT, closeT: t, at: Date.now(), pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
   if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.said || (/^Bias:/m.test(p.notes) ? '' : p.notes); tr.notes = tidyNotes(plainOf(p.notes), tr); tr.nNotes = p.nNotes; }
   sess.positions = sess.positions.filter(x => x !== p);
   if (store && SET().tradeShots !== false) SHOTQ.push(sess.trades[sess.trades.length - 1]);
@@ -3146,6 +3156,43 @@ const fmtDur = (s) => s < 3600 ? Math.round(s / 60) + 'm' : s < 86400 ? (s / 360
 
 /* ---------- Trades view ---------- */
 let tFilter = 'all';
+/* Search what you said: every backtest trade (and no-trade day) whose words mention a term, with the results of those trades */
+const wsEsc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function wsTerms(q) { return [...new Set(String(q || '').split(/[,;\n]+/).map(x => fixTerms(x.trim())).filter(Boolean))].slice(0, 8); }
+function wsRe(term) { return new RegExp(`(^|[^\\w])(${term.split(/\s+/).map(wsEsc).join('[\\s-]+')})(?=$|[^\\w])`, 'gi'); }
+function wsWhen(sess, x) { const v = (sess.voiceLog || []).filter(z => z.to === x.id || (x.day && !z.to && dayOf(z.t) === x.day)).map(z => z.at || 0); return Math.max(x.at || 0, x.saidAt || 0, ...v, 0); }   // 0 = not known (older trades): always included
+function wsRun() {
+  const terms = wsTerms($('#ws-q').value), days = +$('#ws-when').value, all = $('#ws-scope').value === 'all', since = days ? Date.now() - days * 86400000 : 0;
+  if (!terms.length) { $('#ws-out').innerHTML = ''; $('#ws-copy').hidden = true; wsText = ''; return; }
+  const sessions = all ? store.sessions : [S()], th = beTh(), rows = [], hits = [];
+  const pool = sessions.flatMap(se => [...se.trades.map(t => ({ se, t })), ...(se.noTrade || []).map(n => ({ se, n }))])
+    .filter(x => { if (!since) return true; const w = wsWhen(x.se, x.t || x.n); return !w || w >= since; });
+  for (const term of terms) {
+    const re = wsRe(term), found = [];
+    for (const x of pool) { const o = x.t || x.n, txt = fixTerms([o.said || '', o.notes || ''].join('\n')); re.lastIndex = 0; if (!re.test(txt)) continue;
+      // the sentences where you said it
+      const said = fixTerms(o.said || o.notes || ''), sn = said.split(/(?<=[.!?])\s+|\n+/).filter(z => { re.lastIndex = 0; return re.test(z); });
+      found.push({ ...x, sn: [...new Set(sn)].slice(0, 4) }); }
+    const tr = found.filter(x => x.t).map(x => x.t), w = tr.filter(t => t.pnl > th).length, l = tr.filter(t => t.pnl < -th).length, net = tr.reduce((a, t) => a + t.pnl, 0), rr = tr.filter(t => t.r != null);
+    rows.push({ term, n: tr.length, w, l, be: tr.length - w - l, net, avgR: rr.length ? rr.reduce((a, t) => a + t.r, 0) / rr.length : null, nt: found.length - tr.length });
+    hits.push({ term, re, found });
+  }
+  const mark = (z, re) => esc(z).replace(re, (m, a, b) => a + '<mark>' + b + '</mark>');
+  $('#ws-out').innerHTML = `<div class="ws-sum tbl-wrap"><table class="grid"><thead><tr><th>Said</th><th class="num">Trades</th><th class="num">Wins</th><th class="num">Losses</th><th class="num">BE</th><th class="num">Win rate</th><th class="num">Net P&amp;L</th><th class="num">Avg R</th><th class="num">No-trade days</th></tr></thead><tbody>${rows.map(r =>
+    `<tr><td><b>${esc(r.term)}</b></td><td class="num">${r.n}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.be}</td><td class="num">${r.w + r.l ? Math.round(r.w / (r.w + r.l) * 100) + '%' : '–'}</td><td class="num ${cls(r.net)}">${r.n ? fmtUsd(r.net) : '–'}</td><td class="num">${r.avgR != null ? r.avgR.toFixed(2) + 'R' : '–'}</td><td class="num">${r.nt}</td></tr>`).join('')}</tbody></table></div>`
+    + hits.map(h => `<details class="ws-sum"${hits.length === 1 ? ' open' : ''}><summary><b>${esc(h.term)}</b>: ${h.found.length ? h.found.length + ' found' : 'not found'}</summary>${h.found.sort((a, b) => ((b.t || {}).closeT || 0) - ((a.t || {}).closeT || 0)).map(x => x.t
+      ? `<div class="ws-hit"><span class="pill ${x.t.side > 0 ? 'long' : 'short'}">${x.t.side > 0 ? 'Long' : 'Short'}</span> ${x.t.sym} · ${fmtT(x.t.openT)} ET · <span class="${cls(x.t.pnl)} num">${fmtUsd(x.t.pnl)}${x.t.r != null ? ' · ' + x.t.r.toFixed(2) + 'R' : ''}</span>${all ? ' · <span class="mut">' + esc(x.se.name) + '</span>' : ''} <button class="btn" data-journal="${x.t.id}">Open</button>${x.sn.map(z => `<p class="q">“${mark(z, h.re)}”</p>`).join('')}</div>`
+      : `<div class="ws-hit"><b>No trade</b> · ${fmtDay(x.n.day)}${all ? ' · <span class="mut">' + esc(x.se.name) + '</span>' : ''}${x.sn.map(z => `<p class="q">“${mark(z, h.re)}”</p>`).join('')}</div>`).join('')}</details>`).join('');
+  wsText = rows.map(r => `${r.term}: ${r.n} trades, ${r.w} wins, ${r.l} losses, ${r.be} BE, win rate ${r.w + r.l ? Math.round(r.w / (r.w + r.l) * 100) + '%' : '-'}, net ${fmtUsd(r.net)}, avg R ${r.avgR != null ? r.avgR.toFixed(2) : '-'}, no-trade days ${r.nt}`).join('\n')
+    + '\n\n' + hits.map(h => h.found.map(x => (x.t ? `${h.term} | ${x.t.side > 0 ? 'Long' : 'Short'} ${x.t.sym} ${fmtT(x.t.openT)} ET | ${fmtUsd(x.t.pnl)}${x.t.r != null ? ' ' + x.t.r.toFixed(2) + 'R' : ''}` : `${h.term} | No trade ${x.n.day}`) + ' | ' + x.sn.join(' ')).join('\n')).join('\n');
+  $('#ws-copy').hidden = false;
+}
+let wsText = '';
+$('#ws-go').addEventListener('click', wsRun);
+$('#ws-q').addEventListener('keydown', e => { if (e.key === 'Enter') wsRun(); });
+$('#ws-when').addEventListener('change', () => { if ($('#ws-q').value.trim()) wsRun(); });
+$('#ws-scope').addEventListener('change', () => { if ($('#ws-q').value.trim()) wsRun(); });
+$('#ws-copy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(wsText); toast('Results copied. You can paste them into Claude to ask more about them.'); } catch (e) { toast('Couldn\'t copy here.'); } });
 function renderTrades() {
   const sess = S();
   let tr = [...sess.trades].sort((a, b) => b.closeT - a.closeT);
@@ -4436,7 +4483,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-18-62';
+const BUILD = '2026-11-18-63';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4911,7 +4958,7 @@ const notesPlain = (v) => { const map = new Map([...JT_LONG, ...JT_YN, ...JT_OPT
     if (open && l.trim()) out[out.length - 1] += ' ' + l.trim().replace(/[.!?]*$/, '.'); else if (!l.trim()) open = false; }
   return out.join('\n'); };
 function stopRec() { if (rec) { rec.cancel(); rec = null; } $('#tj-mic').classList.remove('rec'); $('#tj-mic span').textContent = 'Speak your notes'; }
-function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); $('#tj-notes').value = addNotes($('#tj-notes').value, said, tjTrade); $('#tj-said').hidden = btMode(tjTrade); const T = tjTrade; btAiFill(() => $('#tj-notes').value, v => { if (tjTrade === T && !$('#tjournal').hidden) $('#tj-notes').value = v; else { T.notes = v; save(); } }, T); $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
+function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTrade.said = ((tjTrade.said || '') + ' ' + said).trim(); tjTrade.saidAt = Date.now(); $('#tj-notes').value = addNotes($('#tj-notes').value, said, tjTrade); $('#tj-said').hidden = btMode(tjTrade); const T = tjTrade; btAiFill(() => $('#tj-notes').value, v => { if (tjTrade === T && !$('#tjournal').hidden) $('#tj-notes').value = v; else { T.notes = v; save(); } }, T); $('#tj-said-txt').textContent = fixTerms(tjTrade.said); } $('#tj-live').textContent = said ? 'Notes sorted. Edit anything you like.' : 'I didn\'t hear anything.'; }
 async function tjFlush() { if (rec) { const L = rec; rec = null; stopRec(); tjApply(await L.finish()); } }   // closing while still recording keeps what was said
 $('#tj-mic').addEventListener('click', async () => {
   if (rec) { const L = rec; rec = null; $('#tj-mic span').textContent = 'Finishing…'; $('#tj-live').textContent = L.cloud ? 'Writing down what you said…' : 'Catching your last words…'; const said = await L.finish(); stopRec(); tjApply(said); if (L.failed) $('#tj-live').textContent = L.failed; return; }
