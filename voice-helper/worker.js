@@ -1,7 +1,7 @@
 /* Tape Replay shared voice helper (Cloudflare Worker).
    Holds the OpenAI key as a secret so it never appears in the website.
    Anyone using the website gets it, no code needed. To stop strangers draining the credit:
-   only the website may call it, and there are daily spending limits per person (by internet address) and in total.
+   only the website may call it (/transcribe writes down a recording, /notes summarises backtest notes), and there are daily spending limits per person (by internet address) and in total.
    Secret (set by the GitHub workflow): OPENAI_API_KEY. Daily spending limits: PER_IP_CENTS and TOTAL_CENTS in wrangler.toml. */
 const SITE = ['https://oneklover4-boop.github.io'];
 const MAX_BYTES = 12 * 1024 * 1024;           // about 10 minutes of speech
@@ -18,10 +18,14 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/') return json(req, 200, { ok: true, ready: !!env.OPENAI_API_KEY });
-    if (req.method !== 'POST' || url.pathname !== '/transcribe') return json(req, 404, { error: { message: 'not found' } });
+    if (req.method !== 'POST' || (url.pathname !== '/transcribe' && url.pathname !== '/notes')) return json(req, 404, { error: { message: 'not found' } });
     const origin = req.headers.get('Origin') || '';
     if (!SITE.includes(origin)) return json(req, 403, { error: { message: 'only the Tape Replay website can use the shared mic' } });
     if (!env.OPENAI_API_KEY) return json(req, 500, { error: { message: 'the shared mic has no OpenAI key yet' } });
+    const day = new Date().toISOString().slice(0, 10), ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+    const limiter = env.LIMITER.get(env.LIMITER.idFromName('daily'));
+    const ask = (o) => limiter.fetch('https://limiter/', { method: 'POST', body: JSON.stringify({ day, ip, perIp: Math.round((+env.PER_IP_CENTS || 50) * 1e4), total: Math.round((+env.TOTAL_CENTS || 500) * 1e4), ...o }) }).then(x => x.json());
+    if (url.pathname === '/notes') return notes(req, env, ask);
     const len = +(req.headers.get('Content-Length') || 0);
     if (len > MAX_BYTES) return json(req, 413, { error: { message: 'that recording is too long (10 minutes max)' } });
     let inForm; try { inForm = await req.formData(); } catch (e) { return json(req, 400, { error: { message: 'no recording received' } }); }
@@ -33,9 +37,6 @@ export default {
     out.append('model', MODEL);                 // always this model, whatever the page asks for
     out.append('language', 'en');
     const prompt = inForm.get('prompt'); if (typeof prompt === 'string') out.append('prompt', prompt.slice(0, 2000));
-    const day = new Date().toISOString().slice(0, 10), ip = req.headers.get('CF-Connecting-IP') || 'unknown';
-    const limiter = env.LIMITER.get(env.LIMITER.idFromName('daily'));
-    const ask = (o) => limiter.fetch('https://limiter/', { method: 'POST', body: JSON.stringify({ day, ip, perIp: Math.round((+env.PER_IP_CENTS || 50) * 1e4), total: Math.round((+env.TOTAL_CENTS || 500) * 1e4), ...o }) }).then(x => x.json());
     const lim = await ask({ op: 'check' });
     if (!lim.ok) return json(req, 429, { error: { message: lim.why === 'ip' ? 'you have used today\'s shared mic allowance. It resets at midnight.' : 'the shared mic has reached today\'s limit for everyone. It resets at midnight.' } });
     const r = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY }, body: out });
@@ -45,6 +46,32 @@ export default {
     return new Response(body, { status: r.status, headers: { 'Content-Type': 'application/json', ...cors(req) } });
   }
 };
+
+/* Backtest notes summary: reads everything the trader said about one trade and returns the short summary fields as JSON.
+   Same instructions as NOTES_SYS in index.html. Counted in the same daily limits (a summary costs about a tenth of a cent). */
+const NOTES_MODELS = ['gpt-4.1-mini', 'gpt-4o-mini'];
+const NOTES_SYS = 'You write short backtesting journal notes for an ICT-style futures trader (MNQ, MES, NQ, ES). You get everything the trader said about one trade, word for word, and the current notes. Return JSON with exactly these keys: "key_level", "confirmation", "bias", "tp_sl", "dol". key_level: the key level or PD array they took the trade off (for example "15m FVG after the Asia low sweep"). confirmation: what confirmed the entry (for example "SMT with ES, 1m iFVG, CISD"). bias: exactly "Bullish" or "Bearish", or "" if they did not say. tp_sl: a short summary of where the take profit and the stop loss were and why, keeping every important detail they gave (levels, R multiple, reasons, management such as break even or partials). dol: the draw on liquidity (where price is drawn to). Rules: use only what they said and never invent anything; "" for a field they did not talk about; note style, short fragments, no full sentences, no "I", no filler, no hedging; keep their own trading words and use shorthand: FVG, iFVG, BPR, SMT, CISD, MSS, BOS, OTE, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, DOL, HTF, LTF, 1m, 5m, 15m, 1H, 4H, Asia, London, NY AM, NY PM. The current notes may hold things the trader typed: keep them unless what they said changes them.';
+const FIELDS = [['Key level', 'key_level'], ['Confirmation', 'confirmation'], ['Bias', 'bias'], ['TP and stop loss', 'tp_sl'], ['DOL', 'dol']];
+async function notes(req, env, ask) {
+  let inp; try { inp = await req.json(); } catch (e) { return json(req, 400, { error: { message: 'nothing to summarise' } }); }
+  const said = typeof inp.said === 'string' ? inp.said.trim().slice(0, 20000) : '', cur = inp.notes && typeof inp.notes === 'object' ? inp.notes : {};
+  if (!said) return json(req, 400, { error: { message: 'nothing to summarise' } });
+  const lim = await ask({ op: 'check' });
+  if (!lim.ok) return json(req, 429, { error: { message: 'the shared notes helper has reached today\'s limit. It resets at midnight.' } });
+  const user = 'Current notes:\n' + FIELDS.map(([l]) => `${l}: ${typeof cur[l] === 'string' ? cur[l].slice(0, 600) : ''}`).join('\n') + '\n\nEverything they said:\n' + said;
+  let r, body;
+  for (const model of NOTES_MODELS) {
+    r = await fetch('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { Authorization: 'Bearer ' + env.OPENAI_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, temperature: 0, max_tokens: 600, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: NOTES_SYS }, { role: 'user', content: user }] }) });
+    body = await r.text(); if (r.ok || (r.status !== 404 && r.status !== 400)) break;   // that model isn't available: try the next one
+  }
+  if (!r.ok) return json(req, 502, { error: { message: 'the notes helper said: error ' + r.status } });
+  let d; try { d = JSON.parse(body); } catch (e) { return json(req, 502, { error: { message: 'the notes helper gave no answer' } }); }
+  const u = d.usage || {}; await ask({ op: 'add', micros: Math.max(1, Math.ceil((u.prompt_tokens || 2000) * 0.4 + (u.completion_tokens || 300) * 1.6)) });   // gpt-4.1-mini: $0.40 in, $1.60 out per million tokens
+  let o = {}; try { o = JSON.parse(d.choices[0].message.content) || {}; } catch (e) {}
+  const out = {}; for (const [, k] of FIELDS) out[k] = typeof o[k] === 'string' ? o[k].slice(0, 600) : '';
+  return json(req, 200, { notes: out });
+}
 
 /* What a recording cost, in millionths of a dollar, from OpenAI's own token count
    (gpt-4o-transcribe: audio in $6, text in $2.50, text out $10 per million tokens).
