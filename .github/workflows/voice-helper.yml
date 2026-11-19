@@ -40,3 +40,6 @@ jobs:
           # backtest notes summary: a real sample, the answer must pick out the bias
           curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"said":"Okay so I have a bullish bias today because we are above the daily open. Price manipulated into the 4H FVG and swept the London low. My confirmation was SMT with ES and then a CISD on the 1 minute. My stop loss is under the swing low and TP is the Asia high. My DOL is the buy side liquidity above the Asia high."}' "$U/notes" | tee /tmp/n; echo
           grep -q '"bias":"Bullish"' /tmp/n || { echo "::error::The notes summary did not answer properly"; exit 1; }
+          # journal template fill: the misheard headings must still be picked up
+          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"mode":"tpl","said":"Whole idea together, we were bearish below the daily open, swept the Asia high into the 4H FVG, got SMT and a CISD and shorted to the PDL. Bias bearish. DOL the PDL. Trigger the 1 minute iFVG. Confidence 8 out of 10. PO3/AMD, yes. True minute PS, yes. H R L R, no. CISD yes."}' "$U/notes" | tee /tmp/t; echo
+          grep -q '"true_manip":"Yes"' /tmp/t || { echo "::error::The template fill missed True manip"; exit 1; }
