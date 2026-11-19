@@ -966,7 +966,7 @@ body.notpl .jt-help { display: none; }
     <div class="dlg-head"><h2 id="tj-title">Trade</h2><button class="x" id="tj-close" aria-label="Close">×</button></div>
     <div class="tj-body">
       <div id="tj-shot" class="tj-shot"></div>
-      <p class="note" id="tj-facts"></p><div class="tj-row" id="tj-res"><span class="tj-lbl">Change result:</span><button class="btn" id="tj-win">Win (hit target)</button><button class="btn" id="tj-loss">Loss (hit stop)</button><button class="btn" id="tj-be">Break even</button></div><div class="tj-row"><label class="tj-lbl" for="tj-exit">Exit price</label><input class="ctl num" id="tj-exit" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn primary" id="tj-exitsave">Save exit price</button><button class="btn" id="tj-undo" hidden>Undo last change</button><span id="tj-delwrap"></span></div>
+      <p class="note" id="tj-facts"></p><div class="tj-row" id="tj-res" hidden><span class="tj-lbl">Change result:</span><button class="btn" id="tj-win">Win (hit target)</button><button class="btn" id="tj-loss">Loss (hit stop)</button><button class="btn" id="tj-be">Break even</button></div><div class="tj-row" hidden><label class="tj-lbl" for="tj-exit">Exit price</label><input class="ctl num" id="tj-exit" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn primary" id="tj-exitsave">Save exit price</button><button class="btn" id="tj-undo" hidden>Undo last change</button></div><div class="tj-row"><span id="tj-delwrap"></span></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
       <p class="note jt-help"><b>Talk the whole idea through first, then go through each heading:</b> say its name, then your answer (Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence, then AMD · PO3 · A plus DOL · True manip · PD array · SMT · LTF LRL · CISD + yes or no). Everything you say goes in Whole idea together.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
@@ -4172,7 +4172,7 @@ async function openJournal(id) {
   const img = await shotGet(t.id);
   $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
 }
-async function closeJournal() { tjExitSave(true); await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
+async function closeJournal() { await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* ---------- Live trades: a journal for your real trades, kept apart from backtest sessions (like TradeZella) ---------- */
 function ensureLive() { if (!store.live || !Array.isArray(store.live.trades)) store.live = { balance0: 50000, trades: [] }; Object.assign(store.live, { id: 'live', name: 'Live trades' }); return store.live; }
 const LIVE = () => ensureLive();
@@ -4485,7 +4485,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-19-71';
+const BUILD = '2026-11-19-72';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
