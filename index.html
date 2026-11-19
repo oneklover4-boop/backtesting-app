@@ -4485,7 +4485,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-19-70';
+const BUILD = '2026-11-19-71';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4570,11 +4570,16 @@ $('#tj-close').addEventListener('click', closeJournal);
 /* Change a backtest trade's result after a misclick: win (target), loss (stop), break even or any exit price. Undo goes back one change. */
 function tjSetExit(t, px, reason) {
   const se = store.sessions.find(x => x.trades.includes(t)); if (!se || px == null || !isFinite(px)) return false;
-  t.undo = t.undo || []; t.undo.push({ exit: t.exit, pnl: t.pnl, fees: t.fees, r: t.r, reason: t.reason }); if (t.undo.length > 20) t.undo.shift();
+  t.undo = t.undo || []; t.undo.push({ exit: t.exit, pnl: t.pnl, fees: t.fees, r: t.r, reason: t.reason, closeT: t.closeT }); if (t.undo.length > 20) t.undo.shift();
   if (reason === 'BE') markBE(t);
   else { const fees = (se.comm || 0) * t.qty * 2; t.exit = px; t.fees = fees; t.pnl = t.side * (px - t.entry) * t.qty * INSTR[t.sym].pv - fees; t.r = t.riskUsd ? t.pnl / t.riskUsd : null; t.reason = reason; }
+  const ct = reason === 'BE' ? null : tjExitTime(t, px); if (ct != null) t.closeT = ct;
+  if (SET().tradeShots !== false && !SHOTQ.includes(t)) SHOTQ.push(t);
   return true;
 }
+/* When did price first reach the new exit after the entry? That bar becomes the exit time, so time held is right */
+function tjExitTime(t, px) { const D = DATA[t.sym]; if (!D || !D.t || !D.t.length) return null; let i = idxAtOrBefore(t.sym, t.openT) + 1; const end = Math.min(D.t.length, i + 60 * 24 * 45);
+  for (; i < end; i++) if (px >= t.entry ? D.h[i] >= px : D.l[i] <= px) return D.t[i]; return null; }
 function tjAfterEdit(msg) { if (tjTrade && $('#tj-notes').value.trim()) tjTrade.notes = $('#tj-notes').value.trim(); save(); toast(msg); const id = tjTrade.id; renderLive(); drawOverlays(); if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics(); if (!$('#dayj').hidden) openDay(dayOf(tjTrade.closeT)); openJournal(id); }
 function tjResRender(t) { $('#tj-exit').value = t.exit != null ? +(+t.exit).toFixed(2) : ''; $('#tj-undo').hidden = !(t.undo && t.undo.length);
   const tp = t.finalTp ?? t.tp, sl = t.finalSl ?? t.sl; $('#tj-win').disabled = tp == null; $('#tj-loss').disabled = sl == null;
@@ -4589,7 +4594,7 @@ function tjExitSave(quiet) { const t = tjTrade; if (!t) return false; const px =
 $('#tj-exitsave').addEventListener('pointerdown', e => e.preventDefault()); $('#tj-exitsave').addEventListener('click', () => tjExitSave(false));
 $('#tj-exit').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tjExitSave(false); } });
 $('#tj-exit').addEventListener('change', () => { if (tjTrade && !$('#tjournal').hidden) tjExitSave(false); });
-$('#tj-undo').addEventListener('click', () => { const t = tjTrade; if (!t || !t.undo || !t.undo.length) return; Object.assign(t, t.undo.pop()); tjAfterEdit('Undone. The trade is back to how it was.'); }); $('#tj-done').addEventListener('click', closeJournal);
+$('#tj-undo').addEventListener('click', () => { const t = tjTrade; if (!t || !t.undo || !t.undo.length) return; Object.assign(t, t.undo.pop()); if (SET().tradeShots !== false && !SHOTQ.includes(t)) SHOTQ.push(t); tjAfterEdit('Undone. The trade is back to how it was.'); }); $('#tj-done').addEventListener('click', closeJournal);
 $('#tjournal').addEventListener('pointerdown', e => { if (e.target.id === 'tjournal') closeJournal(); });
 /* Delete a backtest trade (asks once first). Balance, win rate and stats all come from the trades, so they update */
 let tjDelAsk = false;
