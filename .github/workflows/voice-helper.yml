@@ -43,3 +43,4 @@ jobs:
           # journal template fill: the misheard headings must still be picked up
           curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"mode":"tpl","said":"Whole idea together, we were bearish below the daily open, swept the Asia high into the 4H FVG, got SMT and a CISD and shorted to the PDL. Bias bearish. DOL the PDL. Trigger the 1 minute iFVG. Confidence 8 out of 10. PO3/AMD, yes. True minute PS, yes. H R L R, no. CISD yes."}' "$U/notes" | tee /tmp/t; echo
           grep -q '"true_manip":"Yes"' /tmp/t || { echo "::error::The template fill missed True manip"; exit 1; }
+          grep -q '"po3":"Yes"' /tmp/t && grep -q '"amd":"Yes"' /tmp/t || { echo "::error::The template fill missed AMD or PO3"; exit 1; }
