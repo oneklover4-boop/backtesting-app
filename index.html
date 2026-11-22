@@ -966,7 +966,7 @@ body.notpl .jt-help { display: none; }
     <div class="dlg-head"><h2 id="tj-title">Trade</h2><button class="x" id="tj-close" aria-label="Close">×</button></div>
     <div class="tj-body">
       <div id="tj-shot" class="tj-shot"></div>
-      <p class="note" id="tj-facts"></p><div class="tj-row" id="tj-res" hidden><span class="tj-lbl">Change result:</span><button class="btn" id="tj-win">Win (hit target)</button><button class="btn" id="tj-loss">Loss (hit stop)</button><button class="btn" id="tj-be">Break even</button></div><div class="tj-row" hidden><label class="tj-lbl" for="tj-exit">Exit price</label><input class="ctl num" id="tj-exit" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn primary" id="tj-exitsave">Save exit price</button><button class="btn" id="tj-undo" hidden>Undo last change</button></div><div class="tj-row" id="tj-heldrow" hidden><label class="tj-lbl" for="tj-held">Time held (minutes)</label><input class="ctl num" id="tj-held" type="text" inputmode="numeric" autocomplete="off" style="width:90px"><button class="btn primary" id="tj-heldsave">Save time held</button></div><div class="tj-row"><span id="tj-delwrap"></span></div>
+      <p class="note" id="tj-facts"></p><div class="tj-row" id="tj-res"><span class="tj-lbl">Change result:</span><button class="btn" id="tj-win">Win (hit target)</button><button class="btn" id="tj-loss">Loss (hit stop)</button><button class="btn" id="tj-be">Break even</button></div><div class="tj-row"><label class="tj-lbl" for="tj-tp">Target</label><input class="ctl num" id="tj-tp" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn" id="tj-tpsave">Save target</button></div><div class="tj-row"><label class="tj-lbl" for="tj-exit">Exit price</label><input class="ctl num" id="tj-exit" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn primary" id="tj-exitsave">Save exit price</button><button class="btn" id="tj-undo" hidden>Undo last change</button></div><div class="tj-row" id="tj-heldrow" hidden><label class="tj-lbl" for="tj-held">Time held (minutes)</label><input class="ctl num" id="tj-held" type="text" inputmode="numeric" autocomplete="off" style="width:90px"><button class="btn primary" id="tj-heldsave">Save time held</button></div><div class="tj-row"><span id="tj-delwrap"></span></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
       <p class="note jt-help"><b>Talk the whole idea through first, then go through each heading:</b> say its name, then your answer (Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence, then AMD · PO3 · A plus DOL · True manip · PD array · SMT · LTF LRL · CISD + yes or no). Everything you say goes in Whole idea together.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
@@ -4172,7 +4172,7 @@ async function openJournal(id) {
   const img = await shotGet(t.id);
   $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
 }
-async function closeJournal() { if (tjTrade && !$('#tj-heldrow').hidden) tjHeldSave(); await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
+async function closeJournal() { if (tjTrade) { tjTpSave(true); tjExitSave(true); tjHeldSave(); } await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* ---------- Live trades: a journal for your real trades, kept apart from backtest sessions (like TradeZella) ---------- */
 function ensureLive() { if (!store.live || !Array.isArray(store.live.trades)) store.live = { balance0: 50000, trades: [] }; Object.assign(store.live, { id: 'live', name: 'Live trades' }); return store.live; }
 const LIVE = () => ensureLive();
@@ -4485,7 +4485,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-20-73';
+const BUILD = '2026-11-22-74';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4570,10 +4570,9 @@ $('#tj-close').addEventListener('click', closeJournal);
 /* Change a backtest trade's result after a misclick: win (target), loss (stop), break even or any exit price. Undo goes back one change. */
 function tjSetExit(t, px, reason) {
   const se = store.sessions.find(x => x.trades.includes(t)); if (!se || px == null || !isFinite(px)) return false;
-  t.undo = t.undo || []; t.undo.push({ exit: t.exit, pnl: t.pnl, fees: t.fees, r: t.r, reason: t.reason, closeT: t.closeT }); if (t.undo.length > 20) t.undo.shift();
+  t.undo = t.undo || []; t.undo.push({ exit: t.exit, pnl: t.pnl, fees: t.fees, r: t.r, reason: t.reason, closeT: t.closeT, tp: t.tp, finalTp: t.finalTp }); if (t.undo.length > 20) t.undo.shift();
   if (reason === 'BE') markBE(t);
   else { const fees = (se.comm || 0) * t.qty * 2; t.exit = px; t.fees = fees; t.pnl = t.side * (px - t.entry) * t.qty * INSTR[t.sym].pv - fees; t.r = t.riskUsd ? t.pnl / t.riskUsd : null; t.reason = reason; }
-  const ct = reason === 'BE' ? null : tjExitTime(t, px); if (ct != null) t.closeT = ct;
   if (SET().tradeShots !== false && !SHOTQ.includes(t)) SHOTQ.push(t);
   return true;
 }
@@ -4581,10 +4580,10 @@ function tjSetExit(t, px, reason) {
 function tjExitTime(t, px) { const D = DATA[t.sym]; if (!D || !D.t || !D.t.length) return null; let i = idxAtOrBefore(t.sym, t.openT) + 1; const end = Math.min(D.t.length, i + 60 * 24 * 45);
   for (; i < end; i++) if (px >= t.entry ? D.h[i] >= px : D.l[i] <= px) return D.t[i]; return null; }
 function tjAfterEdit(msg) { if (tjTrade && $('#tj-notes').value.trim()) tjTrade.notes = $('#tj-notes').value.trim(); save(); toast(msg); const id = tjTrade.id; renderLive(); drawOverlays(); if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics(); if (!$('#dayj').hidden) openDay(dayOf(tjTrade.closeT)); openJournal(id); }
-function tjResRender(t) { $('#tj-heldrow').hidden = !(t.undo && t.undo.length); $('#tj-held').value = Math.round((t.closeT - t.openT) / 60); $('#tj-exit').value = t.exit != null ? +(+t.exit).toFixed(2) : ''; $('#tj-undo').hidden = !(t.undo && t.undo.length);
+function tjResRender(t) { $('#tj-heldrow').hidden = false; $('#tj-tp').value = (t.finalTp ?? t.tp) != null ? +(+(t.finalTp ?? t.tp)).toFixed(2) : ''; $('#tj-held').value = Math.round((t.closeT - t.openT) / 60); $('#tj-exit').value = t.exit != null ? +(+t.exit).toFixed(2) : ''; $('#tj-undo').hidden = !(t.undo && t.undo.length);
   const tp = t.finalTp ?? t.tp, sl = t.finalSl ?? t.sl; $('#tj-win').disabled = tp == null; $('#tj-loss').disabled = sl == null;
   $('#tj-win').classList.toggle('on', t.pnl > 0); $('#tj-loss').classList.toggle('on', t.pnl < 0); $('#tj-be').classList.toggle('on', t.reason === 'BE'); }
-$('#tj-win').addEventListener('click', () => { const t = tjTrade; if (!t) return; const px = t.finalTp ?? t.tp; if (px == null) return toast('This trade has no target. Type the exit price and tap Save exit price.'); if (tjSetExit(t, px, 'TP')) tjAfterEdit('Changed to a win at the target. Balance, win rate and stats are updated.'); });
+$('#tj-win').addEventListener('pointerdown', e => e.preventDefault()); $('#tj-win').addEventListener('click', () => { const t = tjTrade; if (!t) return; tjTpSave(true); const px = t.finalTp ?? t.tp; if (px == null) return toast('This trade has no target. Type the exit price and tap Save exit price.'); if (tjSetExit(t, px, 'TP')) tjAfterEdit('Changed to a win at the target. Balance, win rate and stats are updated.'); });
 $('#tj-loss').addEventListener('click', () => { const t = tjTrade; if (!t) return; const px = t.finalSl ?? t.sl; if (px == null) return toast('This trade has no stop. Type the exit price and tap Save exit price.'); if (tjSetExit(t, px, 'SL')) tjAfterEdit('Changed to a loss at the stop. Balance, win rate and stats are updated.'); });
 $('#tj-be').addEventListener('click', () => { const t = tjTrade; if (!t) return; if (tjSetExit(t, t.entry, 'BE')) tjAfterEdit('Counted as a break-even trade. Balance, win rate and drawdown are updated.'); });
 /* The typed exit price always wins: saved by the button, by Enter, when you leave the box, and when you close the trade */
@@ -4595,6 +4594,12 @@ $('#tj-exitsave').addEventListener('pointerdown', e => e.preventDefault()); $('#
 $('#tj-exit').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tjExitSave(false); } });
 $('#tj-exit').addEventListener('change', () => { if (tjTrade && !$('#tjournal').hidden) tjExitSave(false); });
 /* Only on trades you already changed: set how long the trade was held, the exit time moves to match */
+function tjTpSave(quiet) { const t = tjTrade; if (!t) return; const raw = $('#tj-tp').value.replace(/[$\s]/g, '').replace(/,(?=\d{1,2}$)/, '.').replace(/,/g, ''); if (!raw) return; const px = parseFloat(raw); if (!isFinite(px) || px <= 0) return toast('Type a price like 23585.25');
+  if (Math.abs(px - (t.finalTp ?? t.tp ?? NaN)) < 1e-9) return; t.undo = t.undo || []; t.undo.push({ exit: t.exit, pnl: t.pnl, fees: t.fees, r: t.r, reason: t.reason, closeT: t.closeT, tp: t.tp, finalTp: t.finalTp });
+  t.tp = px; t.finalTp = px; if (SET().tradeShots !== false && !SHOTQ.includes(t)) SHOTQ.push(t);
+  if (quiet) { save(); return; } tjAfterEdit('Target saved: ' + fmtPx(px) + '. Tap Win (hit target) to close the trade there.'); }
+$('#tj-tpsave').addEventListener('pointerdown', e => e.preventDefault()); $('#tj-tpsave').addEventListener('click', () => tjTpSave(false));
+$('#tj-tp').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); tjTpSave(false); } });
 function tjHeldSave() { const t = tjTrade; if (!t) return; const m = parseFloat($('#tj-held').value.replace(',', '.')); if (!isFinite(m) || m <= 0) return toast('Type the minutes, e.g. 13'); if (Math.round((t.closeT - t.openT) / 60) === Math.round(m)) return;
   t.closeT = t.openT + Math.round(m * 60); if (SET().tradeShots !== false && !SHOTQ.includes(t)) SHOTQ.push(t); tjAfterEdit('Time held saved: ' + fmtDur(t.closeT - t.openT) + '.'); }
 $('#tj-heldsave').addEventListener('pointerdown', e => e.preventDefault()); $('#tj-heldsave').addEventListener('click', tjHeldSave);
