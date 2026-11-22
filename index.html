@@ -4486,7 +4486,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-22-77';
+const BUILD = '2026-11-22-78';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -5036,6 +5036,7 @@ async function tplAi(said, f) {
   for (const [l, k] of TPL_KEYS) { let v = typeof out[k] === 'string' ? fixTerms(out[k].trim()) : ''; if (!v) continue;
     if (yn.has(l)) { v = /^y/i.test(v) ? 'Yes' : /^n/i.test(v) ? 'No' : ''; } else if (l === 'Bias') v = btDir(v); else { v = v.charAt(0).toUpperCase() + v.slice(1); if (!/[.!?]$/.test(v)) v += '.'; }
     if (v) n[l] = v; }
+  for (const [l, , re] of JT_YN) if (n[l] && !new RegExp(String.raw`(?:^|[^\w+])(?:${re})\b`, 'i').test(said) && !(/^(?:AMD|PO3)$/.test(l) && new RegExp(String.raw`(?:^|[^\w+])(?:${JT_BOTH[0][2]})\b`, 'i').test(said))) delete n[l];   // A+ DOL, AMD, PO3, True manip, PD array: only when you said the name
   return n;
 }
 /* After a recording: ask for the smart fill, and put it in only if the notes haven't changed in the meantime */
