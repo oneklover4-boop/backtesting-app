@@ -4486,7 +4486,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-22-79';
+const BUILD = '2026-11-22-80';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4857,15 +4857,16 @@ const WHOLE = JT_LONG.length - 1;
 const AMD_RE = String.raw`AMD|a\.?\s?m\.?\s?d\.?|a m d|amd's`, PO3_RE = String.raw`p\.?\s?[o0]\.?\s?(?:3|three)|PO3|P03|power of (?:3|three)|po three|pio three|pure three`;
 const JT_YN = [
   ['A+ DOL', 'A plus DOL', String.raw`a\s?(?:\+|plus)\s?(?:DOL|D\.?\s?O\.?\s?L\.?|dole|doll|dull|doal)|a plus d o l|a-plus (?:DOL|dole|doll)`],
-  ['AMD', 'AMD', AMD_RE],
   ['PO3', 'PO3', PO3_RE],
+  ['AMD', 'AMD', AMD_RE],
   ['True Manip', 'True manip', String.raw`(?:true|through|tru)\s*(?:manip(?:ulation|ulated|s)?|man(?:\s|-)?ips?|mani\w*|manny ?ps?|min(?:ute)?s?\s?(?:ups?|ps?|nips?)|menu ?ps?|mana ?ps?|man ups?|mean ?ips?|m\.?\s?a\.?\s?n\.?\s?i\.?\s?p\.?)`],
-  ['PD Array', 'PD array', String.raw`(?:PD|p\.?\s?d\.?|pd's|pede|PT)\s?(?:arrays?|a ray|ray|arra)`]];
+  ['PD Array', 'PD array', String.raw`(?:PD|p\.?\s?d\.?|pd's|pede|PT)\s?(?:arrays?|a ray|ray|arra)`],
+  ['LRL', 'LRL', String.raw`(?:LTF|l[\s.\-]?t[\s.\-]?f\.?|low time ?frame)?[\s,\/\-]*(?:LRL|l[\s.\-]?r[\s.\-]?l\.?|low resistance liquidity)`],
+  ['HR LR', 'HR LR', String.raw`(?:h[\s.\-]?r\.?[\s,\/\-]*(?:(?:and|slash|or|to)[\s,\-]*)?l[\s.\-]?r\.?|hrlr|high resistance(?: and| \/| to)? low resistance)`]];
 /* "PO3/AMD yes" said together answers both */
 const JT_BOTH = [['AMD/PO3', 'AMD PO3', String.raw`(?:${AMD_RE})\s*(?:\/|slash|and|or|,)?\s*(?:${PO3_RE})|(?:${PO3_RE})\s*(?:\/|slash|and|or|,)?\s*(?:${AMD_RE})`]];
 const JT_OPT = [
   ['SMT', 'SMT', String.raw`SMT(?: divergence)?|S\.?\s?M\.?\s?T\.?|SMTs`],
-  ['LTF LRL', 'LTF LRL', String.raw`(?:LTF|l[\s.\-]?t[\s.\-]?f\.?|low time ?frame)?[\s,\/\-]*(?:LRL|l[\s.\-]?r[\s.\-]?l\.?|low resistance liquidity)`],
   ['CISD', 'CISD', String.raw`CISD|C\.?\s?I\.?\s?S\.?\s?D\.?|CSD|CISDs|sis d|cease d`]];
 const YES = String.raw`yes|it was there|was there|it was|there|valid|yeah|yep|yup|ya|yah|yes i did|i did|i had(?: it| that| one)?|had(?: it| one)?|we had(?: it| one)?|got it|tick(?:ed)?|check(?:ed)?|correct|true|present|there was(?: one)?`;
 const NO = String.raw`no|nope|nah|know|i didn'?t(?: have)?(?: it| one)?|didn'?t(?: have)?(?: it| one)?|did not|we didn'?t(?: have)?(?: it| one)?|not really|not|none|nothing|false|there wasn'?t(?: one)?|wasn'?t`;
@@ -4932,11 +4933,11 @@ const TPL_ALL = [...JT_LONG, ...JT_YN, ...JT_OPT], WHOLE_L = JT_LONG[WHOLE][0];
 function tplSplit(v) {   // notes text back into { fields, whole }
   const f = {}; let whole = '', open = null; v = String(v || '');
   const si = v.search(RE_SAID); if (si >= 0) { whole = v.slice(si + BT_SAID.length).trim().replace(/\s*\n\s*/g, ' '); v = v.slice(0, si); }   // notes in yesterday's short layout
-  const alias = { 'confirmation': 'The confirmation', 'key level': 'Idea/key levels' };
+  const alias = { 'confirmation': 'The confirmation', 'key level': 'Idea/key levels', 'ltf lrl': 'LRL' };
   for (const l of v.split('\n')) { const m = l.match(/^\s*([^:]{1,40}):\s*(.*)$/), lab = m && m[1].trim().toLowerCase(), x = m && (TPL_ALL.find(z => z[0].toLowerCase() === lab) || (alias[lab] && [alias[lab]]));
     if (x) { open = x[0]; if (open === WHOLE_L) whole = [whole, m[2].trim()].filter(Boolean).join(' '); else f[open] = m[2].trim(); continue; }
     if (m && lab === 'amd/po3') { if (m[2].trim()) f.AMD = f.PO3 = m[2].trim(); open = null; continue; }   // older notes: one line for both
-    if (m && /^(?:optional|hr lr)$/i.test(lab)) { open = null; continue; }   // HR LR was removed
+    if (m && /^optional$/i.test(lab)) { open = null; continue; }
     if (open && l.trim()) { if (open === WHOLE_L) whole += ' ' + l.trim(); else f[open] = (f[open] + ' ' + l.trim()).trim(); } else if (!l.trim()) open = null; }
   for (const k in f) if (!f[k]) delete f[k];
   return { f, whole: whole.trim() };
@@ -5022,8 +5023,8 @@ async function btAi(said, f) {
   return n;
 }
 /* After a recording: ask for the better summary, and put it in only if the notes haven't changed in the meantime */
-const NOTES_TPL_SYS = 'You turn a futures trader\'s spoken trade notes into their trading journal. The trader (ICT style, trades MNQ, MES, NQ, ES) talks freely about one trade: they ramble, repeat themselves, change their mind, go off topic, and usually sum up at the end. Speech-to-text wrote it down word for word, with mistakes. Read ALL of it first, work out what they actually meant, then fill each heading with the short note they would write themselves. The journal is searched later (for example every trade with a 1m iFVG), so use the same exact terms every time. Return JSON with exactly these keys: "bias", "idea", "dol", "trigger", "target", "confirmation", "reasoning", "confidence", "a_plus_dol", "amd", "po3", "true_manip", "pd_array", "smt", "ltf_lrl", "cisd". bias: exactly "Bullish" or "Bearish" (long/buying = Bullish, short/selling = Bearish), else "". idea (Idea/key levels): their plan for the day as they said it, as scenarios, e.g. "Sweep Asia low then long to PDH, or take PDH first then short to Asia low"; the key levels they named. Max 25 words. dol (DOL, draw on liquidity): what they called the DOL or draw; if they never named one, where their TP is. A few words only (max 4), e.g. "BSL above PDH", "Asia high". trigger (What I took my trade off): the PD array and timeframe they entered from plus what made them enter, from their final version, a few words (max 6), e.g. "15m FVG, displacement out", "1H OB, MSS on 5m". target (My target): where the TP is, e.g. "Asia high", "PDH". confirmation (The confirmation): what confirmed the entry, a few words only (max 5), e.g. "1m iFVG", "SMT with ES, 1m CISD". reasoning (Where and why for TP and SL): where TP and SL went AND their short reason why for each, e.g. "TP at PDH (BSL), SL under 15m FVG low that held". Max 20 words. confidence: their own words, a few words only (max 3), e.g. "Pretty confident", "8/10", "Not confident". Yes/no headings (a_plus_dol, amd, po3, true_manip, pd_array, smt, ltf_lrl, cisd): exactly "Yes", "No" or "". smt = Yes if they said they had SMT (e.g. "SMT with ES"); cisd = Yes if they said they had a CISD; the others only when they said that heading\'s name then yes or no (A plus DOL, AMD, PO3 or power of three, true manip, PD array, LTF LRL); never judge them yourself. Rules: notes, not sentences: no "I", no "we", no "because" unless it is the reason, no filler (like, um, you know, basically, so yeah). Never invent a level, number or reason they did not say; leave "" when nothing they said covers a heading. If they corrected themselves or summed up at the end, use the final version. Exact terms to use: FVG, iFVG (inverse FVG / inversion fair value gap / "I F V G" / "IFEG"), BPR, OB, breaker, SMT, CISD, MSS, BOS, OTE, displacement, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, timeframes 1m 3m 5m 15m 1H 4H Daily Weekly ("one minute" = 1m, "four hour" = 4H), sessions Asia, London, NY AM, NY PM, Asia high/low, London high/low. Speech-to-text mishears: "true minute PS", "true man ups" = true manip; "PO three", "P03" = PO3; "C I S D", "CSD" = CISD; "S M T" = SMT; "D O L", "dole" = DOL; "fair value gap" = FVG. HR LR is not a heading: ignore it. Ignore any current answers given: fill everything fresh from what they said.';
-const TPL_KEYS = [['Bias', 'bias'], ['Idea/key levels', 'idea'], ['DOL', 'dol'], ['What I took my trade off', 'trigger'], ['My target', 'target'], ['The confirmation', 'confirmation'], ['Where and why for TP and SL', 'reasoning'], ['Confidence', 'confidence'], ['A+ DOL', 'a_plus_dol'], ['AMD', 'amd'], ['PO3', 'po3'], ['True Manip', 'true_manip'], ['PD Array', 'pd_array'], ['SMT', 'smt'], ['LTF LRL', 'ltf_lrl'], ['CISD', 'cisd']];
+const NOTES_TPL_SYS = 'You turn a futures trader\'s spoken trade notes into their trading journal. The trader (ICT style, trades MNQ, MES, NQ, ES) talks freely about one trade: they ramble, repeat themselves, change their mind, go off topic, and usually sum up at the end. Speech-to-text wrote it down word for word, with mistakes. Read ALL of it first, work out what they actually meant, then fill each heading with the short note they would write themselves. The journal is searched later (for example every trade with a 1m iFVG), so use the same exact terms every time. Return JSON with exactly these keys: "bias", "idea", "dol", "trigger", "target", "confirmation", "reasoning", "confidence", "a_plus_dol", "amd", "po3", "true_manip", "pd_array", "smt", "ltf_lrl", "cisd", "hr_lr". bias: exactly "Bullish" or "Bearish" (long/buying = Bullish, short/selling = Bearish), else "". idea (Idea/key levels): their plan for the day as they said it, as scenarios, e.g. "Sweep Asia low then long to PDH, or take PDH first then short to Asia low"; the key levels they named. Max 25 words. dol (DOL, draw on liquidity): what they called the DOL or draw; if they never named one, where their TP is. A few words only (max 4), e.g. "BSL above PDH", "Asia high". trigger (What I took my trade off): the PD array and timeframe they entered from plus what made them enter, from their final version, a few words (max 6), e.g. "15m FVG, displacement out", "1H OB, MSS on 5m". target (My target): where the TP is, e.g. "Asia high", "PDH". confirmation (The confirmation): what confirmed the entry, a few words only (max 5), e.g. "1m iFVG", "SMT with ES, 1m CISD". reasoning (Where and why for TP and SL): where TP and SL went AND their short reason why for each, e.g. "TP at PDH (BSL), SL under 15m FVG low that held". Max 20 words. confidence: their own words, a few words only (max 3), e.g. "Pretty confident", "8/10", "Not confident". Yes/no headings (a_plus_dol, amd, po3, true_manip, pd_array, ltf_lrl = LRL, hr_lr = HR LR, smt, cisd): exactly "Yes", "No" or "". smt = Yes if they said they had SMT (e.g. "SMT with ES"); cisd = Yes if they said they had a CISD; the others only when they said that heading\'s name then yes or no (A plus DOL, AMD, PO3 or power of three, true manip, PD array, LRL or LTF LRL, HR LR); never judge them yourself. Rules: notes, not sentences: no "I", no "we", no "because" unless it is the reason, no filler (like, um, you know, basically, so yeah). Never invent a level, number or reason they did not say; leave "" when nothing they said covers a heading. If they corrected themselves or summed up at the end, use the final version. Exact terms to use: FVG, iFVG (inverse FVG / inversion fair value gap / "I F V G" / "IFEG"), BPR, OB, breaker, SMT, CISD, MSS, BOS, OTE, displacement, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, timeframes 1m 3m 5m 15m 1H 4H Daily Weekly ("one minute" = 1m, "four hour" = 4H), sessions Asia, London, NY AM, NY PM, Asia high/low, London high/low. Speech-to-text mishears: "true minute PS", "true man ups" = true manip; "PO three", "P03" = PO3; "C I S D", "CSD" = CISD; "S M T" = SMT; "D O L", "dole" = DOL; "fair value gap" = FVG. "H R L R", "HRLR" = HR LR; "L R L", "LTF LRL", "low resistance liquidity" = LRL. Ignore any current answers given: fill everything fresh from what they said.';
+const TPL_KEYS = [['Bias', 'bias'], ['Idea/key levels', 'idea'], ['DOL', 'dol'], ['What I took my trade off', 'trigger'], ['My target', 'target'], ['The confirmation', 'confirmation'], ['Where and why for TP and SL', 'reasoning'], ['Confidence', 'confidence'], ['A+ DOL', 'a_plus_dol'], ['AMD', 'amd'], ['PO3', 'po3'], ['True Manip', 'true_manip'], ['PD Array', 'pd_array'], ['SMT', 'smt'], ['CISD', 'cisd'], ['LRL', 'ltf_lrl'], ['HR LR', 'hr_lr']];
 async function tplAi(said, f) {
   const own = voiceKey(); let out;
   f = {};   // every heading is filled fresh from everything said
@@ -5084,13 +5085,13 @@ $('#tj-tidy').addEventListener('click', async () => { if (!tjTrade) return; cons
   if (tjTrade === T) $('#tj-live').textContent = ok ? 'Headings filled from what you said. Edit anything you like.' : 'Couldn\'t reach the notes helper. Check the internet and tap again.'; });
 /* One time on each device (2026-11-22): fill the headings of the 3 latest backtest trades from everything said on them */
 async function refillLatest() {
-  if (!useTpl() || !cloudOn() || SET().refill1122b) return;
+  if (!useTpl() || !cloudOn() || SET().refill1122c) return;
   const all = []; for (const ss of store.sessions || []) for (const t of ss.trades || []) if (/^Bias:/m.test(t.notes || '') && (tplSplit(t.notes).whole || t.said)) all.push(t);
   all.sort((a, b) => (b.at || 0) - (a.at || 0));
-  const pick = all.slice(0, 3); if (!pick.length) { SET().refill1122b = 1; save(); return; }
+  const pick = all.slice(0, 3); if (!pick.length) { SET().refill1122c = 1; save(); return; }
   let done = 0; for (const t of pick) if (await tplAiFill(() => t.notes, v => { t.notes = v; }, t.said)) done++;
   if (done < pick.length) return;   // offline or the helper didn't answer: try again next time the app opens
-  SET().refill1122b = 1; save(); if (view === 'trades') renderTrades();
+  SET().refill1122c = 1; save(); if (view === 'trades') renderTrades();
   toast(`Filled the headings on your ${done} latest backtest trade${done > 1 ? 's' : ''} from what you said.`);
 }
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
