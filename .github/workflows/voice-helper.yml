@@ -58,6 +58,8 @@ jobs:
           w = low(n, 'why')
           if not all(x in w for x in ('asia low', '15m fvg', 'displacement')) or len(w.split()) < 40: bad.append('1 why not kept in full')
           if ' um' in w or 'you know' in w: bad.append('1 why has filler')
+          if 'po3 yes' in w or 'hr lr' in w: bad.append('1 why has checklist answers')
+          if '15m fvg' not in w: bad.append('1 why not in shorthand')
           if 'calm' not in low(n, 'psych') or 'calm' in w: bad.append('1 psych')
           if 'target' not in low(n, 'improve') and 'partial' not in low(n, 'improve'): bad.append('1 improve')
           if n['confidence'] != 'A-': bad.append('1 confidence')
