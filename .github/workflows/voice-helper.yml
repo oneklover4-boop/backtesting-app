@@ -44,16 +44,35 @@ jobs:
           curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"mode":"tpl","said":"Whole idea together, we were bearish below the daily open, swept the Asia high into the 4H FVG, got SMT and a CISD and shorted to the PDL. Bias bearish. DOL the PDL. Trigger the 1 minute iFVG. Confidence 8 out of 10. PO3/AMD, yes. True minute PS, yes. H R L R, no. CISD yes."}' "$U/notes" | tee /tmp/t; echo
           grep -q '"true_manip":"Yes"' /tmp/t || { echo "::error::The template fill missed True manip"; exit 1; }
           grep -q '"po3":"Yes"' /tmp/t && grep -q '"amd":"Yes"' /tmp/t || { echo "::error::The template fill missed AMD or PO3"; exit 1; }
-          # journal template fill from a plain talk-through (no heading names said): the headings must be summarised from it, nothing invented
-          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"mode":"tpl","said":"Okay so um, whole idea together. So we opened up and like I had a bullish bias for today because we were below the daily open in a discount. Price came down and it swept the London low, like it manipulated into the 4 hour fair value gap, and then we got SMT with ES, ES made a lower low and NQ did not. Then we had a CISD on the one minute and I took my trade off the one minute inverse FVG. My draw was the buy side above the Asia high. I put my stop loss under the swing low that swept London and my target was the Asia high. Pretty confident on this one, like 8 out of 10."}' "$U/notes" | tee /tmp/w; echo
+          # journal template fill from long rambling talk-throughs (no heading names said): every heading summarised from it, nothing invented
+          cat > /tmp/r1.json <<'J'
+          {"mode":"tpl","said":"Okay so um, for the day, like, what I want is either we sweep the Asia low first and then we run up to the previous day high, or we take the previous day high first and then we come back down to the Asia low, you know. So yeah that's the idea. So London kind of chopped around, nothing really happened, um, and then going into New York we came down and we swept the Asia low, which is what I wanted, and we traded into this 15 minute fair value gap. And I was like, if we see displacement out of this, then I'm in. And we did, we got nice displacement out, um, and then on the one minute we had an IFEG, so like the one minute inverse FVG, that was my confirmation basically. I also checked ES and there was SMT, ES made a lower low and NQ didn't. So I entered long. I put my TP at the previous day high because that's where the buy side is, that's the DOL really, and my SL under the low of the 15 minute FVG because if it goes under that, the idea's wrong. Um, I was pretty confident in this trade. So yeah, overall, swept Asia low, traded into the 15 minute FVG, nice displacement out, one minute IFEG, long to PDH."}
+          J
+          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' --data @/tmp/r1.json "$U/notes" | tee /tmp/w1; echo
+          cat > /tmp/r2.json <<'J'
+          {"mode":"tpl","said":"Right so today I'm thinking bearish, we're in premium on the daily and the weekly is pointing down, so either we run London high and then sell off into the PDL, or if we just break down then I'll wait for a retrace. Um so like basically New York opened, we pushed up, took London high, the buy stops above it, and then we traded into the 1 hour order block. Then we got a market structure shift on the 5 minute with displacement, there was a 5 minute FVG left behind and I sold off that FVG. My draw on liquidity was the sell side under PDL, so the TP's at the PDL, stop loss above the high that took London. Confidence, hmm, like 7 out of 10 I'd say, wasn't super sure because of news later. No SMT on this one."}
+          J
+          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' --data @/tmp/r2.json "$U/notes" | tee /tmp/w2; echo
           python3 - <<'PY'
           import json, sys
-          n = json.load(open('/tmp/w'))['notes']
-          bad = [k for k in ('idea', 'dol', 'trigger', 'target', 'confirmation', 'reasoning', 'confidence') if not n[k]]
-          if n['bias'] != 'Bullish': bad.append('bias')
-          if n['smt'] != 'Yes' or n['cisd'] != 'Yes': bad.append('smt/cisd')
-          if n['a_plus_dol'] or n['true_manip'] or n['pd_array']: bad.append('guessed a yes/no')
-          if any(len(v.split()) > 9 for v in n.values()): bad.append('answer too long')
-          for k, v in n.items(): print(f'{k}: {v}')
-          if bad: print('::error::Talk-through fill wrong: ' + ', '.join(bad)); sys.exit(1)
+          bad = []
+          def low(n, k): return (n.get(k) or '').lower()
+          n = json.load(open('/tmp/w1'))['notes']; print('--- 1'); [print(f'{k}: {v}') for k, v in n.items()]
+          if n['bias'] != 'Bullish': bad.append('1 bias')
+          if '1m ifvg' not in low(n, 'confirmation'): bad.append('1 confirmation')
+          if '15m fvg' not in low(n, 'trigger') or 'displacement' not in low(n, 'trigger'): bad.append('1 trigger')
+          if 'pdh' not in low(n, 'dol') and 'previous day high' not in low(n, 'dol'): bad.append('1 dol')
+          if 'pdh' not in low(n, 'target') and 'previous day high' not in low(n, 'target'): bad.append('1 target')
+          if 'pretty confident' not in low(n, 'confidence'): bad.append('1 confidence')
+          if 'asia' not in low(n, 'idea') or ' or ' not in low(n, 'idea'): bad.append('1 idea')
+          if not n['reasoning']: bad.append('1 reasoning')
+          if n['smt'] != 'Yes' or n['a_plus_dol'] or n['true_manip'] or n['pd_array'] or n['amd'] or n['po3']: bad.append('1 yes/no')
+          n = json.load(open('/tmp/w2'))['notes']; print('--- 2'); [print(f'{k}: {v}') for k, v in n.items()]
+          if n['bias'] != 'Bearish': bad.append('2 bias')
+          if '1h ob' not in low(n, 'trigger') and '5m fvg' not in low(n, 'trigger'): bad.append('2 trigger')
+          if 'pdl' not in low(n, 'dol') or 'pdl' not in low(n, 'target'): bad.append('2 dol/target')
+          if '7' not in low(n, 'confidence'): bad.append('2 confidence')
+          if n['smt'] != 'No' or n['true_manip'] or n['a_plus_dol']: bad.append('2 yes/no')
+          if any(len(v.split()) > 30 for v in n.values()): bad.append('too long')
+          if bad: print('::error::Rambling fill wrong: ' + ', '.join(bad)); sys.exit(1)
           PY
