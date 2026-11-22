@@ -44,3 +44,16 @@ jobs:
           curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"mode":"tpl","said":"Whole idea together, we were bearish below the daily open, swept the Asia high into the 4H FVG, got SMT and a CISD and shorted to the PDL. Bias bearish. DOL the PDL. Trigger the 1 minute iFVG. Confidence 8 out of 10. PO3/AMD, yes. True minute PS, yes. H R L R, no. CISD yes."}' "$U/notes" | tee /tmp/t; echo
           grep -q '"true_manip":"Yes"' /tmp/t || { echo "::error::The template fill missed True manip"; exit 1; }
           grep -q '"po3":"Yes"' /tmp/t && grep -q '"amd":"Yes"' /tmp/t || { echo "::error::The template fill missed AMD or PO3"; exit 1; }
+          # journal template fill from a plain talk-through (no heading names said): the headings must be summarised from it, nothing invented
+          curl -sS -X POST -H 'Origin: https://oneklover4-boop.github.io' -H 'Content-Type: application/json' -d '{"mode":"tpl","said":"Okay so um, whole idea together. So we opened up and like I had a bullish bias for today because we were below the daily open in a discount. Price came down and it swept the London low, like it manipulated into the 4 hour fair value gap, and then we got SMT with ES, ES made a lower low and NQ did not. Then we had a CISD on the one minute and I took my trade off the one minute inverse FVG. My draw was the buy side above the Asia high. I put my stop loss under the swing low that swept London and my target was the Asia high. Pretty confident on this one, like 8 out of 10."}' "$U/notes" | tee /tmp/w; echo
+          python3 - <<'PY'
+          import json, sys
+          n = json.load(open('/tmp/w'))['notes']
+          bad = [k for k in ('idea', 'dol', 'trigger', 'target', 'confirmation', 'reasoning', 'confidence') if not n[k]]
+          if n['bias'] != 'Bullish': bad.append('bias')
+          if n['smt'] != 'Yes' or n['cisd'] != 'Yes': bad.append('smt/cisd')
+          if n['a_plus_dol'] or n['true_manip'] or n['pd_array']: bad.append('guessed a yes/no')
+          if any(len(v.split()) > 9 for v in n.values()): bad.append('answer too long')
+          for k, v in n.items(): print(f'{k}: {v}')
+          if bad: print('::error::Talk-through fill wrong: ' + ', '.join(bad)); sys.exit(1)
+          PY

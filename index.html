@@ -967,8 +967,8 @@ body.notpl .jt-help { display: none; }
     <div class="tj-body">
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row" id="tj-res" hidden><span class="tj-lbl">Change result:</span><button class="btn" id="tj-win">Win (hit target)</button><button class="btn" id="tj-loss">Loss (hit stop)</button><button class="btn" id="tj-be">Break even</button></div><div class="tj-row" hidden><label class="tj-lbl" for="tj-tp">Target</label><input class="ctl num" id="tj-tp" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn" id="tj-tpsave">Save target</button></div><div class="tj-row" hidden><label class="tj-lbl" for="tj-exit">Exit price</label><input class="ctl num" id="tj-exit" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn primary" id="tj-exitsave">Save exit price</button><button class="btn" id="tj-undo" hidden>Undo last change</button></div><div class="tj-row" id="tj-heldrow" hidden><label class="tj-lbl" for="tj-held">Time held (minutes)</label><input class="ctl num" id="tj-held" type="text" inputmode="numeric" autocomplete="off" style="width:90px"><button class="btn primary" id="tj-heldsave">Save time held</button></div><div class="tj-row"><span id="tj-delwrap"></span></div>
-      <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Tidy up notes</button><span class="note" id="tj-live"></span></div>
-      <p class="note jt-help"><b>Talk the whole idea through first, then go through each heading:</b> say its name, then your answer (Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence, then AMD · PO3 · A plus DOL · True manip · PD array · SMT · LTF LRL · CISD + yes or no). Everything you say goes in Whole idea together.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Fill headings from what I said</button><span class="note" id="tj-live"></span></div>
+      <p class="note jt-help"><b>Just talk the trade through.</b> Everything you say goes in Whole idea together, and the headings above it are filled in for you as short notes from what you said. You can also say a heading name then your answer (for yes/no ones like SMT, CISD, AMD, PO3, True manip: say it, then yes or no). Change anything by typing.</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -1011,7 +1011,7 @@ body.notpl .jt-help { display: none; }
       <div class="tj-row" id="lt-newtag" hidden><input id="lt-newtag-in" class="lt-tagin" placeholder="Type your tag, e.g. Silver Bullet" enterkeyhint="done"><button type="button" class="btn primary" id="lt-newtag-add">Add tag</button><button type="button" class="btn" id="lt-newtag-no">Cancel</button></div>
       <p class="lt-h">Notes</p>
       <div class="tj-row"><button class="btn tj-mic" id="lt-mic" type="button"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="lt-tidy" type="button">Tidy up notes</button><span class="note" id="lt-live"></span></div>
-      <p class="note jt-help"><b>Talk the whole idea through first, then go through each heading:</b> say its name, then your answer (Bias · Idea · DOL · Trigger · Goal · Confirmed by · Reasoning · Confidence, then AMD · PO3 · A plus DOL · True manip · PD array · SMT · LTF LRL · CISD + yes or no). Everything you say goes in Whole idea together.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+      <p class="note jt-help"><b>Just talk the trade through.</b> Everything you say goes in Whole idea together, and the headings above it are filled in for you as short notes from what you said. You can also say a heading name then your answer (for yes/no ones like SMT, CISD, AMD, PO3, True manip: say it, then yes or no). Change anything by typing.</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
       <p class="lt-h">Pictures</p>
       <div class="lt-pics" id="lt-pics"></div>
       <input type="file" id="lt-file" accept="image/*" multiple hidden>
@@ -1391,7 +1391,8 @@ function closePos(sess, p, px, t, reason) {
   const pnl = be ? 0 : gross - fees;
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
     openT: p.openT, closeT: t, at: Date.now(), pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
-  if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.said || (/^Bias:/m.test(p.notes) ? '' : p.notes); tr.notes = tidyNotes(plainOf(p.notes), tr); tr.nNotes = p.nNotes; }
+  if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.said || (/^Bias:/m.test(p.notes) ? '' : p.notes); tr.notes = tidyNotes(plainOf(p.notes), tr); tr.nNotes = p.nNotes;
+    if (store && useTpl()) btAiFill(() => tr.notes, v => { tr.notes = v; save(); if (tjTrade === tr && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, tr); }   // fill the headings again from everything said, now it's a trade
   sess.positions = sess.positions.filter(x => x !== p);
   if (store && SET().tradeShots !== false) SHOTQ.push(sess.trades[sess.trades.length - 1]);
 }
@@ -4485,7 +4486,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-22-75';
+const BUILD = '2026-11-22-76';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -5021,7 +5022,7 @@ async function btAi(said, f) {
   return n;
 }
 /* After a recording: ask for the better summary, and put it in only if the notes haven't changed in the meantime */
-const NOTES_TPL_SYS = 'You fill in a trade journal template for an ICT-style futures trader (MNQ, MES, NQ, ES) from what they said, word for word. They usually talk the whole idea through first, then go through each heading one by one, saying the heading name and then the answer. Return JSON with exactly these keys: "bias", "idea", "dol", "trigger", "target", "confirmation", "reasoning", "confidence", "a_plus_dol", "amd", "po3", "true_manip", "pd_array", "smt", "ltf_lrl", "cisd". Headings: bias = Bias (exactly "Bullish" or "Bearish"); idea = Idea/key levels; dol = DOL (draw on liquidity); trigger = What I took my trade off; target = My target (also said as goal); confirmation = The confirmation (also said as confirmed by); reasoning = Where and why for TP and SL (also said as reasoning); confidence = Confidence; then yes/no headings: a_plus_dol = A+ DOL, amd = AMD, po3 = PO3, true_manip = True manip, pd_array = PD array, smt = SMT, ltf_lrl = LTF LRL, cisd = CISD, each exactly "Yes" or "No". Take each answer only from where they said that heading (or a misheard version of its name) and then the answer. Never guess, infer or fill a heading from the talk-through: if they did not say the heading, its answer is "". This matters most for the yes/no headings: only "Yes" or "No" when they said that heading followed by yes or no. Speech-to-text mishears the heading names, so read them generously: "true minute PS", "true man ups", "true manny P" = True manip; "PO three", "P O 3", "P03", "power of three" = PO3; "a m d" = AMD; "PO3/AMD yes" said together answers both PO3 and AMD; "L T F L R L", "low time frame LRL" = LTF LRL; HR LR (also "H R L R", "HRLR") is not a heading any more: ignore it, and never put its answer under LTF LRL or anything else; "C I S D", "CSD" = CISD; "S M T" = SMT; "A plus DOL" = A+ DOL; "PD ray" = PD array; "D O L", "draw" = DOL. Answers are short notes: a few words, keep their key reason, no "I", no filler, no full sentences; use shorthand (FVG, iFVG, SMT, CISD, MSS, BOS, OTE, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, 1m, 5m, 15m, 1H, 4H, Asia, London, NY AM). Keep a current answer unless what they said changes it.';
+const NOTES_TPL_SYS = 'You fill in a trade journal template for an ICT-style futures trader (MNQ, MES, NQ, ES) from what they said about one trade, word for word. Usually they just talk the whole idea through; sometimes they also say a heading name and then the answer. Your job is to summarise what they said into the headings. Return JSON with exactly these keys: "bias", "idea", "dol", "trigger", "target", "confirmation", "reasoning", "confidence", "a_plus_dol", "amd", "po3", "true_manip", "pd_array", "smt", "ltf_lrl", "cisd". Headings: bias = Bias, exactly "Bullish" or "Bearish" (long or buying = Bullish, short or selling = Bearish); idea = Idea/key levels: the key levels and what price did, e.g. "Swept London low into 4H FVG"; dol = DOL, the draw on liquidity, e.g. "BSL above Asia high"; trigger = What I took my trade off, the entry, e.g. "1m iFVG"; target = My target (also said as goal or TP), e.g. "Asia high"; confirmation = The confirmation (also said as confirmed by), e.g. "SMT with ES, 1m CISD"; reasoning = Where and why for TP and SL, e.g. "SL under sweep low, TP Asia high"; confidence = Confidence, e.g. "8/10" or "High"; yes/no headings: a_plus_dol = A+ DOL, amd = AMD, po3 = PO3, true_manip = True manip, pd_array = PD array, smt = SMT, ltf_lrl = LTF LRL, cisd = CISD, each exactly "Yes", "No" or "". How to fill: read everything they said, including the talk-through, and fill every text heading their words cover, even if they never said the heading name. Each text answer is a short journal note of one to six words in trading shorthand, never a sentence: no "I", no "because", no filler, no hedging. Use these terms: FVG, iFVG, BPR, OB, SMT, CISD, MSS, BOS, OTE, BSL, SSL, PDH, PDL, PWH, PWL, EQH, EQL, NWOG, NDOG, 1m, 5m, 15m, 1H, 4H, Daily, Asia, London, NY AM, NY PM. Only use what they actually said: never invent a level, target, reason or number they did not say; if nothing they said covers a heading, its answer is "". Yes/no headings: "Yes" only when they said it was there or they had it (anywhere, e.g. "we got SMT with ES" = SMT Yes, "CISD on the 1 minute" = CISD Yes, "PO3/AMD yes" = both Yes); "No" only when they said it was not; otherwise "". Never judge a yes/no yourself (A+ DOL, True manip, AMD, PO3 and PD array need them to say it). Speech-to-text mishears names, so read them generously: "true minute PS", "true man ups", "true manny P" = True manip; "PO three", "P O 3", "P03", "power of three" = PO3; "a m d" = AMD; "L T F L R L", "low time frame LRL" = LTF LRL; "C I S D", "CSD" = CISD; "S M T" = SMT; "A plus DOL" = A+ DOL; "PD ray" = PD array; "D O L", "draw" = DOL; "I F V G", "inverse FVG", "inversion fair value gap" = iFVG; "fair value gap" = FVG. HR LR is not a heading: ignore it. If they said the same heading more than once, the last thing they said wins. Keep a current answer when nothing they said covers that heading.';
 const TPL_KEYS = [['Bias', 'bias'], ['Idea/key levels', 'idea'], ['DOL', 'dol'], ['What I took my trade off', 'trigger'], ['My target', 'target'], ['The confirmation', 'confirmation'], ['Where and why for TP and SL', 'reasoning'], ['Confidence', 'confidence'], ['A+ DOL', 'a_plus_dol'], ['AMD', 'amd'], ['PO3', 'po3'], ['True Manip', 'true_manip'], ['PD Array', 'pd_array'], ['SMT', 'smt'], ['LTF LRL', 'ltf_lrl'], ['CISD', 'cisd']];
 async function tplAi(said, f) {
   const own = voiceKey(); let out;
@@ -5038,16 +5039,17 @@ async function tplAi(said, f) {
   return n;
 }
 /* After a recording: ask for the smart fill, and put it in only if the notes haven't changed in the meantime */
-async function tplAiFill(get, put) {
-  if (!useTpl() || !cloudOn()) return; const cur = get(); if (!/^Bias:/m.test(cur || '')) return;
-  const P = tplSplit(cur); if (!P.whole) return;
-  let n; try { n = await tplAi(P.whole, P.f); } catch (e) { return; }
-  if (get() !== cur) return;
-  for (const k in n) P.f[k] = n[k];
-  put(tplFormat(P.f, P.whole));
+async function tplAiFill(get, put, raw) {   // raw: everything said, word for word, if the notes don't hold it (older trades)
+  if (!useTpl() || !cloudOn()) return false; const cur = get(); if (!/^Bias:/m.test(cur || '')) return false;
+  const P = tplSplit(cur), said = (P.whole || fixTerms(String(raw || ''))).trim(); if (!said) return false;
+  let n; try { n = await tplAi(said, P.f); } catch (e) { return false; }
+  // the notes may have changed while waiting (another recording, a trade closing): fill in on top of what's there now, but never over a heading you changed in the meantime
+  const now = get(), Q = /^Bias:/m.test(now || '') ? tplSplit(now) : P;
+  for (const k in n) if ((Q.f[k] || '') === (P.f[k] || '')) Q.f[k] = n[k];
+  const out = tplFormat(Q.f, Q.whole || said); if (out !== now) put(out); return true;
 }
 async function btAiFill(get, put, t) {
-  if (useTpl()) return tplAiFill(get, put);
+  if (useTpl()) return tplAiFill(get, put, t && t.said);
   if (!btMode(t) || !cloudOn()) return; const cur = get(); if (!RE_SAID.test(cur || '')) return;
   const P = btSplit(cur); if (!P.said) return;
   let n; try { n = await btAi(P.said, P.f); } catch (e) { return; }
@@ -5070,11 +5072,25 @@ function tjApply(said) { said = (said || '').trim(); if (said && tjTrade) { tjTr
 async function tjFlush() { if (rec) { const L = rec; rec = null; stopRec(); tjApply(await L.finish()); } }   // closing while still recording keeps what was said
 $('#tj-mic').addEventListener('click', async () => {
   if (rec) { const L = rec; rec = null; $('#tj-mic span').textContent = 'Finishing…'; $('#tj-live').textContent = L.cloud ? 'Writing down what you said…' : 'Catching your last words…'; const said = await L.finish(); stopRec(); tjApply(said); if (L.failed) $('#tj-live').textContent = L.failed; return; }
-  const L = listen((x, st) => { $('#tj-live').textContent = st || '“' + x.slice(-90) + '”'; }, (why) => { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = why === 'loop' ? 'The microphone kept stopping. Tap Speak your notes to try again, or tap the microphone key on the keyboard to dictate.' : 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; });
-  if (!L) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Tidy up notes.'; return; }
+  const L = listen((x, st) => { $('#tj-live').textContent = st || '“' + x.slice(-90) + '”'; }, (why) => { stopRec(); $('#tj-notes').focus(); $('#tj-live').textContent = why === 'loop' ? 'The microphone kept stopping. Tap Speak your notes to try again, or tap the microphone key on the keyboard to dictate.' : 'The microphone isn\'t allowed here. Tap the microphone key on the keyboard to dictate, then tap Fill headings from what I said.'; });
+  if (!L) { $('#tj-notes').focus(); $('#tj-live').textContent = 'Voice isn\'t available here. Tap the microphone key on the keyboard to dictate, then tap Fill headings from what I said.'; return; }
   rec = L; $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.';
 });
-$('#tj-tidy').addEventListener('click', () => { if (!tjTrade) return; $('#tj-notes').value = tidyNotes(plainOf($('#tj-notes').value), tjTrade); });
+$('#tj-tidy').addEventListener('click', async () => { if (!tjTrade) return; const T = tjTrade; $('#tj-notes').value = tidyNotes(plainOf($('#tj-notes').value), T); T.notes = $('#tj-notes').value; save();
+  if (!useTpl() || !cloudOn()) return; $('#tj-live').textContent = 'Filling your headings from what you said…';
+  const ok = await btAiFill(() => tjTrade === T && !$('#tjournal').hidden ? $('#tj-notes').value : T.notes, v => { T.notes = v; save(); if (tjTrade === T && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, T);
+  if (tjTrade === T) $('#tj-live').textContent = ok ? 'Headings filled from what you said. Edit anything you like.' : 'Couldn\'t reach the notes helper. Check the internet and tap again.'; });
+/* One time on each device (2026-11-22): fill the headings of the 3 latest backtest trades from everything said on them */
+async function refillLatest() {
+  if (!useTpl() || !cloudOn() || SET().refill1122) return;
+  const all = []; for (const ss of store.sessions || []) for (const t of ss.trades || []) if (/^Bias:/m.test(t.notes || '') && (tplSplit(t.notes).whole || t.said)) all.push(t);
+  all.sort((a, b) => (b.at || 0) - (a.at || 0));
+  const pick = all.slice(0, 3); if (!pick.length) { SET().refill1122 = 1; save(); return; }
+  let done = 0; for (const t of pick) if (await tplAiFill(() => t.notes, v => { t.notes = v; }, t.said)) done++;
+  if (done < pick.length) return;   // offline or the helper didn't answer: try again next time the app opens
+  SET().refill1122 = 1; save(); if (view === 'trades') renderTrades();
+  toast(`Filled the headings on your ${done} latest backtest trade${done > 1 ? 's' : ''} from what you said.`);
+}
 $('#cal-prev').addEventListener('click', () => shiftCal(-1));
 $('#cal-next').addEventListener('click', () => shiftCal(1));
 document.addEventListener('change', e => {
@@ -5234,6 +5250,7 @@ async function boot() {
   applySettings(); jtplRender(); rebuildAll(true); renderAll(); renderFavbar();
   SHOTQ.length = 0; // no pictures for the example trades made at start-up
   requestAnimationFrame(paintLoop);
+  setTimeout(refillLatest, 1500);
   window.TapeReplay = { notesPlain, journalParse, PANES, draw, S, SET, DATA, ptr, TOOLDEF, tcur, tidyNotes, addNotes, journalText, shotGet, toXY, fixTerms, bestAlt, SHOTQ, openDS: (d) => { select(d, PANES[0]); openDrawSettings(d); } };
   const h = location.hash.slice(1); if (['trades', 'analytics', 'sessions', 'live'].includes(h)) setView(h);
   save();
