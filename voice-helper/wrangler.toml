@@ -14,3 +14,11 @@ class_name = "Limiter"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Limiter"]
+
+[[durable_objects.bindings]]
+name = "JOURNAL"
+class_name = "Journal"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Journal"]

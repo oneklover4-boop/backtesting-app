@@ -925,6 +925,11 @@ body.notpl .jt-help { display: none; }
           <p class="note" id="vk-status"></p>
           <div class="headrow" style="margin-top:10px"><input class="ctl" id="vk-in" type="password" autocomplete="off" placeholder="Optional: your own OpenAI key (starts with sk-)" aria-label="OpenAI key" style="flex:1;min-width:220px"><button class="btn primary" id="vk-save">Save</button><button class="btn" id="vk-del">Remove</button></div>
         </div>
+        <div class="card" id="js-card">
+          <h3>Journal auto-save</h3>
+          <p class="note" id="js-status"></p>
+          <div class="headrow" style="margin-top:10px"><input class="ctl" id="js-in" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Journal key, like ABCD-EFGH-JKLM" aria-label="Journal key" style="flex:1;min-width:200px"><button class="btn primary" id="js-save">Turn on</button><button class="btn" id="js-del">Turn off</button></div>
+        </div>
         <div class="card">
           <h3>Market data</h3>
           <p class="note" id="data-status"></p>
@@ -1366,7 +1371,7 @@ function toBreakEven(p) {
 function markBE(t) { t.exit = t.entry; t.pnl = 0; t.fees = 0; t.r = 0; t.reason = 'BE'; }
 function load() { try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {} return null; }
 let saveT = 0;
-function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} }, 250); }
+function save() { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} try { jsyncSoon(); } catch (e) {} }, 250); }
 const uid = () => Math.random().toString(36).slice(2, 10);
 const S = () => store.sessions.find(s => s.id === store.activeId) || store.sessions[0];
 
@@ -4487,7 +4492,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-22-84';
+const BUILD = '2026-11-23-85';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4782,6 +4787,53 @@ function vkRender() { const k = voiceKey();
 $('#vk-save').addEventListener('click', () => { const k = $('#vk-in').value.trim(); if (!/^sk-[\w-]{10,}$/.test(k)) { toast('That doesn\'t look like an OpenAI key. It starts with sk-'); return; } try { localStorage.setItem(VKEY, k); } catch (e) {} $('#vk-in').value = ''; vkRender(); toast('Key saved. The mic now uses your own key.'); });
 $('#vk-del').addEventListener('click', () => { try { localStorage.removeItem(VKEY); } catch (e) {} vkRender(); toast(VPROXY ? 'Key removed. The mic uses the shared cloud engine.' : 'Key removed. The mic is back to the browser\'s speech engine.'); });
 vkRender();
+/* Journal auto-save: with a journal key (Sessions > Journal auto-save, typed once per device), the app saves an encrypted copy
+   of the whole journal (every trade, notes, everything said, no-trade days) to the helper a few seconds after every change,
+   so Claude can read it on request with the same key. Encrypted here with the key before it leaves the device. */
+const JKEY = 'tape-replay.journalkey', JSTAT = 'tape-replay.journalsync';
+const jkNorm = (k) => String(k || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+const jkGet = () => { try { return localStorage.getItem(JKEY) || ''; } catch (e) { return ''; } };
+const hex = (b) => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+const sha256 = async (t) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)));
+let jkCache = null;
+async function jkDerive(k) {
+  if (jkCache && jkCache.k === k) return jkCache;
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(k), 'PBKDF2', false, ['deriveKey']);
+  const aes = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode('tape-journal-salt-v1'), iterations: 200000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+  return (jkCache = { k, aes, id: (await sha256('tape-journal-id|' + k)).slice(0, 32), tok: await sha256('tape-journal-tok|' + k) });
+}
+async function gz(bytes) { if (!window.CompressionStream) return null; try { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); } catch (e) { return null; } }
+async function journalPack(k) {
+  const d = await jkDerive(k), raw = new TextEncoder().encode(JSON.stringify({ v: 1, savedAt: new Date().toISOString(), build: BUILD, device: navigator.userAgent, journal: journalText(), store }));
+  const z = await gz(raw), plain = z || raw, iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, d.aes, plain)), out = new Uint8Array(14 + ct.length);
+  out[0] = 1; out[1] = z ? 1 : 0; out.set(iv, 2); out.set(ct, 14);
+  return { d, out };
+}
+let jsT = 0, jsBusy = false, jsAgain = false;
+function jsyncSoon(ms) { if (!jkGet() || !VPROXY || location.protocol === 'file:') return; clearTimeout(jsT); jsT = setTimeout(jsync, ms == null ? 4000 : ms); }
+async function jsync() {
+  const k = jkGet(); if (!k || !store) return;
+  if (jsBusy) { jsAgain = true; return; } jsBusy = true;
+  let st;
+  try { const { d, out } = await journalPack(k);
+    const r = await fetch(VPROXY.replace(/\/$/, '') + '/journal/' + d.id, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'X-Write': d.tok }, body: out });
+    let m = ''; try { m = (await r.json()).error.message || ''; } catch (e) {}
+    st = r.ok ? { ok: true, at: Date.now() } : { ok: false, at: Date.now(), why: r.status === 401 ? 'that key belongs to another journal' : (m || 'error ' + r.status) };
+  } catch (e) { st = { ok: false, at: Date.now(), why: 'no connection' }; }
+  try { localStorage.setItem(JSTAT, JSON.stringify(st)); } catch (e) {}
+  jsBusy = false; jsRender();
+  if (jsAgain) { jsAgain = false; jsyncSoon(); } else if (!st.ok && st.why === 'no connection') jsyncSoon(60000);
+}
+function jsRender() { const k = jkGet(); let st = null; try { st = JSON.parse(localStorage.getItem(JSTAT) || 'null'); } catch (e) {}
+  const when = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  $('#js-status').innerHTML = !k ? 'Off. Type your journal key below and tap <b>Turn on</b>. After that every trade, note and no-trade day is saved online by itself (encrypted with your key), so you can just ask Claude about your trades.'
+    : '<b>On</b> with key ' + k.slice(0, 4) + '-…-' + k.slice(-4) + '. Saved by itself after every change. ' + (st ? (st.ok ? 'Last saved ' + when(st.at) + '.' : 'Last try ' + when(st.at) + ' did not save: ' + st.why + '. It tries again by itself.') : 'Saving now…'); }
+$('#js-save').addEventListener('click', () => { const k = jkNorm($('#js-in').value); if (k.length < 12) { toast('That journal key is too short. It looks like ABCD-EFGH-JKLM.'); return; }
+  try { localStorage.setItem(JKEY, k); localStorage.removeItem(JSTAT); } catch (e) {} $('#js-in').value = ''; jsRender(); jsyncSoon(0); toast('Journal auto-save is on. Your journal is saving now.'); });
+$('#js-del').addEventListener('click', () => { try { localStorage.removeItem(JKEY); localStorage.removeItem(JSTAT); } catch (e) {} clearTimeout(jsT); jsRender(); toast('Journal auto-save is off on this device.'); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && jsT) { clearTimeout(jsT); jsync(); } });
+jsRender();
 function jtplRender() { $('#jtpl-on').checked = useTpl(); document.body.classList.toggle('notpl', !useTpl()); }
 $('#jtpl-on').addEventListener('change', () => { SET().jtpl = $('#jtpl-on').checked; save(); jtplRender(); toast(SET().jtpl ? 'Notes will be filled into your journal template.' : 'Notes will be written down as you say them, with no template.'); });
 /* One listener for every mic button: keeps listening through pauses, never loops, and when you tap Done it waits a moment for your last words */
