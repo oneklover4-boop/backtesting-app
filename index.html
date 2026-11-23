@@ -928,7 +928,7 @@ body.notpl .jt-help { display: none; }
         <div class="card" id="js-card">
           <h3>Journal auto-save</h3>
           <p class="note" id="js-status"></p>
-          <div class="headrow" style="margin-top:10px"><input class="ctl" id="js-in" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Journal key, like ABCD-EFGH-JKLM" aria-label="Journal key" style="flex:1;min-width:200px"><button class="btn primary" id="js-save">Turn on</button><button class="btn" id="js-del">Turn off</button></div>
+          <div class="headrow" style="margin-top:10px"><input class="ctl" id="js-in" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Type the journal key Claude gave you" aria-label="Journal key" style="flex:1;min-width:200px"><button class="btn primary" id="js-save">Turn on</button><button class="btn" id="js-del">Turn off</button></div>
         </div>
         <div class="card">
           <h3>Market data</h3>
@@ -4492,7 +4492,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-23-85';
+const BUILD = '2026-11-23-86';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4829,7 +4829,8 @@ function jsRender() { const k = jkGet(); let st = null; try { st = JSON.parse(lo
   const when = (t) => new Date(t).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   $('#js-status').innerHTML = !k ? 'Off. Type your journal key below and tap <b>Turn on</b>. After that every trade, note and no-trade day is saved online by itself (encrypted with your key), so you can just ask Claude about your trades.'
     : '<b>On</b> with key ' + k.slice(0, 4) + '-…-' + k.slice(-4) + '. Saved by itself after every change. ' + (st ? (st.ok ? 'Last saved ' + when(st.at) + '.' : 'Last try ' + when(st.at) + ' did not save: ' + st.why + '. It tries again by itself.') : 'Saving now…'); }
-$('#js-save').addEventListener('click', () => { const k = jkNorm($('#js-in').value); if (k.length < 12) { toast('That journal key is too short. It looks like ABCD-EFGH-JKLM.'); return; }
+$('#js-save').addEventListener('click', () => { const k = jkNorm($('#js-in').value); if (k.length < 12) { toast('That journal key is too short. It has 12 letters and numbers.'); return; }
+  if (/^ABCDEFGHI?JKLM$/.test(k)) { toast('That is only the example. Type the journal key Claude gave you.'); return; }
   try { localStorage.setItem(JKEY, k); localStorage.removeItem(JSTAT); } catch (e) {} $('#js-in').value = ''; jsRender(); jsyncSoon(0); toast('Journal auto-save is on. Your journal is saving now.'); });
 $('#js-del').addEventListener('click', () => { try { localStorage.removeItem(JKEY); localStorage.removeItem(JSTAT); } catch (e) {} clearTimeout(jsT); jsRender(); toast('Journal auto-save is off on this device.'); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && jsT) { clearTimeout(jsT); jsync(); } });
