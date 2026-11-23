@@ -1,0 +1,33 @@
+name: Read journal
+# Fetches one ENCRYPTED journal auto-save from the helper and puts it on branch journal-sync (file journal.bin),
+# where Claude reads it and decrypts it with the key (journal-sync/read.py). The key is never used or stored here.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'Journal slot id (python3 journal-sync/read.py KEY)'
+        required: true
+permissions:
+  contents: write
+concurrency: journal-read
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the encrypted journal
+        env:
+          ID: ${{ inputs.id }}
+        run: |
+          echo "$ID" | grep -Eq '^[0-9a-f]{32}$' || { echo "::error::Bad id"; exit 1; }
+          code=$(curl -sS -o journal.bin -D head.txt -w '%{http_code}' "https://tape-voice.oneklover4.workers.dev/journal/$ID")
+          echo "answer $code, $(stat -c %s journal.bin) bytes"; grep -i '^x-saved-at' head.txt || true
+          [ "$code" = 200 ] || { cat journal.bin; echo; echo "::error::Nothing saved for this id yet"; exit 1; }
+      - name: Put it on branch journal-sync
+        env:
+          ID: ${{ inputs.id }}
+        run: |
+          saved=$(grep -i '^x-saved-at' head.txt | cut -d' ' -f2 | tr -d '\r')
+          mkdir out && cd out && git init -q -b journal-sync && mv ../journal.bin "$ID.bin"
+          git config user.name github-actions && git config user.email github-actions@users.noreply.github.com
+          git add . && git commit -qm "Encrypted journal $ID saved $saved"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" journal-sync

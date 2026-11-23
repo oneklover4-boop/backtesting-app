@@ -9,7 +9,7 @@ const MODEL = 'gpt-4o-transcribe';
 
 function cors(req) {
   const o = req.headers.get('Origin') || '';
-  return { 'Access-Control-Allow-Origin': SITE.includes(o) ? o : SITE[0], 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Access-Code', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
+  return { 'Access-Control-Allow-Origin': SITE.includes(o) ? o : SITE[0], 'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type, X-Access-Code, X-Write', 'Access-Control-Expose-Headers': 'X-Saved-At', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
 }
 const json = (req, status, obj) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...cors(req) } });
 
@@ -18,6 +18,7 @@ export default {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     const url = new URL(req.url);
     if (req.method === 'GET' && url.pathname === '/') return json(req, 200, { ok: true, ready: !!env.OPENAI_API_KEY });
+    if (url.pathname.startsWith('/journal/')) return journal(req, env, url);
     if (req.method !== 'POST' || (url.pathname !== '/transcribe' && url.pathname !== '/notes')) return json(req, 404, { error: { message: 'not found' } });
     const origin = req.headers.get('Origin') || '';
     if (!SITE.includes(origin)) return json(req, 403, { error: { message: 'only the Tape Replay website can use the shared mic' } });
@@ -106,5 +107,52 @@ export class Limiter {
     if (all >= total) return Response.json({ ok: false, why: 'total' });
     if (mine >= perIp) return Response.json({ ok: false, why: 'ip' });
     return Response.json({ ok: true, all, mine });
+  }
+}
+
+/* Journal auto-save: each device that has a journal key saves an ENCRYPTED copy of its journal here after every change.
+   The app encrypts with the key (AES-GCM, PBKDF2) before sending, so this helper only ever holds unreadable bytes.
+   Slot id and write token both come from the key (SHA-256), so only someone with the key can find or overwrite a slot.
+   PUT /journal/<id> (website only, header X-Write: token, body = encrypted bytes) · GET /journal/<id> = the encrypted bytes. */
+const J_MAX = 8 * 1024 * 1024, J_SLOTS = 200, J_CHUNK = 1024 * 1024;
+async function journal(req, env, url) {
+  const id = url.pathname.slice(9);
+  if (!/^[0-9a-f]{32}$/.test(id)) return json(req, 404, { error: { message: 'not found' } });
+  const box = env.JOURNAL.get(env.JOURNAL.idFromName('all'));
+  if (req.method === 'GET') { const r = await box.fetch('https://journal/get?id=' + id); const h = new Headers(r.headers); for (const [k, v] of Object.entries(cors(req))) h.set(k, v); return new Response(r.body, { status: r.status, headers: h }); }
+  if (req.method !== 'PUT' && req.method !== 'DELETE') return json(req, 405, { error: { message: 'use PUT, GET or DELETE' } });
+  if (!SITE.includes(req.headers.get('Origin') || '')) return json(req, 403, { error: { message: 'only the Tape Replay website can save a journal' } });
+  const tok = req.headers.get('X-Write') || '';
+  if (!/^[0-9a-f]{64}$/.test(tok)) return json(req, 401, { error: { message: 'no journal key' } });
+  if (req.method === 'DELETE') { const r = await box.fetch('https://journal/del?id=' + id, { method: 'POST', headers: { 'X-Write': tok } }); return json(req, r.status, await r.json()); }
+  if (+(req.headers.get('Content-Length') || 0) > J_MAX) return json(req, 413, { error: { message: 'journal too big' } });
+  const body = await req.arrayBuffer();
+  if (!body.byteLength || body.byteLength > J_MAX) return json(req, 413, { error: { message: 'journal empty or too big' } });
+  const r = await box.fetch('https://journal/put?id=' + id, { method: 'PUT', headers: { 'X-Write': tok }, body });
+  return json(req, r.status, await r.json());
+}
+const sha = async (t) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)))].map(b => b.toString(16).padStart(2, '0')).join('');
+export class Journal {
+  constructor(state) { this.st = state.storage; }
+  async fetch(req) {
+    const u = new URL(req.url), id = u.searchParams.get('id'), meta = await this.st.get('m:' + id);
+    if (u.pathname === '/get') {
+      if (!meta) return Response.json({ error: { message: 'nothing saved yet' } }, { status: 404 });
+      const parts = await this.st.get(Array.from({ length: meta.n }, (_, i) => 'c:' + id + ':' + i)), out = new Uint8Array(meta.len); let o = 0;
+      for (let i = 0; i < meta.n; i++) { const c = parts.get('c:' + id + ':' + i); out.set(c, o); o += c.byteLength; }
+      return new Response(out, { headers: { 'Content-Type': 'application/octet-stream', 'X-Saved-At': new Date(meta.at).toISOString(), 'Cache-Control': 'no-store' } });
+    }
+    const w = await sha('tape-journal-write|' + req.headers.get('X-Write'));
+    if (meta && meta.w !== w) return Response.json({ error: { message: 'wrong journal key' } }, { status: 401 });
+    if (u.pathname === '/del') { if (!meta) return Response.json({ ok: true });
+      await this.st.delete(['m:' + id, ...Array.from({ length: meta.n }, (_, i) => 'c:' + id + ':' + i)]); await this.st.put('slots', Math.max(0, ((await this.st.get('slots')) || 1) - 1)); return Response.json({ ok: true }); }
+    if (!meta && ((await this.st.get('slots')) || 0) >= J_SLOTS) return Response.json({ error: { message: 'no room for new journals' } }, { status: 507 });
+    const b = new Uint8Array(await req.arrayBuffer()), n = Math.ceil(b.byteLength / J_CHUNK), put = {};
+    for (let i = 0; i < n; i++) put['c:' + id + ':' + i] = b.slice(i * J_CHUNK, (i + 1) * J_CHUNK);
+    const at = Date.now(); put['m:' + id] = { w, n, len: b.byteLength, at };
+    if (!meta) put.slots = ((await this.st.get('slots')) || 0) + 1;
+    await this.st.put(put);
+    if (meta && meta.n > n) await this.st.delete(Array.from({ length: meta.n - n }, (_, i) => 'c:' + id + ':' + (n + i)));
+    return Response.json({ ok: true, at: new Date(at).toISOString(), bytes: b.byteLength });
   }
 }
