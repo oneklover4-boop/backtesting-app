@@ -4492,7 +4492,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-23-86';
+const BUILD = '2026-11-23-87';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4811,6 +4811,7 @@ async function journalPack(k) {
   return { d, out };
 }
 let jsT = 0, jsBusy = false, jsAgain = false;
+if (/^ABCDEFGHI?JKLM$/.test(jkGet())) { jsDrop(jkGet()); try { localStorage.removeItem(JKEY); localStorage.removeItem(JSTAT); } catch (e) {} }   // the example key is not private: remove it and its copy
 function jsyncSoon(ms) { if (!jkGet() || !VPROXY || location.protocol === 'file:') return; clearTimeout(jsT); jsT = setTimeout(jsync, ms == null ? 4000 : ms); }
 async function jsync() {
   const k = jkGet(); if (!k || !store) return;
@@ -4831,8 +4832,10 @@ function jsRender() { const k = jkGet(); let st = null; try { st = JSON.parse(lo
     : '<b>On</b> with key ' + k.slice(0, 4) + '-…-' + k.slice(-4) + '. Saved by itself after every change. ' + (st ? (st.ok ? 'Last saved ' + when(st.at) + '.' : 'Last try ' + when(st.at) + ' did not save: ' + st.why + '. It tries again by itself.') : 'Saving now…'); }
 $('#js-save').addEventListener('click', () => { const k = jkNorm($('#js-in').value); if (k.length < 12) { toast('That journal key is too short. It has 12 letters and numbers.'); return; }
   if (/^ABCDEFGHI?JKLM$/.test(k)) { toast('That is only the example. Type the journal key Claude gave you.'); return; }
+  const was = jkGet(); if (was && was !== k) jsDrop(was);
   try { localStorage.setItem(JKEY, k); localStorage.removeItem(JSTAT); } catch (e) {} $('#js-in').value = ''; jsRender(); jsyncSoon(0); toast('Journal auto-save is on. Your journal is saving now.'); });
-$('#js-del').addEventListener('click', () => { try { localStorage.removeItem(JKEY); localStorage.removeItem(JSTAT); } catch (e) {} clearTimeout(jsT); jsRender(); toast('Journal auto-save is off on this device.'); });
+async function jsDrop(k) { if (!k || !VPROXY) return; try { const d = await jkDerive(k); await fetch(VPROXY.replace(/\/$/, '') + '/journal/' + d.id, { method: 'DELETE', headers: { 'X-Write': d.tok } }); } catch (e) {} }   // removes the online copy saved with that key
+$('#js-del').addEventListener('click', () => { jsDrop(jkGet()); try { localStorage.removeItem(JKEY); localStorage.removeItem(JSTAT); } catch (e) {} clearTimeout(jsT); jsRender(); toast('Journal auto-save is off on this device, and its online copy is removed.'); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && jsT) { clearTimeout(jsT); jsync(); } });
 jsRender();
 function jtplRender() { $('#jtpl-on').checked = useTpl(); document.body.classList.toggle('notpl', !useTpl()); }
