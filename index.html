@@ -4492,7 +4492,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-23-87';
+const BUILD = '2026-11-24-88';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4506,7 +4506,7 @@ async function checkUpdate() {
 setTimeout(checkUpdate, 1500);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 /* Quick voice notes: tap the mic, talk, tap Done. Notes go to your open trade, else your last closed trade, else your next trade */
-let vrec = null;
+let vrec = null, vrecAt = null, vnGen = 0;   // vrecAt: where the recording belongs, taken when you tap the mic
 const vpillOff = () => { $('#vpill').hidden = true; $('#b-voice').classList.remove('rec'); $('#b-voice').setAttribute('aria-pressed', 'false'); };
 const dayOf = (t) => new Date(t * 1000).toISOString().slice(0, 10);
 function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b) => b.openT - a.openT)[0]; if (p) return { kind: 'pos', x: p };
@@ -4518,20 +4518,30 @@ function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b
 function voiceStart() {
   const L = listen((x, st) => { $('#vp-txt').textContent = st || '“' + x.trim().slice(-70) + '”'; }, (why) => { voiceStop(false); if (why === 'loop') toast('The microphone kept stopping, so I stopped it. Tap the mic to try again.'); else { micBlocked = true; micHelp(); } });
   if (!L) { const tg = voiceTarget(); if (tg.kind === 'trade') { openJournal(tg.x.id); setTimeout(() => $('#tj-mic').click(), 50); } else toast('Voice isn\'t available in this browser. Try Safari or Chrome.'); return; }
-  vrec = L; const tg = voiceTarget(); $('#vp-txt').textContent = tg.kind === 'pos' ? 'Listening… talk about this trade' : tg.kind === 'trade' ? 'Listening… talk about your last trade' : 'Listening… talk about your trade idea';
+  vrec = L; const tg = voiceTarget(); vrecAt = { sess: S(), tg, t: S().cursorT, gen: vnGen }; $('#vp-txt').textContent = tg.kind === 'pos' ? 'Listening… talk about this trade' : tg.kind === 'trade' ? 'Listening… talk about your last trade' : 'Listening… talk about your trade idea';
   $('#vpill').hidden = false; $('#b-voice').classList.add('rec'); $('#b-voice').setAttribute('aria-pressed', 'true');
 }
 async function voiceStop(keep) {
-  const L = vrec; vrec = null; if (!L) return;
+  const L = vrec, at = vrecAt; vrec = null; vrecAt = null; if (!L) return;
   if (!keep) { L.cancel(); vpillOff(); return; }
+  // 2026-11-24 fix: where the notes go is decided when you tap Done, not once they're written down (that takes a few seconds
+  // with the cloud mic, and jumping to the next day meanwhile put a day's notes on the next day's trade). If a new day began
+  // while you were still talking, they go to the day you started on.
+  const sess = at ? at.sess : S(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`; let tg, tAt;
+  if (!at || (at.gen === vnGen && sess === S())) { tg = voiceTarget(); tAt = sess.cursorT; }
+  else { tg = at.tg; tAt = at.t; const day = dayOf(at.t);
+    if (tg.kind === 'next') { const tr = sess.trades.filter(z => dayOf(z.closeT) === day && z.closeT >= at.t).sort((a, b) => b.closeT - a.closeT)[0]; if (tr) tg = { kind: 'trade', x: tr }; } }
+  const genDone = vnGen;
   $('#vp-txt').textContent = (L.cloud ? 'Writing down what you said…' : 'Saving… catching your last words'); const said = (await L.finish()).trim(); if (!vrec) vpillOff();
   if (!said) { if (!L.failed) toast('I didn\'t hear anything, so nothing was saved.'); return; }
-  const sess = S(), tg = voiceTarget(), nm = (x) => `${x.side > 0 ? 'long' : 'short'} ${x.sym}`;
-  (sess.voiceLog = sess.voiceLog || []).push({ t: sess.cursorT, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
+  if (tg.kind === 'pos' && !sess.positions.includes(tg.x)) { const tr = sess.trades.find(z => z.id === tg.x.id); tg = tr ? { kind: 'trade', x: tr } : { kind: 'next' }; }   // the trade closed meanwhile
+  if (tg.kind === 'next' && (vnGen !== genDone || (at && at.gen !== vnGen))) { const day = dayOf(tAt), L2 = sess.noTrade = sess.noTrade || []; let nt = L2.find(x => x.day === day);   // that day ended with no trade: the notes stay with it
+    if (!nt) { nt = { id: 'N' + uid(), day, t: tAt, m: 0, notes: '', said: '' }; L2.push(nt); L2.sort((a, b) => a.day < b.day ? -1 : 1); } tg = { kind: 'nt', x: nt }; }
+  (sess.voiceLog = sess.voiceLog || []).push({ t: tAt, at: Date.now(), txt: fixTerms(said), to: tg.x ? tg.x.id : null });
   const end = (x) => /[.!?]$/.test(x) ? x : x + '.', add = (old) => old ? end(old.trim()) + '\n' + end(said) : end(said), cnt = (x) => (x.match(/[.!?](\s|$)/g) || []).length;
   if (tg.kind === 'pos') { tg.x.said = add(tg.x.said); tg.x.notes = addNotes(tg.x.notes, said, tg.x); tg.x.nNotes = (tg.x.nNotes || 0) + 1; toast(`Note ${tg.x.nNotes} saved to your ${nm(tg.x)} trade. Tap the mic again any time to add more.`); }
   else if (tg.kind === 'trade') { const t = tg.x; t.said = add(t.said); t.nNotes = (t.nNotes || 0) + 1; t.notes = addNotes(t.notes || '', said, t); toast(`Note ${t.nNotes} saved to your ${nm(t)} trade. Tap the mic again any time to add more.`); if (view === 'trades') renderTrades(); }
-  else if (tg.kind === 'nt') { tg.x.said = add(tg.x.said); tg.x.notes = addNotes(tg.x.notes, said, null); toast('Note saved to today\'s no-trade day.'); if (view === 'trades') renderTrades(); }
+  else if (tg.kind === 'nt') { tg.x.said = add(tg.x.said); tg.x.notes = addNotes(tg.x.notes, said, null); toast(tg.x.day === dayOf(S().cursorT) ? 'Note saved to today\'s no-trade day.' : `Note saved to the no-trade day ${fmtDay(tg.x.day)}.`); if (view === 'trades') renderTrades(); }
   else { sess.ideaSaid = add(sess.ideaSaid); sess.idea = addNotes(sess.idea, said, null); toast(`Note ${sess.voiceLog.filter(v => dayOf(v.t) === dayOf(sess.cursorT)).length} for today saved. It goes with your next trade, and every note is kept in the day's log.`); }
   save();
   // then the better summary, written from everything you said
@@ -4543,9 +4553,9 @@ async function voiceStop(keep) {
 let vnDay = null;
 function vnNewSession(force) { const sess = S(), day = Math.floor(((sess.cursorT || 0) + 6 * 3600) / 86400);   // trading day starts 18:00 ET
   if (!force && day === vnDay) return; const first = vnDay === null; vnDay = day; if (first && !force) return;   // just opened the page: keep today's notes
-  if (sess.positions.length || vrec) return;
+  if (sess.positions.length) return;
   if (sess.idea || sess.ideaSaid) ntKeep(sess, false);   // notes that never became a trade are kept as a no-trade day
-  sess.idea = ''; sess.ideaSaid = ''; }
+  sess.idea = ''; sess.ideaSaid = ''; vnGen++; }   // a recording still going (or being written down) goes to the day it started on
 /* No-trade days: what you said on a day (or session) you didn't take a trade */
 function ntKeep(sess, manual) {
   const last = (sess.voiceLog || []).filter(v => !v.to).slice(-1)[0], t = manual || !last ? sess.cursorT : last.t, day = dayOf(t);
@@ -4838,6 +4848,33 @@ async function jsDrop(k) { if (!k || !VPROXY) return; try { const d = await jkDe
 $('#js-del').addEventListener('click', () => { jsDrop(jkGet()); try { localStorage.removeItem(JKEY); localStorage.removeItem(JSTAT); } catch (e) {} clearTimeout(jsT); jsRender(); toast('Journal auto-save is off on this device, and its online copy is removed.'); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && jsT) { clearTimeout(jsT); jsync(); } });
 jsRender();
+/* Journal fixes from Claude: when you ask Claude to correct your journal (e.g. notes saved on the wrong day), Claude puts the
+   correction on the website as fixes/<your journal id>.bin, ENCRYPTED with your journal key (the repo is public). The app checks
+   for one when it opens or comes back, applies it once, and saves (so the online copy shows it was done). Each change is only made
+   if that entry still reads exactly what Claude saw, so nothing you changed since is ever overwritten. */
+async function jfixCheck() {
+  const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
+  try { const d = await jkDerive(k), r = await fetch('fixes/' + d.id + '.bin?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const b = new Uint8Array(await r.arrayBuffer()); if (b[0] !== 1) return;
+    const aes = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode('tape-journal-salt-v1'), iterations: 200000, hash: 'SHA-256' }, await crypto.subtle.importKey('raw', new TextEncoder().encode(k), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+    let plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.slice(2, 14) }, aes, b.slice(14)));
+    if (b[1] === 1) plain = new Uint8Array(await new Response(new Blob([plain]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+    const F = JSON.parse(new TextDecoder().decode(plain)), done = SET().fixesDone = SET().fixesDone || [];
+    if (!F.fix || done.includes(F.fix)) return;
+    let ok = 0; const skip = [];
+    for (const o of F.ops || []) { const se = store.sessions.find(z => z.id === o.sess);
+      const x = !se ? null : o.kind === 'trade' ? se.trades.find(z => z.id === o.id) : o.kind === 'nt' ? (se.noTrade || []).find(z => z.id === o.id) : o.kind === 'voice' ? (se.voiceLog || []).find(z => z.at === o.id) : null;
+      let same = !!x; if (x) for (const f in (o.expect || {})) if ((await sha256(String(x[f] == null ? '' : x[f]))) !== o.expect[f]) same = false;
+      if (!same) { skip.push(o.kind + ' ' + o.id); continue; }
+      Object.assign(x, o.set || {}); ok++; }
+    done.push(F.fix); (SET().fixLog = SET().fixLog || []).push({ fix: F.fix, at: Date.now(), ok, skip }); save();
+    if (tjTrade && !$('#tjournal').hidden) { $('#tj-notes').value = tjTrade.notes || ''; $('#tj-said-txt').textContent = fixTerms(tjTrade.said || ''); }   // an open trade shows the corrected notes (so Done keeps them)
+    if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics();
+    if (ok) toast(F.msg || 'Claude corrected your journal notes.');
+  } catch (e) { /* no fix, offline, or not for this key */ }
+}
+setTimeout(jfixCheck, 2500);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(jfixCheck, 2500); });
 function jtplRender() { $('#jtpl-on').checked = useTpl(); document.body.classList.toggle('notpl', !useTpl()); }
 $('#jtpl-on').addEventListener('change', () => { SET().jtpl = $('#jtpl-on').checked; save(); jtplRender(); toast(SET().jtpl ? 'Notes will be filled into your journal template.' : 'Notes will be written down as you say them, with no template.'); });
 /* One listener for every mic button: keeps listening through pauses, never loops, and when you tap Done it waits a moment for your last words */
