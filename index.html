@@ -71,6 +71,11 @@ html.app-mode #b-full { display: none; }
 #b-voice.rec { background: var(--short); color: #fff; border-radius: 8px; }
 .tj-mic.rec { background: var(--short); border-color: var(--short); color: #fff; }
 #tj-notes { min-height: 180px; font-family: var(--font-ui); font-size: 14px; line-height: 1.5; }
+/* notes box: headings (Confirmation:, Why for the trade: …) in bold, the rest editable as plain text */
+.notes-ed { width: 100%; min-height: 220px; max-height: 62vh; overflow-y: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; font-family: var(--font-ui); font-size: 14px; line-height: 1.5; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; outline: none; -webkit-user-select: text; user-select: text; }
+.notes-ed:focus { border-color: var(--accent, #3b82f6); }
+.notes-ed:empty::before { content: attr(data-ph); color: var(--muted); }
+.notes-ed .nl, .dj-notes .nl, .nt-row .nl { font-weight: 700; }
 .jbtn { white-space: nowrap; }
 #fullhelp ol { margin: 0 0 12px; padding-left: 20px; line-height: 1.7; }
 #fullhelp .dlg { width: min(480px, 100%); }
@@ -973,7 +978,7 @@ body.notpl .jt-help { display: none; }
       <div id="tj-shot" class="tj-shot"></div>
       <p class="note" id="tj-facts"></p><div class="tj-row" id="tj-res" hidden><span class="tj-lbl">Change result:</span><button class="btn" id="tj-win">Win (hit target)</button><button class="btn" id="tj-loss">Loss (hit stop)</button><button class="btn" id="tj-be">Break even</button></div><div class="tj-row" hidden><label class="tj-lbl" for="tj-tp">Target</label><input class="ctl num" id="tj-tp" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn" id="tj-tpsave">Save target</button></div><div class="tj-row" hidden><label class="tj-lbl" for="tj-exit">Exit price</label><input class="ctl num" id="tj-exit" type="text" inputmode="decimal" autocomplete="off" style="width:120px"><button class="btn primary" id="tj-exitsave">Save exit price</button><button class="btn" id="tj-undo" hidden>Undo last change</button></div><div class="tj-row" id="tj-heldrow" hidden><label class="tj-lbl" for="tj-held">Time held (minutes)</label><input class="ctl num" id="tj-held" type="text" inputmode="numeric" autocomplete="off" style="width:90px"><button class="btn primary" id="tj-heldsave">Save time held</button></div><div class="tj-row"><span id="tj-delwrap"></span></div>
       <div class="tj-row"><button class="btn tj-mic" id="tj-mic"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="tj-tidy">Fill headings from what I said</button><span class="note" id="tj-live"></span></div>
-      <p class="note jt-help"><b>Just talk the trade through.</b> Everything you say goes in Whole idea together. When you stop, it fills in Confirmation (e.g. 1m iFVG), Why for the trade (say "the why for this trade" first, then your reason), Psychology and What can I improve (say these at the end), Confidence (say a grade: A+, A-, B+…), Faded trades (any setup you saw and didn't take, and why) and the checklist (say the name then yes or no).</p><textarea class="io" id="tj-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></textarea><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
+      <p class="note jt-help"><b>Just talk the trade through.</b> Everything you say goes in Whole idea together, word for word. Each heading gets your own words from when you say its name up to the next heading name: "confirmation", "the why for this trade", "my psych", "what can I improve", "what can I learn", "confidence" (then a grade, e.g. B plus), "faded trades". For the checklist say the name then yes or no (e.g. "PO3 yes"). Nothing is summarised.</p><div class="io notes-ed" id="tj-notes" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Notes" data-ph="Tap Speak your notes and talk about the trade: the key level, the confirmation, why you entered, how you managed it, how you felt. The app sorts it into clean notes."></div><details id="tj-said" class="tj-said" hidden><summary>Everything you said</summary><p id="tj-said-txt"></p></details>
     </div>
     <div class="dlg-foot"><button class="btn primary" id="tj-done">Done</button></div>
   </div>
@@ -1016,7 +1021,7 @@ body.notpl .jt-help { display: none; }
       <div class="tj-row" id="lt-newtag" hidden><input id="lt-newtag-in" class="lt-tagin" placeholder="Type your tag, e.g. Silver Bullet" enterkeyhint="done"><button type="button" class="btn primary" id="lt-newtag-add">Add tag</button><button type="button" class="btn" id="lt-newtag-no">Cancel</button></div>
       <p class="lt-h">Notes</p>
       <div class="tj-row"><button class="btn tj-mic" id="lt-mic" type="button"><svg viewBox="0 0 18 18"><rect x="6.5" y="2" width="5" height="9" rx="2.5"/><path d="M4 8.5a5 5 0 0 0 10 0M9 13.5V16"/></svg><span>Speak your notes</span></button><button class="btn" id="lt-tidy" type="button">Tidy up notes</button><span class="note" id="lt-live"></span></div>
-      <p class="note jt-help"><b>Just talk the trade through.</b> Everything you say goes in Whole idea together. When you stop, it fills in Confirmation (e.g. 1m iFVG), Why for the trade (say "the why for this trade" first, then your reason), Psychology and What can I improve (say these at the end), Confidence (say a grade: A+, A-, B+…), Faded trades (any setup you saw and didn't take, and why) and the checklist (say the name then yes or no).</p><textarea class="io" id="lt-notes" rows="21" placeholder="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></textarea>
+      <p class="note jt-help"><b>Just talk the trade through.</b> Everything you say goes in Whole idea together, word for word. Each heading gets your own words from when you say its name up to the next heading name: "confirmation", "the why for this trade", "my psych", "what can I improve", "what can I learn", "confidence" (then a grade, e.g. B plus), "faded trades". For the checklist say the name then yes or no (e.g. "PO3 yes"). Nothing is summarised.</p><div class="io notes-ed" id="lt-notes" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Notes" data-ph="Tap Speak your notes and talk about the trade: bias, draw on liquidity, confirmation, entry, RR, how you managed it, how you felt. The app sorts it into clean notes."></div>
       <p class="lt-h">Pictures</p>
       <div class="lt-pics" id="lt-pics"></div>
       <input type="file" id="lt-file" accept="image/*" multiple hidden>
@@ -1063,6 +1068,23 @@ body.notpl .jt-help { display: none; }
 'use strict';
 const LWC = window.LightweightCharts;
 const $ = (s) => document.querySelector(s);
+/* Notes with bold headings (2026-11-24, user): "Confirmation:", "Why for the trade:" … in bold. The notes boxes are editable
+   boxes that read and write plain text through .value, like the text boxes they replace */
+const NOTE_LABELS = () => new Set([...(typeof TPL_ALL !== 'undefined' ? TPL_ALL.map(x => x[0]) : []), 'Optional', 'Everything I said', 'Bias', 'Manipulated into', 'DOL', 'Confirmation', 'Faded trades', 'What can I learn'].map(x => x.toLowerCase()));
+const escN = (t) => String(t ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function notesHtml(text, lineTag) {   // plain notes -> HTML with the heading names bold
+  const L = NOTE_LABELS();
+  return String(text ?? '').split('\n').map(l => { const m = l.match(/^(\s*)([^:\n]{1,40}):(.*)$/); const body = m && L.has(m[2].trim().toLowerCase()) ? `${escN(m[1])}<b class="nl"${lineTag ? ' contenteditable="false"' : ''}>${escN(m[2])}:</b>${escN(m[3]) || (lineTag ? ' ' : '')}` : escN(l);
+    return lineTag ? `<div>${body || '<br>'}</div>` : body; }).join(lineTag ? '' : '\n');
+}
+for (const el of document.querySelectorAll('.notes-ed')) {
+  Object.defineProperty(el, 'value', { configurable: true,
+    get() { let out = ''; const rec = (n) => { for (const c of n.childNodes) { if (c.nodeType === 3) out += c.nodeValue; else if (c.nodeName === 'BR') out += '\n';
+        else if (/^(DIV|P)$/.test(c.nodeName)) { if (out && !out.endsWith('\n')) out += '\n'; rec(c); if (!out.endsWith('\n')) out += '\n'; } else rec(c); } };   // one line per block (works while the box is hidden too)
+      rec(el); return out.replace(/ /g, ' ').replace(/\r/g, '').split('\n').map(l => l.replace(/\s+$/, '')).join('\n').replace(/\n+$/, ''); },
+    set(v) { el.innerHTML = v ? notesHtml(v, true) : ''; } });
+  el.addEventListener('paste', (e) => { const t = e.clipboardData && e.clipboardData.getData('text/plain'); if (t == null) return; e.preventDefault(); document.execCommand('insertText', false, t); });   // paste as plain text
+}
 const $$ = (s) => Array.from(document.querySelectorAll(s));
 
 /* ---------- Instruments ---------- */
@@ -3213,7 +3235,7 @@ function renderTrades() {
   }</tbody></table>` : '<div class="empty" style="padding:18px">No closed trades yet in this session.</div>';
   const nt = (sess.noTrade || []).slice().sort((a, b) => a.day < b.day ? 1 : -1);
   $('#nt-list').hidden = !nt.length;
-  $('#nt-list').innerHTML = nt.length ? `<div class="nt-row"><b>No-trade days (${nt.length})</b></div>` + nt.map(x => `<div class="nt-row"><b>${fmtDay(x.day)}</b><p>${x.notes ? esc(x.notes.replace(/\n\nEverything I said:[\s\S]*$/, '').replace(/^Everything I said:\n/, '')) : '<span class="mut">No notes.</span>'}</p><button class="btn" data-ntday="${x.day}">See notes</button><button class="btn danger" data-ntdel="${x.id}">Remove</button></div>`).join('') : '';
+  $('#nt-list').innerHTML = nt.length ? `<div class="nt-row"><b>No-trade days (${nt.length})</b></div>` + nt.map(x => `<div class="nt-row"><b>${fmtDay(x.day)}</b><p>${x.notes ? notesHtml(x.notes.replace(/\n\nEverything I said:[\s\S]*$/, '').replace(/^Everything I said:\n/, '')) : '<span class="mut">No notes.</span>'}</p><button class="btn" data-ntday="${x.day}">See notes</button><button class="btn danger" data-ntdel="${x.id}">Remove</button></div>`).join('') : '';
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-ntday],[data-ntdel]'); if (!b) return; const sess = S();
   if (b.dataset.ntday) { calTrades = sess.trades; calNT = sess.noTrade || []; openDay(b.dataset.ntday); return; }
@@ -4156,8 +4178,8 @@ async function openDay(day) {
   $('#dj-title').innerHTML = `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]} ${d.getUTCFullYear()} <span class="${cls(net)} num" style="font-weight:500;margin-left:8px">${list.length ? fmtUsd(net) + ' · ' + list.length + ' trade' + (list.length > 1 ? 's' : '') : 'No trade'}</span>`;
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">${t.live ? 'Edit trade' : 'Edit notes'}</button></h3>
     <div class="dj-shot" data-shotfor="${t.id}"><div class="empty">${t.shot ? 'Loading the chart picture…' : 'No chart picture for this trade.'}</div></div>
-    <p class="dj-notes">${t.notes ? esc(t.notes.replace(/^(Long|Short) [\s\S]*?\n\n/, '')) : '<span class="mut">No notes yet. Tap Edit notes, or the microphone, to add some.</span>'}</p></div>`).join('') || '<div class="empty">No trades on this day.</div>';
-  if (nts.length) { $('#dj-body .empty') && $('#dj-body .empty').remove(); $('#dj-body').insertAdjacentHTML(list.length ? 'beforeend' : 'afterbegin', nts.map(x => `<div class="dj-card"><h3>No trade${list.length ? ' (notes with no trade)' : ' day'}</h3><p class="dj-notes">${x.notes ? esc(x.notes) : '<span class="mut">No notes. Tap the mic on this day to add some.</span>'}</p></div>`).join('')); }
+    <p class="dj-notes">${t.notes ? notesHtml(t.notes.replace(/^(Long|Short) [\s\S]*?\n\n/, '')) : '<span class="mut">No notes yet. Tap Edit notes, or the microphone, to add some.</span>'}</p></div>`).join('') || '<div class="empty">No trades on this day.</div>';
+  if (nts.length) { $('#dj-body .empty') && $('#dj-body .empty').remove(); $('#dj-body').insertAdjacentHTML(list.length ? 'beforeend' : 'afterbegin', nts.map(x => `<div class="dj-card"><h3>No trade${list.length ? ' (notes with no trade)' : ' day'}</h3><p class="dj-notes">${x.notes ? notesHtml(x.notes) : '<span class="mut">No notes. Tap the mic on this day to add some.</span>'}</p></div>`).join('')); }
   const vl = (list.some(t => t.live) ? [] : store.sessions).flatMap(se => (se.voiceLog || []).filter(v => dayOf(v.t) === day)).sort((a, b) => a.t - b.t);
   if (vl.length) $('#dj-body').insertAdjacentHTML('beforeend', `<div class="dj-card"><h3>Everything you said this day (${vl.length} note${vl.length > 1 ? 's' : ''})</h3><p class="dj-notes">${vl.map(v => '• ' + fmtT(v.t).slice(15) + ' ET  ' + esc(v.txt)).join('\n')}</p></div>`);
   if (!list.length && (vl.length || nts.length)) $('#dj-body .empty') && $('#dj-body .empty').remove();
@@ -4492,7 +4514,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-24-89';
+const BUILD = '2026-11-24-92';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4546,7 +4568,7 @@ async function voiceStop(keep) {
   save();
   // then the better summary, written from everything you said
   if (tg.kind === 'next') btAiFill(() => sess.idea, v => { sess.idea = v; save(); }, null);
-  else if (tg.kind === 'nt') btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (view === 'trades') renderTrades(); }, null);
+  else if (tg.kind === 'nt') btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (view === 'trades') renderTrades(); }, 'nt');
   else btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (tjTrade === tg.x && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, tg.x);
 }
 /* A new session (next New York, London or Asia open, or a new day): notes for the next trade start empty again */
@@ -4854,7 +4876,7 @@ jsRender();
    if that entry still reads exactly what Claude saw, so nothing you changed since is ever overwritten. */
 async function jfixCheck() {
   const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
-  try { const d = await jkDerive(k), r = await fetch('fixes/' + d.id + '.bin?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) { fadedLine(); return; }
+  try { const d = await jkDerive(k), r = await fetch('fixes/' + d.id + '.bin?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) { fadedLine(); learnLine(); return; }
     const b = new Uint8Array(await r.arrayBuffer()); if (b[0] !== 1) return;
     const aes = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode('tape-journal-salt-v1'), iterations: 200000, hash: 'SHA-256' }, await crypto.subtle.importKey('raw', new TextEncoder().encode(k), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
     let plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.slice(2, 14) }, aes, b.slice(14)));
@@ -4874,7 +4896,7 @@ async function jfixCheck() {
     if (ok) toast(F.msg || 'Claude corrected your journal notes.');
     }
   } catch (e) { /* no fix, offline, or not for this key */ }
-  fadedLine();
+  fadedLine(); learnLine();
 }
 /* 2026-11-24: new heading "Faded trades" (setups you saw and chose not to take, and why). Added once to every entry already in the
    journal template, after Confidence, so it shows on older trades too (after any fix from Claude, which expects the older text) */
@@ -4884,7 +4906,12 @@ function fadedLine() { if (!store || SET().faded1124) return; let n = 0;
   for (const se of store.sessions) { for (const t of se.trades) add(t, 'notes'); for (const x of se.noTrade || []) add(x, 'notes'); for (const p of se.positions || []) add(p, 'notes'); add(se, 'idea'); }
   if (store.live && Array.isArray(store.live.trades)) for (const t of store.live.trades) add(t, 'notes');
   SET().faded1124 = 1; save(); }
-setTimeout(() => { if (!jkGet()) fadedLine(); }, 3000);   // no journal key: no fixes to wait for
+function learnLine() { if (!store || SET().learn1124) return;   // 2026-11-24: "What can I learn" added under "What can I improve" on every entry in the template
+  const add = (o, k) => { const v = o && o[k]; if (typeof v !== 'string' || !/^What can I improve:/m.test(v) || /^What can I learn:/m.test(v)) return; o[k] = v.replace(/^(What can I improve:.*)$/m, '$1\nWhat can I learn:'); };
+  for (const se of store.sessions) { for (const t of se.trades) add(t, 'notes'); for (const x of se.noTrade || []) add(x, 'notes'); for (const p of se.positions || []) add(p, 'notes'); add(se, 'idea'); }
+  if (store.live && Array.isArray(store.live.trades)) for (const t of store.live.trades) add(t, 'notes');
+  SET().learn1124 = 1; save(); }
+setTimeout(() => { if (!jkGet()) { fadedLine(); learnLine(); } }, 3000);   // no journal key: no fixes to wait for
 setTimeout(jfixCheck, 2500);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(jfixCheck, 2500); });
 function jtplRender() { $('#jtpl-on').checked = useTpl(); document.body.classList.toggle('notpl', !useTpl()); }
@@ -5036,7 +5063,7 @@ function tidyNotes(raw, t) {
 /* The journal template (owner): every heading filled from what you said, and Whole idea together = everything you said.
    You talk the whole idea through first, then go through the headings one by one (the last answer for a heading wins). */
 /* 2026-11-22 layout (user): the top is these five, then the yes/no checklist, then everything said */
-const TPL_TOP = [['Confirmation'], ['Why for the trade'], ['Psychology'], ['What can I improve'], ['Confidence'], ['Faded trades']];   // Faded trades (2026-11-24): setups you saw and chose not to take, and why
+const TPL_TOP = [['Confirmation'], ['Why for the trade'], ['Psychology'], ['What can I improve'], ['What can I learn'], ['Confidence'], ['Faded trades']];   // What can I learn (2026-11-24): lessons, split from What can I improve   // Faded trades (2026-11-24): setups you saw and chose not to take, and why
 const TPL_ALL = [...TPL_TOP, ...JT_LONG, ...JT_YN, ...JT_OPT], WHOLE_L = JT_LONG[WHOLE][0];
 function tplSplit(v) {   // notes text back into { fields, whole }
   const f = {}; let whole = '', open = null; v = String(v || '');
@@ -5131,8 +5158,45 @@ async function btAi(said, f) {
   return n;
 }
 /* After a recording: ask for the better summary, and put it in only if the notes haven't changed in the meantime */
-const NOTES_TPL_SYS = 'You turn a futures trader\'s spoken trade notes into their trading journal. The trader (ICT style, trades MNQ, MES, NQ, ES) talks freely about one trade: they ramble, repeat themselves and go off topic. Usually they talk through what they are reacting off and why they are entering, and at the end they say how their psychology was, what they can improve, and a grade for the trade. Speech-to-text wrote it down word for word, with mistakes. Read ALL of it, then fill the journal. Return JSON with exactly these keys: "confirmation", "why", "psych", "improve", "confidence", "faded", "a_plus_dol", "po3", "amd", "true_manip", "pd_array", "ltf_lrl", "hr_lr", "smt", "cisd". confirmation: the entry confirmation as a timeframe plus the PD array, usually an iFVG, written exactly like "1m iFVG", "2m iFVG", "3m iFVG", "4m iFVG", "5m iFVG" ("one minute inverse FVG", "I F V G", "IFEG", "inversion fair value gap" all = iFVG). If they confirmed with something else, write it the same short way (e.g. "5m FVG", "1m CISD"). Only the confirmation, nothing else. why (Why for the trade): ONLY what they said after the keyword phrase "the why for this trade" (also "why for the trade", "why I took this trade", "reason for this trade", or speech-to-text versions like "Y for this trade"), up to where they move on to their psychology, what to improve, the grade, the confirmation on its own or the checklist. Anything said BEFORE that keyword (their bias, the day\'s plan, the talk-through) must NOT go in why: it stays only in the full transcript. If they never said the keyword, why is "". Do NOT summarise or shorten it: keep their own words and order, only remove filler (um, uh, like, you know, basically, so yeah), false starts and exact repeats, fix speech-to-text trading terms (FVG, iFVG, SMT, CISD, MSS, BSL, SSL, PDH, PDL, 1m, 15m, 4H, Asia, London, NY AM) and add punctuation. Always write trading terms in shorthand so the journal can be searched: "15 minute fair value gap" = "15m FVG", "one minute inverse FVG" = "1m iFVG", "previous day high" = "PDH", "previous day low" = "PDL", "buy side" = "BSL", "sell side" = "SSL", "order block" = "OB", "1 hour" = "1H". Leave out what belongs in psych, improve and confidence, and leave out the checklist answers (like "PO3 yes", "true manip yes", "HR LR no"). psych (Psychology): what they said about their psychology, mindset or emotions on this trade, in their own words, lightly cleaned the same way. Drop lead-ins like "psychology wise" or "what I can improve is". improve (What can I improve): what they said they can improve or do better, in their own words, lightly cleaned. confidence: the grade they gave the trade, exactly one of A+, A, A-, B+, B, B-, C+, C, C-, D, F ("A plus" = A+, "B minus" = B-). Only a grade they said; otherwise "". faded (Faded trades): setups they saw but chose NOT to take (faded, sat out, passed on, "I\'m going to fade this", "no trade for me"), each one as: the time or setup (e.g. "9.45 1m CISD short"), why they faded it, and whether it played out if they said so, in their own words, lightly cleaned and with shorthand terms; several fades go one after another. Leave the trade they actually took out of faded, and leave fades out of why. If they faded nothing, faded is "". Yes/no checklist (a_plus_dol = A+ DOL, po3 = PO3, amd = AMD, true_manip = True manip, pd_array = PD array, ltf_lrl = LRL, hr_lr = HR LR, smt = SMT, cisd = CISD): exactly "Yes", "No" or "". Only when they said that name and then yes or no ("PO3/AMD yes" = both Yes), except smt = Yes if they said they had SMT and cisd = Yes if they said they had a CISD. Never judge them yourself. Speech-to-text mishears: "A plus DOL", "A plus dole" = A+ DOL; "true minute PS", "true man ups" = True manip; "PO three", "P03", "power of three" = PO3; "a m d" = AMD; "PD ray" = PD array; "L R L", "LTF LRL", "low resistance liquidity" = LRL; "H R L R", "HRLR" = HR LR; "C I S D", "CSD" = CISD; "S M T" = SMT. Never invent anything they did not say; "" when they said nothing for a key. Ignore any current answers given: fill everything fresh from what they said.';
-const TPL_KEYS = [['Confirmation', 'confirmation'], ['Why for the trade', 'why'], ['Psychology', 'psych'], ['What can I improve', 'improve'], ['Confidence', 'confidence'], ['Faded trades', 'faded'], ['A+ DOL', 'a_plus_dol'], ['PO3', 'po3'], ['AMD', 'amd'], ['True Manip', 'true_manip'], ['PD Array', 'pd_array'], ['LRL', 'ltf_lrl'], ['HR LR', 'hr_lr'], ['SMT', 'smt'], ['CISD', 'cisd']];
+const NOTES_TPL_SYS = 'You turn a futures trader\'s spoken trade notes into their trading journal. The trader (ICT style, trades MNQ, MES, NQ, ES) talks freely about one trade: they ramble, repeat themselves and go off topic. Usually they talk through what they are reacting off and why they are entering, and at the end they say how their psychology was, what they can improve, and a grade for the trade. Speech-to-text wrote it down word for word, with mistakes. Read ALL of it, then fill the journal. Return JSON with exactly these keys: "confirmation", "why", "psych", "improve", "learn", "confidence", "faded", "a_plus_dol", "po3", "amd", "true_manip", "pd_array", "ltf_lrl", "hr_lr", "smt", "cisd". confirmation: the entry confirmation as a timeframe plus the PD array, usually an iFVG, written exactly like "1m iFVG", "2m iFVG", "3m iFVG", "4m iFVG", "5m iFVG" ("one minute inverse FVG", "I F V G", "IFEG", "inversion fair value gap" all = iFVG). If they confirmed with something else, write it the same short way (e.g. "5m FVG", "1m CISD"). Only the confirmation, nothing else. why (Why for the trade): ONLY what they said after the keyword phrase "the why for this trade" (also "why for the trade", "why I took this trade", "reason for this trade", or speech-to-text versions like "Y for this trade"), up to where they move on to their psychology, what to improve, the grade, the confirmation on its own or the checklist. Anything said BEFORE that keyword (their bias, the day\'s plan, the talk-through) must NOT go in why: it stays only in the full transcript. If they never said the keyword, why is "". Do NOT summarise or shorten it: keep their own words and order, only remove filler (um, uh, like, you know, basically, so yeah), false starts and exact repeats, fix speech-to-text trading terms (FVG, iFVG, SMT, CISD, MSS, BSL, SSL, PDH, PDL, 1m, 15m, 4H, Asia, London, NY AM) and add punctuation. Always write trading terms in shorthand so the journal can be searched: "15 minute fair value gap" = "15m FVG", "one minute inverse FVG" = "1m iFVG", "previous day high" = "PDH", "previous day low" = "PDL", "buy side" = "BSL", "sell side" = "SSL", "order block" = "OB", "1 hour" = "1H". Leave out what belongs in psych, improve and confidence, and leave out the checklist answers (like "PO3 yes", "true manip yes", "HR LR no"). psych (Psychology): what they said about their psychology, mindset or emotions on this trade, in their own words, lightly cleaned the same way. Drop lead-ins like "psychology wise" or "what I can improve is". improve (What can I improve): what they said they did wrong or need to do better next time ("what can I improve", "I need to", "I should have", "next time I will"), in their own words, lightly cleaned. learn (What can I learn): the lessons and takeaways they said ("what do I learn from this", "what can I learn", "the lesson is", "I learned that"), in their own words, lightly cleaned. Never put the same sentence in both improve and learn: a sentence they introduced as a lesson or something learned goes in learn, a sentence about what they must do better goes in improve. "" for either if they said nothing of that kind. confidence: the grade they gave the trade, exactly one of A+, A, A-, B+, B, B-, C+, C, C-, D, F ("A plus" = A+, "B minus" = B-). Only a grade they said; otherwise "". faded (Faded trades): setups they saw but chose NOT to take (faded, sat out, passed on, "I\'m going to fade this", "no trade for me"), each one as: the time or setup (e.g. "9.45 1m CISD short"), why they faded it, and whether it played out if they said so, in their own words, lightly cleaned and with shorthand terms; several fades go one after another. Leave the trade they actually took out of faded, and leave fades out of why. If they faded nothing, faded is "". Yes/no checklist (a_plus_dol = A+ DOL, po3 = PO3, amd = AMD, true_manip = True manip, pd_array = PD array, ltf_lrl = LRL, hr_lr = HR LR, smt = SMT, cisd = CISD): exactly "Yes", "No" or "". Only when they said that name and then yes or no ("PO3/AMD yes" = both Yes), except smt = Yes if they said they had SMT and cisd = Yes if they said they had a CISD. Never judge them yourself. Speech-to-text mishears: "A plus DOL", "A plus dole" = A+ DOL; "true minute PS", "true man ups" = True manip; "PO three", "P03", "power of three" = PO3; "a m d" = AMD; "PD ray" = PD array; "L R L", "LTF LRL", "low resistance liquidity" = LRL; "H R L R", "HRLR" = HR LR; "C I S D", "CSD" = CISD; "S M T" = SMT. Never invent anything they did not say; "" when they said nothing for a key. Ignore any current answers given: fill everything fresh from what they said.';
+const TPL_KEYS = [['Confirmation', 'confirmation'], ['Why for the trade', 'why'], ['Psychology', 'psych'], ['What can I improve', 'improve'], ['What can I learn', 'learn'], ['Confidence', 'confidence'], ['Faded trades', 'faded'], ['A+ DOL', 'a_plus_dol'], ['PO3', 'po3'], ['AMD', 'amd'], ['True Manip', 'true_manip'], ['PD Array', 'pd_array'], ['LRL', 'ltf_lrl'], ['HR LR', 'hr_lr'], ['SMT', 'smt'], ['CISD', 'cisd']];
+/* 2026-11-24 USER RULE: nothing is summarised or reworded. Whole idea together = everything said. Each heading = your own words
+   from right after you say its keyword up to the next keyword (said again later = added on). Checklist = just Yes or No when you
+   say the name with yes/no ("PO3 yes", "do we have AMD? yes", "we have LRL", "we don't have true manip"). No AI. */
+const KW = [
+  ['Confirmation', String.raw`(?:what(?:'s| is| was)\s+)?(?:the|my|our)\s+confirmations?(?:\s+(?:is|was))?|confirmed\s+by`],
+  ['Why for the trade', String.raw`(?:the\s+)?(?:why|y)\s+for\s+(?:this|the|my)\s+(?:no\s+)?trade|why\s+(?:am\s+i|i'?m|i\s+am)\s+taking\s+this(?:\s+trade)?|why\s+(?:did\s+)?i\s+t(?:ake|ook)\s+(?:this|the)\s+trade|(?:the\s+)?reasons?\s+why\s+i\s+took\s+no\s+trade|why\s+no\s+trade|why\s+i\s+(?:took|take)\s+no\s+trade`],
+  ['Psychology', String.raw`(?:my\s+|the\s+)?psych(?:e|ology)?(?:\s+wise)?`, 1],
+  ['What can I improve', String.raw`what\s+(?:can|could|should|do|did)\s+(?:i|we)\s+(?:need\s+to\s+)?improve(?:\s+on)?|what\s+i\s+(?:can|could|need\s+to)\s+improve(?:\s+on)?`],
+  ['What can I learn', String.raw`what\s+(?:can|could|do|did|should|have)\s+(?:i|we)\s+learn(?:ed|t)?|what\s+i\s+(?:can\s+)?learn(?:ed|t)?|(?:another\s+|my\s+)?lessons?\s+learn(?:ed|t)`],
+  ['Confidence', String.raw`(?:my\s+)?confidence(?:\s+level)?|i(?:'d|\s+would)?\s+rate\s+(?:this|the|it)(?:\s+(?:trade|setup))?|i'?m\s+rating\s+(?:this|the|it)(?:\s+(?:trade|setup))?`],
+  ['Faded trades', String.raw`faded\s+trades?|fade(?:d)?\s+setups?|trades?\s+(?:that\s+)?i\s+faded`]];
+const KW_LEAD = /^(?:[\s?.,:;!\-]+|(?:from|on|for|in)\s+(?:this|that|the)(?:\s+(?:trade|day|session|setup|one))?\b|(?:is|are|was|were|be|then|so|here|today|first)\b(?=[\s?.,!:]))+/i;
+function kwFill(said, noList) {   // noList: a no-trade day (no checklist)
+  const txt = String(said || ''), n = {}, hits = [];
+  for (const [l, re, keep] of KW) for (const m of txt.matchAll(new RegExp(String.raw`(?:^|(?<=[^\w']))(?:${re})(?![\w'])`, 'gi'))) hits.push({ l, a: m.index, b: m.index + m[0].length, keep });
+  for (const [, re] of [...JT_YN, ...JT_OPT, ...JT_BOTH].map(x => [x[0], x[2]])) for (const m of txt.matchAll(new RegExp(String.raw`(?:^|(?<=[^\w+]))(?:${re})[\s,.:;!?\-]{0,4}(?:yes|yeah|yep|yup|no|nope|nah)(?![\w'])`, 'gi'))) hits.push({ l: null, a: m.index, b: m.index + m[0].length });   // "PO3 yes" ends a heading (and isn't copied into it)
+  hits.sort((x, y) => x.a - y.a || y.b - x.b);
+  const H = hits.filter((h, i) => !hits.slice(0, i).some(o => h.a < o.b));   // no overlaps
+  H.forEach((h, i) => { if (!h.l) return; let v = txt.slice(h.keep ? h.a : h.b, i + 1 < H.length ? H[i + 1].a : txt.length);
+    if (!h.keep) v = v.replace(KW_LEAD, ''); v = v.replace(/[\s,;:\-]+$/, '').trim();
+    for (let k = 0; k < 4; k++) v = v.replace(/(?:^|(?<=[.!?]))\s*(?:(?:and|but|so)\s+)?(?:yeah|yes|right|okay|ok|so|again,?\s*right|let'?s see|alright|all right)[.!?,]*$/i, '').trim();   // a trailing "And yeah." / "So." is just talk if (!v || /^[?.!]+$/.test(v)) return;
+    if (h.l === 'Confidence') { const g = v.match(/^(?:(?:a|an|like|about|around|maybe|probably|honestly|is|was|of)\s+)*([A-F])(?:\s*(\+|-|plus|minus))?(?![\w])/i); if (g) n[h.l] = g[1].toUpperCase() + (g[2] ? (/^(\+|plus)$/i.test(g[2]) ? '+' : '-') : ''); return; }
+    v = v.charAt(0).toUpperCase() + v.slice(1); if (!/[.!?]$/.test(v)) v += '.';
+    n[h.l] = n[h.l] ? n[h.l] + ' ' + v : v; });
+  // checklist: only what you said, last answer wins
+  const ev = [], NM = [...JT_YN, ...JT_OPT].map(x => [x[0], x[2]]), Y = String.raw`yes|yeah|yep|yup`, N = String.raw`no|nope|nah`;
+  for (const [l, re] of NM) {
+    for (const m of txt.matchAll(new RegExp(String.raw`(?:^|[^\w+])(?:${re})[\s,.:;!?\-]{0,4}(?:(${Y})|(${N}))(?![\w'])`, 'gi'))) ev.push({ l, at: m.index, v: m[1] ? 'Yes' : 'No' });
+  }
+  for (const m of txt.matchAll(new RegExp(String.raw`(?:^|[^\w+])(?:${JT_BOTH[0][2]})[\s,.:;!?\-]{0,4}(?:(${Y})|(${N}))(?![\w'])`, 'gi'))) for (const l of ['AMD', 'PO3']) ev.push({ l, at: m.index, v: m[1] ? 'Yes' : 'No' });
+  for (const m of txt.matchAll(/\b(?:we|i)\s+(?:also\s+|do\s+|definitely\s+|still\s+)?(don'?t\s+(?:really\s+)?(?:have|get)|do\s+not\s+have|didn'?t\s+(?:have|get)|have|had|got)\s+([^.?!]*)/gi)) {
+    const neg = /^(?:don|do not|didn)/i.test(m[1]), clause = m[2].split(/\b(?:but|however|although|though|because|which|so)\b/i)[0];
+    for (const [l, re] of NM) if (new RegExp(String.raw`(?:^|[^\w+])(?:${re})(?![\w])`, 'i').test(clause)) ev.push({ l, at: m.index, v: neg ? 'No' : 'Yes' });
+  }
+  ev.sort((a, b) => a.at - b.at); if (!noList) for (const e of ev) n[e.l] = e.v;
+  return n;
+}
 async function tplAi(said, f) {
   const own = voiceKey(); let out;
   f = {};   // every heading is filled fresh from everything said
@@ -5151,17 +5215,17 @@ async function tplAi(said, f) {
   return n;
 }
 /* After a recording: ask for the smart fill, and put it in only if the notes haven't changed in the meantime */
-async function tplAiFill(get, put, raw) {   // raw: everything said, word for word, if the notes don't hold it (older trades)
-  if (!useTpl() || !cloudOn()) return false; const cur = get(); if (!RE_TPL.test(cur || '')) return false;
+async function tplAiFill(get, put, raw, noList) {   // raw: everything said, word for word, if the notes don't hold it (older trades)
+  if (!useTpl()) return false; const cur = get(); if (!RE_TPL.test(cur || '')) return false;
   const P = tplSplit(cur), said = (P.whole || fixTerms(String(raw || ''))).trim(); if (!said) return false;
-  let n; try { n = await tplAi(said, P.f); } catch (e) { return false; }
+  const n = kwFill(said, noList);   // 2026-11-24: your own words by keyword, never the AI's summary
   // the notes may have changed while waiting (another recording, a trade closing): fill in on top of what's there now, but never over a heading you changed in the meantime
   const now = get(), Q = RE_TPL.test(now || '') ? tplSplit(now) : P;
-  for (const k in n) if ((Q.f[k] || '') === (P.f[k] || '')) Q.f[k] = n[k];
+  for (const k in n) if (n[k] && (Q.f[k] || '') === (P.f[k] || '')) Q.f[k] = n[k];   // a heading you never said keeps what it has
   const out = tplFormat(Q.f, Q.whole || said); if (out !== now) put(out); return true;
 }
 async function btAiFill(get, put, t) {
-  if (useTpl()) return tplAiFill(get, put, t && t.said);
+  if (useTpl()) return tplAiFill(get, put, t && t.said, t === 'nt');
   if (!btMode(t) || !cloudOn()) return; const cur = get(); if (!RE_SAID.test(cur || '')) return;
   const P = btSplit(cur); if (!P.said) return;
   let n; try { n = await btAi(P.said, P.f); } catch (e) { return; }
@@ -5189,9 +5253,9 @@ $('#tj-mic').addEventListener('click', async () => {
   rec = L; $('#tj-mic').classList.add('rec'); $('#tj-mic span').textContent = 'Stop and sort notes'; $('#tj-live').textContent = 'Listening… talk about the trade.';
 });
 $('#tj-tidy').addEventListener('click', async () => { if (!tjTrade) return; const T = tjTrade; $('#tj-notes').value = tidyNotes(plainOf($('#tj-notes').value), T); T.notes = $('#tj-notes').value; save();
-  if (!useTpl() || !cloudOn()) return; $('#tj-live').textContent = 'Filling your headings from what you said…';
+  if (!useTpl()) return; $('#tj-live').textContent = 'Filling your headings from what you said…';
   const ok = await btAiFill(() => tjTrade === T && !$('#tjournal').hidden ? $('#tj-notes').value : T.notes, v => { T.notes = v; save(); if (tjTrade === T && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, T);
-  if (tjTrade === T) $('#tj-live').textContent = ok ? 'Headings filled from what you said. Edit anything you like.' : 'Couldn\'t reach the notes helper. Check the internet and tap again.'; });
+  if (tjTrade === T) $('#tj-live').textContent = ok ? 'Headings filled from what you said. Edit anything you like.' : 'Nothing said on this trade yet to fill the headings from.'; });
 /* One time on each device (2026-11-22): fill the headings of the 3 latest backtest trades from everything said on them */
 async function refillLatest() {
   if (!useTpl() || !cloudOn() || SET().refill1122e) return;
