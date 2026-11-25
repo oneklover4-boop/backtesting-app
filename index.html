@@ -4514,7 +4514,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-24-93';
+const BUILD = '2026-11-25-94';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4876,7 +4876,13 @@ jsRender();
    if that entry still reads exactly what Claude saw, so nothing you changed since is ever overwritten. */
 async function jfixCheck() {
   const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
-  try { const d = await jkDerive(k), r = await fetch('fixes/' + d.id + '.bin?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) { fadedLine(); learnLine(); return; }
+  const d = await jkDerive(k).catch(() => null);
+  // <id>-2.bin: fixes only this build understands (e.g. adding a whole live trade), so an older copy of the app can't use one up
+  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin']) await jfixFile(k, f);
+  fadedLine(); learnLine();
+}
+async function jfixFile(k, file) {
+  try { const r = await fetch('fixes/' + file + '?nc=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
     const b = new Uint8Array(await r.arrayBuffer()); if (b[0] !== 1) return;
     const aes = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode('tape-journal-salt-v1'), iterations: 200000, hash: 'SHA-256' }, await crypto.subtle.importKey('raw', new TextEncoder().encode(k), 'PBKDF2', false, ['deriveKey']), { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
     let plain = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b.slice(2, 14) }, aes, b.slice(14)));
@@ -4885,18 +4891,22 @@ async function jfixCheck() {
     for (const F of P.list || [P]) {
     if (!F.fix || done.includes(F.fix)) continue;
     let ok = 0; const skip = [];
-    for (const o of F.ops || []) { const se = store.sessions.find(z => z.id === o.sess);
+    for (const o of F.ops || []) {
+      if (o.kind === 'addlive') {   // 2026-11-25: Claude adds a whole live trade you described (with its chart picture); never twice, never over one you have
+        const L = LIVE(), T = o.trade; if (!T || !T.id || L.trades.some(z => z.id === T.id)) { skip.push('addlive ' + (T && T.id)); continue; }
+        const pics = (o.pics || []).filter(Boolean); for (let i = 0; i < pics.length; i++) await shotPut(ltKey(T.id, i), pics[i]);
+        L.trades.push(Object.assign({}, T, { shots: pics.length, shot: pics.length ? 1 : 0 })); ok++; continue; }
+      const se = store.sessions.find(z => z.id === o.sess);
       const x = !se ? null : o.kind === 'trade' ? se.trades.find(z => z.id === o.id) : o.kind === 'nt' ? (se.noTrade || []).find(z => z.id === o.id) : o.kind === 'voice' ? (se.voiceLog || []).find(z => z.at === o.id) : null;
       let same = !!x; if (x) for (const f in (o.expect || {})) { const h = await sha256(String(x[f] == null ? '' : x[f])); if (![].concat(o.expect[f]).includes(h)) same = false; }
       if (!same) { skip.push(o.kind + ' ' + o.id); continue; }
       Object.assign(x, o.set || {}); ok++; }
     done.push(F.fix); (SET().fixLog = SET().fixLog || []).push({ fix: F.fix, at: Date.now(), ok, skip }); save();
     if (tjTrade && !$('#tjournal').hidden) { $('#tj-notes').value = tjTrade.notes || ''; $('#tj-said-txt').textContent = fixTerms(tjTrade.said || ''); }   // an open trade shows the corrected notes (so Done keeps them)
-    if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics();
+    if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics(); if (view === 'live') renderLT();
     if (ok) toast(F.msg || 'Claude corrected your journal notes.');
     }
   } catch (e) { /* no fix, offline, or not for this key */ }
-  fadedLine(); learnLine();
 }
 /* 2026-11-24: new heading "Faded trades" (setups you saw and chose not to take, and why). Added once to every entry already in the
    journal template, after Confidence, so it shows on older trades too (after any fix from Claude, which expects the older text) */
