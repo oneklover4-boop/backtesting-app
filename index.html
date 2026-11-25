@@ -4580,7 +4580,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-25-99';
+const BUILD = '2026-11-25-100';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4946,7 +4946,7 @@ async function jfixCheck() {
   const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
   const d = await jkDerive(k).catch(() => null);
   // <id>-2.bin: fixes only this build understands (e.g. adding a whole live trade), so an older copy of the app can't use one up
-  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin', d.id + '-4.bin', d.id + '-5.bin']) await jfixFile(k, f);   // -3.bin: needs build -95 (live trade pictures); -4.bin: build -98 (remove chart screenshots); -5.bin: build -99 (remove an empty no-trade day)
+  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin', d.id + '-4.bin', d.id + '-5.bin', d.id + '-6.bin']) await jfixFile(k, f);   // -3.bin: needs build -95 (live trade pictures); -4.bin: build -98 (remove chart screenshots); -5.bin: build -99 (remove an empty no-trade day); -6.bin: build -100 (delete a backtest trade)
   fadedLine(); learnLine();
 }
 async function jfixFile(k, file) {
@@ -4974,6 +4974,11 @@ async function jfixFile(k, file) {
           else x = [...se.positions, ...se.trades, ...(se.noTrade || [])].find(z => z.snapId === o.snapId) || null; }
         if (!x || (x.snaps || 0) !== o.n) { skip.push('dropsnaps ' + o.snapId); continue; }
         for (let i = 0; i < o.n; i++) await shotDel(o.snapId + '~s' + i); x.snaps = 0; ok++; continue; }
+      if (o.kind === 'droptrade') {   // 2026-11-25: delete a backtest trade you asked Claude to remove (same as Delete trade; only if it is still the same trade)
+        const se = store.sessions.find(z => z.id === o.sess), t = se && se.trades.find(z => z.id === o.id);
+        if (!t || t.openT !== o.openT || t.closeT !== o.closeT) { skip.push('droptrade ' + o.id); continue; }
+        se.trades = se.trades.filter(z => z !== t); if (se.voiceLog) se.voiceLog.forEach(v => { if (v.to === t.id) v.to = null; });
+        if (tjTrade === t) { tjTrade = null; $('#tjournal').hidden = true; } renderLive(); drawOverlays(); ok++; continue; }
       if (o.kind === 'dropnt') {   // 2026-11-25: remove a no-trade day made by mistake (only while it is still empty: no notes, nothing said, no screenshots)
         const se = store.sessions.find(z => z.id === o.sess), L = se && se.noTrade || [], x = L.find(z => z.id === o.id);
         if (!x || x.day !== o.day || (x.notes || '').trim() || (x.said || '').trim() || x.snaps) { skip.push('dropnt ' + o.id); continue; }
