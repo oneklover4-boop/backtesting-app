@@ -172,16 +172,13 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .pane .snapbtn.busy { opacity: .5; pointer-events: none; }
 .pane .snapflash { position: absolute; inset: 0; z-index: 8; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s ease-out; }
 .pane .snapflash.on { opacity: .55; transition: none; }
-.tj-shot.grid2, .dj-shot.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; align-items: start; }
-.tj-shot img, .dj-shot img, .snapwait img { cursor: zoom-in; }
+.tj-shot.grid2, .dj-shot.grid2 { display: flex; flex-direction: column; gap: 10px; }   /* all pictures one under another: the automatic trade picture first, then yours */
+.tj-shot img, .dj-shot img { cursor: zoom-in; }
 .snapwrap { position: relative; }
 .snapwrap img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; }
 .snapwrap .tag { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px; pointer-events: none; }
 .pane .snapprev { position: absolute; z-index: 7; width: 180px; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 6px 20px rgba(0,0,0,.45); cursor: zoom-in; display: block; }
 .pane .snapprev[hidden] { display: none; }
-.snapwait { padding: 12px; border-bottom: 1px solid var(--line); }
-.snapwait .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-.snapwait .row img { width: 220px; border-radius: 8px; border: 1px solid var(--line); display: block; }
 .snapwrap .x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
 .splitter { position: absolute; z-index: 9; background: var(--line); }
 .splitter::after { content: ""; position: absolute; inset: 0; background: transparent; }
@@ -2694,13 +2691,6 @@ function snapGrab(P) {
   return out.toDataURL('image/jpeg', .85);
 }
 let snapBusy = false;
-async function snapWaiting(sess) {   // Trades tab: screenshots for your open trade, or waiting for your next trade, so you can see them straight away
-  const groups = [...sess.positions.filter(p => p.snaps).map(p => ({ x: p, lab: `Your open ${p.side > 0 ? 'long' : 'short'} ${p.sym} trade` })),
-    ...(sess.ideaSnaps ? [{ x: { snapId: sess.ideaSnapId, snaps: sess.ideaSnaps }, lab: 'Waiting for your next trade' }] : [])];
-  let html = ''; for (const g of groups) { const imgs = await snapList(g.x); if (imgs.length) html += `<div class="snapwait"><b>Screenshots · ${esc(g.lab)}</b><div class="row">${imgs.map(src => `<img src="${src}" alt="Your chart screenshot">`).join('')}</div></div>`; }
-  const tb = $('#trades-tbl'); let box = tb.querySelector('.snapwaits'); if (!box) { tb.insertAdjacentHTML('afterbegin', '<div class="snapwaits"></div>'); box = tb.querySelector('.snapwaits'); }
-  box.innerHTML = html; }
-$('#trades-tbl').addEventListener('click', e => { if (e.target.tagName === 'IMG' && e.target.closest('.snapwait')) bigPic(e.target.src); });
 function bigPic(src) { $('#ltpic-img').src = src; $('#ltpic').hidden = false; }
 function snapPreview(P, url) { const pv = P.el.querySelector('.snapprev'); pv.src = url; pv.style.right = P.snapBtn.style.right; pv.style.bottom = (parseFloat(P.snapBtn.style.bottom) || 36) + 42 + 'px'; pv.hidden = false;
   clearTimeout(P.snapPrevT); P.snapPrevT = setTimeout(() => { pv.hidden = true; }, 8000); }
@@ -3303,7 +3293,6 @@ function renderTrades() {
   $('#trades-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th>#</th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th>Exit</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">MAE pts</th><th class="num">MFE pts</th><th class="num">Held</th><th>Journal</th><th>Notes</th><th>Tags</th></tr></thead><tbody>${
     tr.map(t => `<tr><td class="num mut">${idx.get(t.id)}</td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td><span class="pill n">${t.reason}</span></td><td class="num ${cls(t.pnl)}">${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${t.mae.toFixed(2)}</td><td class="num">${t.mfe.toFixed(2)}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td><button class="btn jbtn" data-journal="${t.id}" title="Open the chart picture and voice notes">${t.shot || t.snaps ? '📷 ' : ''}Open</button></td><td><input data-note="${t.id}" value="${esc(t.notes)}" placeholder="Why did you take it?" aria-label="Notes"></td><td><input data-tags="${t.id}" value="${esc(t.tags)}" placeholder="e.g. A+ setup" aria-label="Tags"></td></tr>`).join('')
   }</tbody></table>` : '<div class="empty" style="padding:18px">No closed trades yet in this session.</div>';
-  snapWaiting(sess);
   const nt = (sess.noTrade || []).slice().sort((a, b) => a.day < b.day ? 1 : -1);
   $('#nt-list').hidden = !nt.length;
   $('#nt-list').innerHTML = nt.length ? `<div class="nt-row"><b>No-trade days (${nt.length})</b></div>` + nt.map(x => `<div class="nt-row"><b>${fmtDay(x.day)}</b><p>${x.notes ? notesHtml(x.notes.replace(/\n\nEverything I said:[\s\S]*$/, '').replace(/^Everything I said:\n/, '')) : '<span class="mut">No notes.</span>'}</p><button class="btn" data-ntday="${x.day}">See notes</button><button class="btn danger" data-ntdel="${x.id}">Remove</button></div>`).join('') : '';
@@ -4592,7 +4581,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-25-97';
+const BUILD = '2026-11-25-98';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4961,7 +4950,7 @@ async function jfixCheck() {
   const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
   const d = await jkDerive(k).catch(() => null);
   // <id>-2.bin: fixes only this build understands (e.g. adding a whole live trade), so an older copy of the app can't use one up
-  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin']) await jfixFile(k, f);   // -3.bin: needs build -95 (live trade pictures)
+  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin', d.id + '-4.bin']) await jfixFile(k, f);   // -3.bin: needs build -95 (live trade pictures); -4.bin: build -98 (remove chart screenshots)
   fadedLine(); learnLine();
 }
 async function jfixFile(k, file) {
@@ -4983,6 +4972,12 @@ async function jfixFile(k, file) {
         const t = LIVE().trades.find(z => z.id === o.id), pics = (o.pics || []).filter(Boolean); if (!t || !pics.length) { skip.push('livepics ' + o.id); continue; }
         const oldN = t.shot ? t.shots || 1 : 0; for (let i = 0; i < pics.length; i++) await shotPut(ltKey(t.id, i), pics[i]);
         for (let i = pics.length; i < oldN; i++) await shotDel(ltKey(t.id, i)); t.shots = pics.length; t.shot = 1; ok++; continue; }
+      if (o.kind === 'dropsnaps') {   // 2026-11-25: remove chart screenshots you asked Claude to delete (only if there are still exactly that many, so newer ones are never lost)
+        const se = store.sessions.find(z => z.id === o.sess); let x = null;
+        if (se) { if (se.ideaSnapId === o.snapId) x = { get snaps() { return se.ideaSnaps; }, set snaps(v) { se.ideaSnaps = v; if (!v) se.ideaSnapId = null; } };
+          else x = [...se.positions, ...se.trades, ...(se.noTrade || [])].find(z => z.snapId === o.snapId) || null; }
+        if (!x || (x.snaps || 0) !== o.n) { skip.push('dropsnaps ' + o.snapId); continue; }
+        for (let i = 0; i < o.n; i++) await shotDel(o.snapId + '~s' + i); x.snaps = 0; ok++; continue; }
       const se = store.sessions.find(z => z.id === o.sess);
       const x = !se ? null : o.kind === 'trade' ? se.trades.find(z => z.id === o.id) : o.kind === 'nt' ? (se.noTrade || []).find(z => z.id === o.id) : o.kind === 'voice' ? (se.voiceLog || []).find(z => z.at === o.id) : null;
       let same = !!x; if (x) for (const f in (o.expect || {})) { const h = await sha256(String(x[f] == null ? '' : x[f])); if (![].concat(o.expect[f]).includes(h)) same = false; }
