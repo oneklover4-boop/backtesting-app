@@ -166,6 +166,16 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .pane canvas.draw { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
 .pane .legend { position: absolute; left: 10px; top: 8px; z-index: 4; font-family: var(--font-data); font-size: 12px; pointer-events: none; display: flex; gap: 10px; flex-wrap: wrap; right: 70px; }
 .pane .legend b { font-family: var(--font-ui); }
+.pane .snapbtn { position: absolute; bottom: 36px; right: 70px; z-index: 6; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border-radius: 9px; border: 1px solid rgba(120,120,130,.45); background: rgba(30,30,36,.55); color: #fff; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.pane .snapbtn:hover { background: rgba(30,30,36,.8); }
+.pane .snapbtn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.pane .snapbtn.busy { opacity: .5; pointer-events: none; }
+.pane .snapflash { position: absolute; inset: 0; z-index: 8; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s ease-out; }
+.pane .snapflash.on { opacity: .55; transition: none; }
+.snapwrap { position: relative; margin-top: 10px; }
+.snapwrap img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.snapwrap .x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
+.snapcap { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
 .splitter { position: absolute; z-index: 9; background: var(--line); }
 .splitter::after { content: ""; position: absolute; inset: 0; background: transparent; }
 .splitter:hover, .splitter.drag { background: var(--accent); }
@@ -1418,7 +1428,7 @@ function closePos(sess, p, px, t, reason) {
   const be = reason === 'BE', fees = be ? 0 : sess.comm * p.qty * 2;
   const pnl = be ? 0 : gross - fees;
   sess.trades.push({ id: p.id, sym: p.sym, side: p.side, qty: p.qty, entry: p.entry, exit: px, sl: p.initSl, tp: p.initTp, finalSl: p.sl, finalTp: p.tp,
-    openT: p.openT, closeT: t, at: Date.now(), pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '' });
+    openT: p.openT, closeT: t, at: Date.now(), pnl, fees, riskUsd: p.riskUsd, r: p.riskUsd ? pnl / p.riskUsd : null, mae: p.mae, mfe: p.mfe, reason, notes: '', tags: '', ...(p.snaps ? { snaps: p.snaps, snapId: p.snapId } : {}) });
   if (p.notes) { const tr = sess.trades[sess.trades.length - 1]; tr.said = p.said || (RE_TPL.test(p.notes) ? '' : p.notes); tr.notes = tidyNotes(plainOf(p.notes), tr); tr.nNotes = p.nNotes;
     if (store && useTpl()) btAiFill(() => tr.notes, v => { tr.notes = v; save(); if (tjTrade === tr && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, tr); }   // fill the headings again from everything said, now it's a trade
   sess.positions = sess.positions.filter(x => x !== p);
@@ -1429,6 +1439,7 @@ function openPos(sess, o, px, t) {
   const p = { id: uid(), sym: o.sym, side: o.side, qty: o.qty, entry: px, sl: o.sl, tp: o.tp, initSl: o.sl, initTp: o.tp, openT: t, mae: 0, mfe: 0, fresh: true,
     riskUsd: o.sl != null ? Math.abs(px - o.sl) * o.qty * pv : null };
   if (sess.idea) { p.notes = sess.idea; p.said = sess.ideaSaid || ''; sess.idea = ''; sess.ideaSaid = ''; }
+  if (sess.ideaSnaps) { p.snaps = sess.ideaSnaps; p.snapId = sess.ideaSnapId; sess.ideaSnaps = 0; sess.ideaSnapId = null; }   // chart screenshots taken before the trade go with it
   sess.positions.push(p);
   return p;
 }
@@ -1494,7 +1505,7 @@ function migrate(s) {
 
 function makePane(i) {
   const el = document.createElement('div'); el.className = 'pane'; el.dataset.i = i;
-  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div><div class="ptags"></div>';
+  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div><div class="ptags"></div><div class="snapflash"></div><button type="button" class="snapbtn" title="Screenshot this chart into your journal" aria-label="Screenshot this chart into your journal"><svg viewBox="0 0 18 18"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h2l1.2-1.8h3.6L12 5h2a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 14 15H4a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="9" cy="9.8" r="2.7"/></svg></button>';
   panesEl.appendChild(el);
   const chart = LWC.createChart(el.querySelector('.chart'), {
     autoSize: true,
@@ -1509,6 +1520,9 @@ function makePane(i) {
   const P = { i, el, chart, candles, volume, agg: [], lines: [], lastIdx: -1, sym: null, tf: 0, hover: null, sig: '', x0: 0, dx: 1, pw: 0, ph: 0,
     cv: el.querySelector('canvas.draw'), legend: el.querySelector('.legend'), tags: el.querySelector('.ptags') };
   P.ctx = P.cv.getContext('2d');
+  const sb = el.querySelector('.snapbtn'); P.snapBtn = sb;
+  for (const ev of ['pointerdown', 'mousedown', 'touchstart', 'dblclick']) sb.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+  sb.addEventListener('click', e => { e.stopPropagation(); snapChart(P); });
   chart.subscribeCrosshairMove(prm => { const d = prm.time != null && prm.seriesData ? prm.seriesData.get(candles) : null; P.hover = d && d.open != null ? d : null; renderLegend(P); });
   bindPane(P);
   return P;
@@ -2613,7 +2627,7 @@ function paint(P) {
   if (tcur.on && tcur.P === P && draw.tool !== 'cursor') drawTcur(P, ctx);
   ctx.restore();
 }
-function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P); } shotTick(); requestAnimationFrame(paintLoop); }
+function paintLoop() { for (const P of visiblePanes()) { paint(P); placeTags(P); if (P.snapBtn && P.pw) { const r = (P.el.clientWidth - P.pw + 8) + 'px', bt = (P.el.clientHeight - P.ph + 8) + 'px'; if (P.snapBtn.style.right !== r) P.snapBtn.style.right = r; if (P.snapBtn.style.bottom !== bt) P.snapBtn.style.bottom = bt; } } shotTick(); requestAnimationFrame(paintLoop); }
 /* A chart picture for every closed trade: frames the trade with some candles before it, marks entry, stop, target and exit, keeps your drawings */
 const SHOTQ = []; let shotBusy = false;
 const raf2 = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -2648,6 +2662,42 @@ async function takeTradeShot(t) {
   } finally {
     if (keep) ts.setVisibleLogicalRange(keep); P.chart.priceScale('right').applyOptions({ autoScale: auto }); P.sig = '';
   }
+}
+
+/* Chart screenshot button (top right of each chart): saves what you see, with your drawings, into the journal entry you're on now.
+   Same place your voice notes go: the open trade, else the trade you just closed, else today's no-trade day, else your next trade. */
+const snapKey = (x, i) => (x.snapId || x.id) + '~s' + i;
+async function snapList(x) { const out = []; for (let i = 0; i < (x && x.snaps || 0); i++) { const img = await shotGet(snapKey(x, i)); if (img) out.push(img); } return out; }
+async function snapRemove(x, i) { const n = x.snaps || 0; if (i < 0 || i >= n) return;
+  for (let k = i; k < n - 1; k++) { const img = await shotGet(snapKey(x, k + 1)); if (img) await shotPut(snapKey(x, k), img); }
+  await shotDel(snapKey(x, n - 1)); x.snaps = n - 1; save(); }
+function snapGrab(P) {
+  geo(P); const shot = P.chart.takeScreenshot(), k = shot.width / P.el.clientWidth, dpr = window.devicePixelRatio || 1, cv = document.createElement('canvas');
+  cv.width = shot.width; cv.height = shot.height; const g = cv.getContext('2d'); g.drawImage(shot, 0, 0);
+  g.drawImage(P.cv, 0, 0, P.cv.width, P.cv.height, 0, 0, P.cv.width / dpr * k, P.cv.height / dpr * k);   // your drawings
+  g.scale(k, k);
+  const lab = `${P.sym} ${tfLabel(P.tf)}  ·  ${fmtT(S().cursorT)} ET`;
+  g.font = '600 13px ' + getComputedStyle(document.body).fontFamily; const tw = g.measureText(lab).width + 16;
+  g.fillStyle = 'rgba(19,23,34,.85)'; g.fillRect(10, 30, tw, 24); g.fillStyle = '#fff'; g.fillText(lab, 18, 47);
+  const max = 1600, sc = Math.min(1, max / cv.width), out = document.createElement('canvas'); out.width = Math.round(cv.width * sc); out.height = Math.round(cv.height * sc);
+  out.getContext('2d').drawImage(cv, 0, 0, out.width, out.height);
+  return out.toDataURL('image/jpeg', .85);
+}
+let snapBusy = false;
+async function snapChart(P) {
+  if (snapBusy || !P.sym || !P.agg.length) return; snapBusy = true; P.snapBtn.classList.add('busy');
+  try {
+    const sess = S(), url = snapGrab(P), fl = P.el.querySelector('.snapflash'); fl.classList.add('on'); requestAnimationFrame(() => requestAnimationFrame(() => fl.classList.remove('on')));
+    let tg = voiceTarget(), x, where;
+    if (tg.kind === 'pos' || tg.kind === 'trade' || tg.kind === 'nt') x = tg.x;
+    else { const nt = (sess.noTrade || []).find(z => z.day === dayOf(sess.cursorT) && !sess.trades.some(t => t.closeT > z.t)); if (nt) { x = nt; tg = { kind: 'nt', x }; } }
+    if (x) { const n = x.snaps || 0; await shotPut(snapKey(x, n), url); x.snaps = n + 1;
+      where = tg.kind === 'nt' ? `the no-trade day ${fmtDay(x.day)}` : `your ${x.side > 0 ? 'long' : 'short'} ${x.sym} trade`; }
+    else { if (!sess.ideaSnapId) { sess.ideaSnapId = 'P' + uid(); sess.ideaSnaps = 0; } const n = sess.ideaSnaps || 0;
+      await shotPut(sess.ideaSnapId + '~s' + n, url); sess.ideaSnaps = n + 1; where = 'your next trade (or today\'s no-trade day if you don\'t take one)'; }
+    save(); toast(`Chart screenshot added to ${where}.`); if (view === 'trades') renderTrades();
+  } catch (e) { console.warn(e); toast('Couldn\'t take the screenshot. Try again.'); }
+  finally { snapBusy = false; P.snapBtn.classList.remove('busy'); }
 }
 
 /* Hit testing */
@@ -3327,7 +3377,7 @@ function renderAnalytics() {
     return `<tr><td>${y}</td>${row.map(v => v == null ? '<td class="num mut">–</td>' : `<td class="num ${cls(v)}" title="${fmtUsd(v)}">${pct(v)}</td>`).join('')}<td class="num ${cls(tot)}" title="${fmtUsd(tot)}"><b>${pct(tot)}</b></td></tr>`; }).join('')}</tbody></table>`
     : '<div class="empty">Monthly results show here once you close trades.</div>';
   // calendar, one month at a time
-  const byDay = {}; calTrades = trades; calNT = sess.noTrade || []; for (const t of trades) { const d = new Date(t.closeT * 1000).toISOString().slice(0, 10); byDay[d] = byDay[d] || { p: 0, n: 0, j: 0 }; byDay[d].p += t.pnl; byDay[d].n++; if (t.shot || t.notes) byDay[d].j = 1; }
+  const byDay = {}; calTrades = trades; calNT = sess.noTrade || []; for (const t of trades) { const d = new Date(t.closeT * 1000).toISOString().slice(0, 10); byDay[d] = byDay[d] || { p: 0, n: 0, j: 0 }; byDay[d].p += t.pnl; byDay[d].n++; if (t.shot || t.snaps || t.notes) byDay[d].j = 1; }
   const ntDays = new Set(calNT.map(x => x.day));
   const months = [...new Set([...Object.keys(byDay), ...ntDays].map(d => d.slice(0, 7)))].sort();
   if (!calMonth) calMonth = months.length ? months[months.length - 1] : new Date(sess.cursorT * 1000).toISOString().slice(0, 7);
@@ -4179,12 +4229,13 @@ async function openDay(day) {
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">${t.live ? 'Edit trade' : 'Edit notes'}</button></h3>
     <div class="dj-shot" data-shotfor="${t.id}"><div class="empty">${t.shot ? 'Loading the chart picture…' : 'No chart picture for this trade.'}</div></div>
     <p class="dj-notes">${t.notes ? notesHtml(t.notes.replace(/^(Long|Short) [\s\S]*?\n\n/, '')) : '<span class="mut">No notes yet. Tap Edit notes, or the microphone, to add some.</span>'}</p></div>`).join('') || '<div class="empty">No trades on this day.</div>';
-  if (nts.length) { $('#dj-body .empty') && $('#dj-body .empty').remove(); $('#dj-body').insertAdjacentHTML(list.length ? 'beforeend' : 'afterbegin', nts.map(x => `<div class="dj-card"><h3>No trade${list.length ? ' (notes with no trade)' : ' day'}</h3><p class="dj-notes">${x.notes ? notesHtml(x.notes) : '<span class="mut">No notes. Tap the mic on this day to add some.</span>'}</p></div>`).join('')); }
+  if (nts.length) { $('#dj-body .empty') && $('#dj-body .empty').remove(); $('#dj-body').insertAdjacentHTML(list.length ? 'beforeend' : 'afterbegin', nts.map(x => `<div class="dj-card"><h3>No trade${list.length ? ' (notes with no trade)' : ' day'}</h3><div class="dj-shot" data-snapfor="${x.id}"></div><p class="dj-notes">${x.notes ? notesHtml(x.notes) : '<span class="mut">No notes. Tap the mic on this day to add some.</span>'}</p></div>`).join('')); }
   const vl = (list.some(t => t.live) ? [] : store.sessions).flatMap(se => (se.voiceLog || []).filter(v => dayOf(v.t) === day)).sort((a, b) => a.t - b.t);
   if (vl.length) $('#dj-body').insertAdjacentHTML('beforeend', `<div class="dj-card"><h3>Everything you said this day (${vl.length} note${vl.length > 1 ? 's' : ''})</h3><p class="dj-notes">${vl.map(v => '• ' + fmtT(v.t).slice(15) + ' ET  ' + esc(v.txt)).join('\n')}</p></div>`);
   if (!list.length && (vl.length || nts.length)) $('#dj-body .empty') && $('#dj-body .empty').remove();
   $('#dayj').hidden = false;
-  for (const t of list) if (t.shot) { const imgs = []; for (let i = 0; i < (t.shots || 1); i++) { const img = await shotGet(ltKey(t.id, i)); if (img) imgs.push(img); } const el = $(`#dj-body [data-shotfor="${t.id}"]`); if (el) el.innerHTML = imgs.length ? imgs.map(img => `<img src="${img}" alt="Chart picture of this trade">`).join('') : '<div class="empty">No chart picture for this trade.</div>'; }
+  for (const t of list) if (t.shot || t.snaps) { const imgs = []; for (let i = 0; i < (t.shot ? t.shots || 1 : 0); i++) { const img = await shotGet(ltKey(t.id, i)); if (img) imgs.push(img); } const sn = await snapHtml(t, false); const el = $(`#dj-body [data-shotfor="${t.id}"]`); if (el) el.innerHTML = imgs.length || sn ? imgs.map(img => `<img src="${img}" alt="Chart picture of this trade">`).join('') + sn : '<div class="empty">No chart picture for this trade.</div>'; }
+  for (const x of nts) if (x.snaps) { const el = $(`#dj-body [data-snapfor="${x.id}"]`); if (el) el.innerHTML = await snapHtml(x, false); }
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-cday]'); if (b) openDay(b.dataset.cday); });
 $('#dj-close').addEventListener('click', () => { $('#dayj').hidden = true; });
@@ -4198,9 +4249,13 @@ async function openJournal(id) {
   $('#tj-notes').value = t.notes || JT_TEMPLATE(); $('#tj-live').textContent = ''; tjDelAsk = false; tjDelRender(); tjResRender(t);
   $('#tj-said').hidden = !t.said || btMode(t); $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
-  const img = await shotGet(t.id);
-  $('#tj-shot').innerHTML = img ? `<img src="${img}" alt="Chart picture of this trade">` : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>';
+  const img = await shotGet(t.id); if (tjTrade !== t) return;
+  $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : (t.snaps ? '' : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>')) + await snapHtml(t, true);
 }
+async function snapHtml(x, rm) { const imgs = await snapList(x); if (!imgs.length) return '';
+  return `<p class="snapcap">Your chart screenshots (${imgs.length})</p>` + imgs.map((src, i) => `<div class="snapwrap"><img src="${src}" alt="Your chart screenshot ${i + 1}">${rm ? `<button type="button" class="x" data-snaprm="${i}" aria-label="Remove this screenshot">×</button>` : ''}</div>`).join(''); }
+$('#tj-shot').addEventListener('click', async e => { const b = e.target.closest('[data-snaprm]'), t = tjTrade; if (!b || !t) return;
+  await snapRemove(t, +b.dataset.snaprm); const img = await shotGet(t.id); $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : '') + await snapHtml(t, true); toast('Screenshot removed.'); });
 async function closeJournal() { await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* ---------- Live trades: a journal for your real trades, kept apart from backtest sessions (like TradeZella) ---------- */
 function ensureLive() { if (!store.live || !Array.isArray(store.live.trades)) store.live = { balance0: 50000, trades: [] }; Object.assign(store.live, { id: 'live', name: 'Live trades' }); return store.live; }
@@ -4514,7 +4569,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-25-95';
+const BUILD = '2026-11-25-96';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4576,7 +4631,7 @@ let vnDay = null;
 function vnNewSession(force) { const sess = S(), day = Math.floor(((sess.cursorT || 0) + 6 * 3600) / 86400);   // trading day starts 18:00 ET
   if (!force && day === vnDay) return; const first = vnDay === null; vnDay = day; if (first && !force) return;   // just opened the page: keep today's notes
   if (sess.positions.length) return;
-  if (sess.idea || sess.ideaSaid) ntKeep(sess, false);   // notes that never became a trade are kept as a no-trade day
+  if (sess.idea || sess.ideaSaid || sess.ideaSnaps) ntKeep(sess, false);   // notes that never became a trade are kept as a no-trade day
   sess.idea = ''; sess.ideaSaid = ''; vnGen++; }   // a recording still going (or being written down) goes to the day it started on
 /* No-trade days: what you said on a day (or session) you didn't take a trade */
 function ntKeep(sess, manual) {
@@ -4585,7 +4640,12 @@ function ntKeep(sess, manual) {
   if (same) { if (sess.ideaSaid) { same.said = [same.said, sess.ideaSaid].filter(Boolean).join('\n'); same.notes = addNotes(same.notes, sess.ideaSaid, null); } if (manual) { same.m = 1; same.t = Math.max(same.t, t); } }
   else L.push({ id: 'N' + uid(), day, t, m: manual ? 1 : 0, notes: sess.idea || (sess.ideaSaid ? addNotes('', sess.ideaSaid, null) : ''), said: sess.ideaSaid || '' });
   L.sort((a, b) => a.day < b.day ? -1 : 1);
-  return same || L.find(x => x.day === day);
+  const tgt = same || L.find(x => x.day === day);
+  if (sess.ideaSnaps) { const from = { snapId: sess.ideaSnapId, snaps: sess.ideaSnaps };   // chart screenshots from a day with no trade stay with that day
+    if (!tgt.snaps) { tgt.snapId = from.snapId; tgt.snaps = from.snaps; }
+    else (async () => { const imgs = await snapList(from); for (const img of imgs) { await shotPut(snapKey(tgt, tgt.snaps || 0), img); tgt.snaps = (tgt.snaps || 0) + 1; } save(); })();
+    sess.ideaSnaps = 0; sess.ideaSnapId = null; }
+  return tgt;
 }
 $('#b-notrade').addEventListener('click', () => { const sess = S(); if (sess.positions.length) { toast('You have an open trade, so today isn\'t a no-trade day.'); return; }
   const x = ntKeep(sess, true); sess.idea = ''; sess.ideaSaid = ''; save(); if (view === 'trades') renderTrades();
