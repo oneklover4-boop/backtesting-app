@@ -172,10 +172,17 @@ select.ctl, input.ctl { background: var(--bg); border: 1px solid var(--line); bo
 .pane .snapbtn.busy { opacity: .5; pointer-events: none; }
 .pane .snapflash { position: absolute; inset: 0; z-index: 8; background: #fff; opacity: 0; pointer-events: none; transition: opacity .35s ease-out; }
 .pane .snapflash.on { opacity: .55; transition: none; }
-.snapwrap { position: relative; margin-top: 10px; }
+.tj-shot.grid2, .dj-shot.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; align-items: start; }
+.tj-shot img, .dj-shot img, .snapwait img { cursor: zoom-in; }
+.snapwrap { position: relative; }
 .snapwrap img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; }
+.snapwrap .tag { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; padding: 2px 7px; border-radius: 6px; pointer-events: none; }
+.pane .snapprev { position: absolute; z-index: 7; width: 180px; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 6px 20px rgba(0,0,0,.45); cursor: zoom-in; display: block; }
+.pane .snapprev[hidden] { display: none; }
+.snapwait { padding: 12px; border-bottom: 1px solid var(--line); }
+.snapwait .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.snapwait .row img { width: 220px; border-radius: 8px; border: 1px solid var(--line); display: block; }
 .snapwrap .x { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; line-height: 1; cursor: pointer; }
-.snapcap { font-size: 12px; color: var(--muted); margin: 12px 0 0; }
 .splitter { position: absolute; z-index: 9; background: var(--line); }
 .splitter::after { content: ""; position: absolute; inset: 0; background: transparent; }
 .splitter:hover, .splitter.drag { background: var(--accent); }
@@ -1505,7 +1512,7 @@ function migrate(s) {
 
 function makePane(i) {
   const el = document.createElement('div'); el.className = 'pane'; el.dataset.i = i;
-  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div><div class="ptags"></div><div class="snapflash"></div><button type="button" class="snapbtn" title="Screenshot this chart into your journal" aria-label="Screenshot this chart into your journal"><svg viewBox="0 0 18 18"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h2l1.2-1.8h3.6L12 5h2a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 14 15H4a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="9" cy="9.8" r="2.7"/></svg></button>';
+  el.innerHTML = '<div class="chart"></div><canvas class="draw"></canvas><div class="legend"></div><div class="ptags"></div><div class="snapflash"></div><img class="snapprev" hidden alt="The screenshot you just took. Tap to see it big"><button type="button" class="snapbtn" title="Screenshot this chart into your journal" aria-label="Screenshot this chart into your journal"><svg viewBox="0 0 18 18"><path d="M2.5 6.5a1.5 1.5 0 0 1 1.5-1.5h2l1.2-1.8h3.6L12 5h2a1.5 1.5 0 0 1 1.5 1.5v7A1.5 1.5 0 0 1 14 15H4a1.5 1.5 0 0 1-1.5-1.5z"/><circle cx="9" cy="9.8" r="2.7"/></svg></button>';
   panesEl.appendChild(el);
   const chart = LWC.createChart(el.querySelector('.chart'), {
     autoSize: true,
@@ -1523,6 +1530,9 @@ function makePane(i) {
   const sb = el.querySelector('.snapbtn'); P.snapBtn = sb;
   for (const ev of ['pointerdown', 'mousedown', 'touchstart', 'dblclick']) sb.addEventListener(ev, e => e.stopPropagation(), { passive: true });
   sb.addEventListener('click', e => { e.stopPropagation(); snapChart(P); });
+  const pv = el.querySelector('.snapprev');
+  for (const ev of ['pointerdown', 'mousedown', 'touchstart', 'dblclick']) pv.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+  pv.addEventListener('click', e => { e.stopPropagation(); bigPic(pv.src); pv.hidden = true; });
   chart.subscribeCrosshairMove(prm => { const d = prm.time != null && prm.seriesData ? prm.seriesData.get(candles) : null; P.hover = d && d.open != null ? d : null; renderLegend(P); });
   bindPane(P);
   return P;
@@ -2684,6 +2694,16 @@ function snapGrab(P) {
   return out.toDataURL('image/jpeg', .85);
 }
 let snapBusy = false;
+async function snapWaiting(sess) {   // Trades tab: screenshots for your open trade, or waiting for your next trade, so you can see them straight away
+  const groups = [...sess.positions.filter(p => p.snaps).map(p => ({ x: p, lab: `Your open ${p.side > 0 ? 'long' : 'short'} ${p.sym} trade` })),
+    ...(sess.ideaSnaps ? [{ x: { snapId: sess.ideaSnapId, snaps: sess.ideaSnaps }, lab: 'Waiting for your next trade' }] : [])];
+  let html = ''; for (const g of groups) { const imgs = await snapList(g.x); if (imgs.length) html += `<div class="snapwait"><b>Screenshots · ${esc(g.lab)}</b><div class="row">${imgs.map(src => `<img src="${src}" alt="Your chart screenshot">`).join('')}</div></div>`; }
+  const tb = $('#trades-tbl'); let box = tb.querySelector('.snapwaits'); if (!box) { tb.insertAdjacentHTML('afterbegin', '<div class="snapwaits"></div>'); box = tb.querySelector('.snapwaits'); }
+  box.innerHTML = html; }
+$('#trades-tbl').addEventListener('click', e => { if (e.target.tagName === 'IMG' && e.target.closest('.snapwait')) bigPic(e.target.src); });
+function bigPic(src) { $('#ltpic-img').src = src; $('#ltpic').hidden = false; }
+function snapPreview(P, url) { const pv = P.el.querySelector('.snapprev'); pv.src = url; pv.style.right = P.snapBtn.style.right; pv.style.bottom = (parseFloat(P.snapBtn.style.bottom) || 36) + 42 + 'px'; pv.hidden = false;
+  clearTimeout(P.snapPrevT); P.snapPrevT = setTimeout(() => { pv.hidden = true; }, 8000); }
 async function snapChart(P) {
   if (snapBusy || !P.sym || !P.agg.length) return; snapBusy = true; P.snapBtn.classList.add('busy');
   try {
@@ -2695,7 +2715,7 @@ async function snapChart(P) {
       where = tg.kind === 'nt' ? `the no-trade day ${fmtDay(x.day)}` : `your ${x.side > 0 ? 'long' : 'short'} ${x.sym} trade`; }
     else { if (!sess.ideaSnapId) { sess.ideaSnapId = 'P' + uid(); sess.ideaSnaps = 0; } const n = sess.ideaSnaps || 0;
       await shotPut(sess.ideaSnapId + '~s' + n, url); sess.ideaSnaps = n + 1; where = 'your next trade (or today\'s no-trade day if you don\'t take one)'; }
-    save(); toast(`Chart screenshot added to ${where}.`); if (view === 'trades') renderTrades();
+    save(); toast(`Chart screenshot added to ${where}. Tap the small picture to see it big.`); snapPreview(P, url); if (view === 'trades') renderTrades();
   } catch (e) { console.warn(e); toast('Couldn\'t take the screenshot. Try again.'); }
   finally { snapBusy = false; P.snapBtn.classList.remove('busy'); }
 }
@@ -3281,8 +3301,9 @@ function renderTrades() {
   if (tFilter === 'long') tr = tr.filter(t => t.side > 0); if (tFilter === 'short') tr = tr.filter(t => t.side < 0);
   const idx = new Map([...sess.trades].sort((a, b) => a.closeT - b.closeT).map((t, i) => [t.id, i + 1]));
   $('#trades-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th>#</th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th>Exit</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">MAE pts</th><th class="num">MFE pts</th><th class="num">Held</th><th>Journal</th><th>Notes</th><th>Tags</th></tr></thead><tbody>${
-    tr.map(t => `<tr><td class="num mut">${idx.get(t.id)}</td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td><span class="pill n">${t.reason}</span></td><td class="num ${cls(t.pnl)}">${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${t.mae.toFixed(2)}</td><td class="num">${t.mfe.toFixed(2)}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td><button class="btn jbtn" data-journal="${t.id}" title="Open the chart picture and voice notes">${t.shot ? '📷 ' : ''}Open</button></td><td><input data-note="${t.id}" value="${esc(t.notes)}" placeholder="Why did you take it?" aria-label="Notes"></td><td><input data-tags="${t.id}" value="${esc(t.tags)}" placeholder="e.g. A+ setup" aria-label="Tags"></td></tr>`).join('')
+    tr.map(t => `<tr><td class="num mut">${idx.get(t.id)}</td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td><span class="pill n">${t.reason}</span></td><td class="num ${cls(t.pnl)}">${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${t.mae.toFixed(2)}</td><td class="num">${t.mfe.toFixed(2)}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td><button class="btn jbtn" data-journal="${t.id}" title="Open the chart picture and voice notes">${t.shot || t.snaps ? '📷 ' : ''}Open</button></td><td><input data-note="${t.id}" value="${esc(t.notes)}" placeholder="Why did you take it?" aria-label="Notes"></td><td><input data-tags="${t.id}" value="${esc(t.tags)}" placeholder="e.g. A+ setup" aria-label="Tags"></td></tr>`).join('')
   }</tbody></table>` : '<div class="empty" style="padding:18px">No closed trades yet in this session.</div>';
+  snapWaiting(sess);
   const nt = (sess.noTrade || []).slice().sort((a, b) => a.day < b.day ? 1 : -1);
   $('#nt-list').hidden = !nt.length;
   $('#nt-list').innerHTML = nt.length ? `<div class="nt-row"><b>No-trade days (${nt.length})</b></div>` + nt.map(x => `<div class="nt-row"><b>${fmtDay(x.day)}</b><p>${x.notes ? notesHtml(x.notes.replace(/\n\nEverything I said:[\s\S]*$/, '').replace(/^Everything I said:\n/, '')) : '<span class="mut">No notes.</span>'}</p><button class="btn" data-ntday="${x.day}">See notes</button><button class="btn danger" data-ntdel="${x.id}">Remove</button></div>`).join('') : '';
@@ -4234,10 +4255,11 @@ async function openDay(day) {
   if (vl.length) $('#dj-body').insertAdjacentHTML('beforeend', `<div class="dj-card"><h3>Everything you said this day (${vl.length} note${vl.length > 1 ? 's' : ''})</h3><p class="dj-notes">${vl.map(v => '• ' + fmtT(v.t).slice(15) + ' ET  ' + esc(v.txt)).join('\n')}</p></div>`);
   if (!list.length && (vl.length || nts.length)) $('#dj-body .empty') && $('#dj-body .empty').remove();
   $('#dayj').hidden = false;
-  for (const t of list) if (t.shot || t.snaps) { const imgs = []; for (let i = 0; i < (t.shot ? t.shots || 1 : 0); i++) { const img = await shotGet(ltKey(t.id, i)); if (img) imgs.push(img); } const sn = await snapHtml(t, false); const el = $(`#dj-body [data-shotfor="${t.id}"]`); if (el) el.innerHTML = imgs.length || sn ? imgs.map(img => `<img src="${img}" alt="Chart picture of this trade">`).join('') + sn : '<div class="empty">No chart picture for this trade.</div>'; }
-  for (const x of nts) if (x.snaps) { const el = $(`#dj-body [data-snapfor="${x.id}"]`); if (el) el.innerHTML = await snapHtml(x, false); }
+  for (const t of list) if (t.shot || t.snaps) { const imgs = []; for (let i = 0; i < (t.shot ? t.shots || 1 : 0); i++) { const img = await shotGet(ltKey(t.id, i)); if (img) imgs.push(img); } const sn = await snapHtml(t, false); const el = $(`#dj-body [data-shotfor="${t.id}"]`); if (el) el.classList.toggle('grid2', !!sn); if (el) el.innerHTML = imgs.length || sn ? imgs.map(img => `<img src="${img}" alt="Chart picture of this trade">`).join('') + sn : '<div class="empty">No chart picture for this trade.</div>'; }
+  for (const x of nts) if (x.snaps) { const el = $(`#dj-body [data-snapfor="${x.id}"]`); if (el) { el.classList.add('grid2'); el.innerHTML = await snapHtml(x, false); } }
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-cday]'); if (b) openDay(b.dataset.cday); });
+$('#dj-body').addEventListener('click', e => { if (e.target.tagName === 'IMG' && e.target.closest('.dj-shot')) bigPic(e.target.src); });
 $('#dj-close').addEventListener('click', () => { $('#dayj').hidden = true; });
 $('#dayj').addEventListener('pointerdown', e => { if (e.target.id === 'dayj') $('#dayj').hidden = true; });
 async function openJournal(id) {
@@ -4250,12 +4272,13 @@ async function openJournal(id) {
   $('#tj-said').hidden = !t.said || btMode(t); $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
   const img = await shotGet(t.id); if (tjTrade !== t) return;
+  $('#tj-shot').classList.toggle('grid2', !!t.snaps);
   $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : (t.snaps ? '' : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>')) + await snapHtml(t, true);
 }
 async function snapHtml(x, rm) { const imgs = await snapList(x); if (!imgs.length) return '';
-  return `<p class="snapcap">Your chart screenshots (${imgs.length})</p>` + imgs.map((src, i) => `<div class="snapwrap"><img src="${src}" alt="Your chart screenshot ${i + 1}">${rm ? `<button type="button" class="x" data-snaprm="${i}" aria-label="Remove this screenshot">×</button>` : ''}</div>`).join(''); }
-$('#tj-shot').addEventListener('click', async e => { const b = e.target.closest('[data-snaprm]'), t = tjTrade; if (!b || !t) return;
-  await snapRemove(t, +b.dataset.snaprm); const img = await shotGet(t.id); $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : '') + await snapHtml(t, true); toast('Screenshot removed.'); });
+  return imgs.map((src, i) => `<div class="snapwrap"><img src="${src}" alt="Your chart screenshot ${i + 1}"><span class="tag">Your screenshot ${i + 1}</span>${rm ? `<button type="button" class="x" data-snaprm="${i}" aria-label="Remove this screenshot">×</button>` : ''}</div>`).join(''); }
+$('#tj-shot').addEventListener('click', async e => { const b = e.target.closest('[data-snaprm]'), t = tjTrade; if (!b && e.target.tagName === 'IMG') { bigPic(e.target.src); return; } if (!b || !t) return;
+  await snapRemove(t, +b.dataset.snaprm); const img = await shotGet(t.id); $('#tj-shot').classList.toggle('grid2', !!t.snaps); $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : '') + await snapHtml(t, true); toast('Screenshot removed.'); });
 async function closeJournal() { await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* ---------- Live trades: a journal for your real trades, kept apart from backtest sessions (like TradeZella) ---------- */
 function ensureLive() { if (!store.live || !Array.isArray(store.live.trades)) store.live = { balance0: 50000, trades: [] }; Object.assign(store.live, { id: 'live', name: 'Live trades' }); return store.live; }
@@ -4457,7 +4480,7 @@ function renderLT() {
   const tr = [...trades].sort((a, b) => b.openT - a.openT);
   $('#lt-tbl').innerHTML = tr.length ? `<table class="grid"><thead><tr><th></th><th>Opened (ET)</th><th>Symbol</th><th>Side</th><th class="num">Qty</th><th class="num">Entry</th><th class="num">Exit</th><th class="num">Stop</th><th class="num">Target</th><th class="num">P&amp;L</th><th class="num">R</th><th class="num">Planned RR</th><th class="num">Held</th><th>Tags</th><th>Notes</th></tr></thead><tbody>${tr.map(t => {
     const rr = plannedRR(t), note = plainOf(t.notes || '').replace(/^\.\s*/, '').slice(0, 60);
-    return `<tr data-ltedit="${t.id}" class="lt-row"><td><button class="btn jbtn" data-ltedit="${t.id}">${t.shot ? '📷 ' : ''}Open</button></td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exitReal ?? t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td class="num ${cls(t.pnl)}">${t.reason === 'BE' ? 'BE ' : ''}${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${rr != null ? '1:' + rr.toFixed(2) : '–'}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td>${ltTagList(t.tags).map(g => `<span class="pill n">${esc(g)}</span>`).join(' ')}</td><td class="mut">${esc(note)}</td></tr>`; }).join('')}</tbody></table>`
+    return `<tr data-ltedit="${t.id}" class="lt-row"><td><button class="btn jbtn" data-ltedit="${t.id}">${t.shot || t.snaps ? '📷 ' : ''}Open</button></td><td class="num">${fmtT(t.openT)}</td><td>${t.sym}</td><td><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span></td><td class="num">${t.qty}</td><td class="num">${fmtPx(t.entry)}</td><td class="num">${fmtPx(t.exitReal ?? t.exit)}</td><td class="num">${fmtPx(t.sl)}</td><td class="num">${fmtPx(t.tp)}</td><td class="num ${cls(t.pnl)}">${t.reason === 'BE' ? 'BE ' : ''}${fmtUsd(t.pnl)}</td><td class="num ${cls(t.r || 0)}">${t.r != null ? t.r.toFixed(2) : '–'}</td><td class="num">${rr != null ? '1:' + rr.toFixed(2) : '–'}</td><td class="num">${fmtDur(t.closeT - t.openT)}</td><td>${ltTagList(t.tags).map(g => `<span class="pill n">${esc(g)}</span>`).join(' ')}</td><td class="mut">${esc(note)}</td></tr>`; }).join('')}</tbody></table>`
     : `<div class="empty" style="padding:18px">${L.trades.length ? 'No trades match these filters.' : 'No live trades yet. Press <b>+ Add trade</b> at the top to log your first one.'}</div>`;
 }
 
@@ -4569,7 +4592,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-25-96';
+const BUILD = '2026-11-25-97';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
