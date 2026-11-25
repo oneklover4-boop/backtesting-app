@@ -4514,7 +4514,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-25-94';
+const BUILD = '2026-11-25-95';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4878,7 +4878,7 @@ async function jfixCheck() {
   const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
   const d = await jkDerive(k).catch(() => null);
   // <id>-2.bin: fixes only this build understands (e.g. adding a whole live trade), so an older copy of the app can't use one up
-  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin']) await jfixFile(k, f);
+  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin']) await jfixFile(k, f);   // -3.bin: needs build -95 (live trade pictures)
   fadedLine(); learnLine();
 }
 async function jfixFile(k, file) {
@@ -4896,6 +4896,10 @@ async function jfixFile(k, file) {
         const L = LIVE(), T = o.trade; if (!T || !T.id || L.trades.some(z => z.id === T.id)) { skip.push('addlive ' + (T && T.id)); continue; }
         const pics = (o.pics || []).filter(Boolean); for (let i = 0; i < pics.length; i++) await shotPut(ltKey(T.id, i), pics[i]);
         L.trades.push(Object.assign({}, T, { shots: pics.length, shot: pics.length ? 1 : 0 })); ok++; continue; }
+      if (o.kind === 'livepics') {   // 2026-11-25: swap a live trade's pictures for the ones you sent Claude
+        const t = LIVE().trades.find(z => z.id === o.id), pics = (o.pics || []).filter(Boolean); if (!t || !pics.length) { skip.push('livepics ' + o.id); continue; }
+        const oldN = t.shot ? t.shots || 1 : 0; for (let i = 0; i < pics.length; i++) await shotPut(ltKey(t.id, i), pics[i]);
+        for (let i = pics.length; i < oldN; i++) await shotDel(ltKey(t.id, i)); t.shots = pics.length; t.shot = 1; ok++; continue; }
       const se = store.sessions.find(z => z.id === o.sess);
       const x = !se ? null : o.kind === 'trade' ? se.trades.find(z => z.id === o.id) : o.kind === 'nt' ? (se.noTrade || []).find(z => z.id === o.id) : o.kind === 'voice' ? (se.voiceLog || []).find(z => z.at === o.id) : null;
       let same = !!x; if (x) for (const f in (o.expect || {})) { const h = await sha256(String(x[f] == null ? '' : x[f])); if (![].concat(o.expect[f]).includes(h)) same = false; }
