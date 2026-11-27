@@ -4580,7 +4580,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-25-101';
+const BUILD = '2026-11-27-102';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4990,7 +4990,7 @@ async function jfixFile(k, file) {
       const x = !se ? null : o.kind === 'trade' ? se.trades.find(z => z.id === o.id) : o.kind === 'nt' ? (se.noTrade || []).find(z => z.id === o.id) : o.kind === 'voice' ? (se.voiceLog || []).find(z => z.at === o.id) : null;
       let same = !!x; if (x) for (const f in (o.expect || {})) { const h = await sha256(String(x[f] == null ? '' : x[f])); if (![].concat(o.expect[f]).includes(h)) same = false; }
       if (!same) { skip.push(o.kind + ' ' + o.id); continue; }
-      Object.assign(x, o.set || {}); ok++; }
+      Object.assign(x, o.set || {}); if (o.reshot && o.kind === 'trade' && SET().tradeShots !== false && !SHOTQ.includes(x)) SHOTQ.push(x); ok++; }   // reshot: the trade picture is made again (e.g. after a result fix)
     done.push(F.fix); (SET().fixLog = SET().fixLog || []).push({ fix: F.fix, at: Date.now(), ok, skip }); save();
     if (tjTrade && !$('#tjournal').hidden) { $('#tj-notes').value = tjTrade.notes || ''; $('#tj-said-txt').textContent = fixTerms(tjTrade.said || ''); }   // an open trade shows the corrected notes (so Done keeps them)
     if (view === 'trades') renderTrades(); if (view === 'analytics') renderAnalytics(); if (view === 'live') renderLT();
