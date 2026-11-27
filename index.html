@@ -4580,7 +4580,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-27-102';
+const BUILD = '2026-11-27-103';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4600,8 +4600,8 @@ const dayOf = (t) => new Date(t * 1000).toISOString().slice(0, 10);
 function voiceTarget() { const sess = S(), p = sess.positions.slice().sort((a, b) => b.openT - a.openT)[0]; if (p) return { kind: 'pos', x: p };
   const nt = (sess.noTrade || []).find(x => x.m && x.day === dayOf(sess.cursorT) && !sess.trades.some(t => t.closeT > x.t)); if (nt) return { kind: 'nt', x: nt };   // marked no-trade today: notes go there
   const last = sess.trades.length ? sess.trades.reduce((a, b) => (b.closeT >= a.closeT ? b : a)) : null;
-  // right after a trade closes (same day, within 2 hours of replay time) notes go to that trade; otherwise to your next trade
-  if (last && dayOf(last.closeT) === dayOf(sess.cursorT) && sess.cursorT - last.closeT <= 7200) return { kind: 'trade', x: last };
+  // after a trade closes, notes for the rest of that replay day go to that trade (2026-11-27: was only 2 hours, so notes said later in the day went to the next trade); otherwise to your next trade
+  if (last && dayOf(last.closeT) === dayOf(sess.cursorT) && sess.cursorT >= last.closeT) return { kind: 'trade', x: last };
   return { kind: 'next' }; }
 function voiceStart() {
   const L = listen((x, st) => { $('#vp-txt').textContent = st || '“' + x.trim().slice(-70) + '”'; }, (why) => { voiceStop(false); if (why === 'loop') toast('The microphone kept stopping, so I stopped it. Tap the mic to try again.'); else { micBlocked = true; micHelp(); } });
@@ -4946,7 +4946,7 @@ async function jfixCheck() {
   const k = jkGet(); if (!k || !store || location.protocol === 'file:') return;
   const d = await jkDerive(k).catch(() => null);
   // <id>-2.bin: fixes only this build understands (e.g. adding a whole live trade), so an older copy of the app can't use one up
-  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin', d.id + '-4.bin', d.id + '-5.bin', d.id + '-6.bin', d.id + '-7.bin']) await jfixFile(k, f);   // -7.bin: build -101 (add live trade tags to your list); -3.bin: needs build -95 (live trade pictures); -4.bin: build -98 (remove chart screenshots); -5.bin: build -99 (remove an empty no-trade day); -6.bin: build -100 (delete a backtest trade)
+  if (d) for (const f of [d.id + '.bin', d.id + '-2.bin', d.id + '-3.bin', d.id + '-4.bin', d.id + '-5.bin', d.id + '-6.bin', d.id + '-7.bin', d.id + '-8.bin']) await jfixFile(k, f);   // -8.bin: build -103 (move notes from the next-trade idea onto a trade); -7.bin: build -101 (add live trade tags to your list); -3.bin: needs build -95 (live trade pictures); -4.bin: build -98 (remove chart screenshots); -5.bin: build -99 (remove an empty no-trade day); -6.bin: build -100 (delete a backtest trade)
   fadedLine(); learnLine();
 }
 async function jfixFile(k, file) {
@@ -4982,6 +4982,12 @@ async function jfixFile(k, file) {
       if (o.kind === 'livetags') {   // 2026-11-25: add new tags you asked Claude for to your live trade tag list (never twice, never removes any)
         const L = ltTagBank(); let n = 0; for (const g of o.add || []) if (g && !L.some(x => x.toLowerCase() === String(g).toLowerCase())) { L.push(String(g)); n++; }
         SET().liveTags = L; ok++; continue; }
+      if (o.kind === 'idea2trade') {   // 2026-11-27: notes that went to "your next trade" by mistake move onto the trade they were about (only while the trade's notes are still empty)
+        const se = store.sessions.find(z => z.id === o.sess), t = se && se.trades.find(z => z.id === o.id);
+        if (!t || !se.idea || await sha256(se.idea) !== o.idea || (t.said || '').trim() || plainOf(t.notes || '').replace(/^[^:\n]+:[ \t]*$/gm, '').trim()) { skip.push('idea2trade ' + o.id); continue; }
+        t.notes = se.idea; t.said = se.ideaSaid || ''; t.nNotes = (t.nNotes || 0) + (o.n || 1); se.idea = ''; se.ideaSaid = '';
+        (se.voiceLog || []).forEach(v => { if (!v.to && dayOf(v.t) === dayOf(t.closeT)) v.to = t.id; });
+        if (tjTrade === t && !$('#tjournal').hidden) { $('#tj-notes').value = t.notes; $('#tj-said-txt').textContent = fixTerms(t.said); } ok++; continue; }
       if (o.kind === 'dropnt') {   // 2026-11-25: remove a no-trade day made by mistake (only while it is still empty: no notes, nothing said, no screenshots)
         const se = store.sessions.find(z => z.id === o.sess), L = se && se.noTrade || [], x = L.find(z => z.id === o.id);
         if (!x || x.day !== o.day || (x.notes || '').trim() || (x.said || '').trim() || x.snaps) { skip.push('dropnt ' + o.id); continue; }
