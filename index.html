@@ -3294,7 +3294,7 @@ function renderTrades() {
   }</tbody></table>` : '<div class="empty" style="padding:18px">No closed trades yet in this session.</div>';
   const nt = (sess.noTrade || []).slice().sort((a, b) => a.day < b.day ? 1 : -1);
   $('#nt-list').hidden = !nt.length;
-  $('#nt-list').innerHTML = nt.length ? `<div class="nt-row"><b>No-trade days (${nt.length})</b></div>` + nt.map(x => `<div class="nt-row"><b>${fmtDay(x.day)}</b><p>${x.notes ? notesHtml(x.notes.replace(/\n\nEverything I said:[\s\S]*$/, '').replace(/^Everything I said:\n/, '')) : '<span class="mut">No notes.</span>'}</p><button class="btn" data-ntday="${x.day}">See notes</button><button class="btn danger" data-ntdel="${x.id}">Remove</button></div>`).join('') : '';
+  $('#nt-list').innerHTML = nt.length ? `<div class="nt-row"><b>No-trade days (${nt.length})</b></div>` + nt.map(x => `<div class="nt-row"><b>${fmtDay(x.day)}</b><p>${x.notes ? notesHtml(x.notes.replace(/\n\nEverything I said:[\s\S]*$/, '').replace(/^Everything I said:\n/, '')) : '<span class="mut">No notes.</span>'}</p><button class="btn" data-journal="${x.id}">Edit notes</button><button class="btn" data-ntday="${x.day}">See notes</button><button class="btn danger" data-ntdel="${x.id}">Remove</button></div>`).join('') : '';
 }
 document.addEventListener('click', e => { const b = e.target.closest('[data-ntday],[data-ntdel]'); if (!b) return; const sess = S();
   if (b.dataset.ntday) { calTrades = sess.trades; calNT = sess.noTrade || []; openDay(b.dataset.ntday); return; }
@@ -4228,6 +4228,7 @@ document.addEventListener('click', e => {
 });
 /* Trade journal: chart picture plus spoken notes, sorted into clean sections */
 let tjTrade = null, rec = null, recText = '', calTrades = [], calNT = [];
+const anyNT = (id) => store.sessions.flatMap(s => s.noTrade || []).find(x => x.id === id), isNT = (x) => !!x && store.sessions.some(s => (s.noTrade || []).includes(x));   // 2026-11-27: no-trade days open in the same notes editor as trades
 const anyTrade = (id) => S().trades.find(x => x.id === id) || store.sessions.flatMap(s => s.trades).find(x => x.id === id) || LIVE().trades.find(x => x.id === id);
 async function openDay(day) {
   const list = calTrades.filter(t => new Date(t.closeT * 1000).toISOString().slice(0, 10) === day).sort((a, b) => a.openT - b.openT);
@@ -4238,7 +4239,7 @@ async function openDay(day) {
   $('#dj-body').innerHTML = list.map(t => `<div class="dj-card"><h3><span class="pill ${t.side > 0 ? 'long' : 'short'}">${t.side > 0 ? 'Long' : 'Short'}</span>${t.sym} · ${fmtT(t.openT).slice(15)} ET <span class="${cls(t.pnl)} num">${fmtUsd(t.pnl)}${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''}</span><button class="btn" data-journal="${t.id}" style="margin-left:auto">${t.live ? 'Edit trade' : 'Edit notes'}</button></h3>
     <div class="dj-shot" data-shotfor="${t.id}"><div class="empty">${t.shot ? 'Loading the chart picture…' : 'No chart picture for this trade.'}</div></div>
     <p class="dj-notes">${t.notes ? notesHtml(t.notes.replace(/^(Long|Short) [\s\S]*?\n\n/, '')) : '<span class="mut">No notes yet. Tap Edit notes, or the microphone, to add some.</span>'}</p></div>`).join('') || '<div class="empty">No trades on this day.</div>';
-  if (nts.length) { $('#dj-body .empty') && $('#dj-body .empty').remove(); $('#dj-body').insertAdjacentHTML(list.length ? 'beforeend' : 'afterbegin', nts.map(x => `<div class="dj-card"><h3>No trade${list.length ? ' (notes with no trade)' : ' day'}</h3><div class="dj-shot" data-snapfor="${x.id}"></div><p class="dj-notes">${x.notes ? notesHtml(x.notes) : '<span class="mut">No notes. Tap the mic on this day to add some.</span>'}</p></div>`).join('')); }
+  if (nts.length) { $('#dj-body .empty') && $('#dj-body .empty').remove(); $('#dj-body').insertAdjacentHTML(list.length ? 'beforeend' : 'afterbegin', nts.map(x => `<div class="dj-card"><h3>No trade${list.length ? ' (notes with no trade)' : ' day'}<button class="btn" data-journal="${x.id}" style="margin-left:auto">Edit notes</button></h3><div class="dj-shot" data-snapfor="${x.id}"></div><p class="dj-notes">${x.notes ? notesHtml(x.notes) : '<span class="mut">No notes yet. Tap Edit notes, or the mic on this day, to add some.</span>'}</p></div>`).join('')); }
   const vl = (list.some(t => t.live) ? [] : store.sessions).flatMap(se => (se.voiceLog || []).filter(v => dayOf(v.t) === day)).sort((a, b) => a.t - b.t);
   if (vl.length) $('#dj-body').insertAdjacentHTML('beforeend', `<div class="dj-card"><h3>Everything you said this day (${vl.length} note${vl.length > 1 ? 's' : ''})</h3><p class="dj-notes">${vl.map(v => '• ' + fmtT(v.t).slice(15) + ' ET  ' + esc(v.txt)).join('\n')}</p></div>`);
   if (!list.length && (vl.length || nts.length)) $('#dj-body .empty') && $('#dj-body .empty').remove();
@@ -4252,22 +4253,23 @@ $('#dj-close').addEventListener('click', () => { $('#dayj').hidden = true; });
 $('#dayj').addEventListener('pointerdown', e => { if (e.target.id === 'dayj') $('#dayj').hidden = true; });
 async function openJournal(id) {
   if (isLiveTrade(id)) return openLive(id);
-  const t = anyTrade(id); if (!t) return; tjTrade = t;
-  $('#tj-title').textContent = `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
-  $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
+  const t = anyTrade(id) || anyNT(id); if (!t) return; tjTrade = t;
+  const nt = isNT(t); $('#tj-delwrap').parentElement.hidden = nt; $('#tj-facts').hidden = nt;
+  $('#tj-title').textContent = nt ? `No trade · ${fmtDay(t.day)}` : `${t.side > 0 ? 'Long' : 'Short'} ${t.sym} · ${fmtT(t.openT)} ET`;
+  if (!nt) $('#tj-facts').innerHTML = `Entry ${fmtPx(t.entry)} → exit ${fmtPx(t.exit)} (${esc(t.reason)}) · Stop ${fmtPx(t.sl)} · Target ${fmtPx(t.tp)} · <span class="${cls(t.pnl)}">${fmtUsd(t.pnl)}</span>${t.r != null ? ' · ' + t.r.toFixed(2) + 'R' : ''} · held ${fmtDur(t.closeT - t.openT)}`;
   if (useTpl() && t.notes && RE_SAID.test(t.notes)) { t.notes = tidyNotes(t.notes, t); save(); } else if (useTpl() && t.said && t.notes && !RE_TPL.test(t.notes) && !/TRADE JOURNAL/.test(t.notes)) { t.notes = tidyNotes(t.said, t); save(); }
-  $('#tj-notes').value = t.notes || JT_TEMPLATE(); $('#tj-live').textContent = ''; tjDelAsk = false; tjDelRender(); tjResRender(t);
+  $('#tj-notes').value = t.notes || JT_TEMPLATE(); $('#tj-live').textContent = ''; tjDelAsk = false; tjDelRender(); if (!nt) tjResRender(t);
   $('#tj-said').hidden = !t.said || btMode(t); $('#tj-said-txt').textContent = t.said ? fixTerms(t.said) : '';
   $('#tj-shot').innerHTML = '<div class="empty">Loading the chart picture…</div>'; $('#tjournal').hidden = false;
   const img = await shotGet(t.id); if (tjTrade !== t) return;
   $('#tj-shot').classList.toggle('grid2', !!t.snaps);
-  $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : (t.snaps ? '' : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>')) + await snapHtml(t, true);
+  $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : (t.snaps || nt ? '' : '<div class="empty">No chart picture for this trade. Pictures are taken for trades closed from now on.</div>')) + await snapHtml(t, true);
 }
 async function snapHtml(x, rm) { const imgs = await snapList(x); if (!imgs.length) return '';
   return imgs.map((src, i) => `<div class="snapwrap"><img src="${src}" alt="Your chart screenshot ${i + 1}"><span class="tag">Your screenshot ${i + 1}</span>${rm ? `<button type="button" class="x" data-snaprm="${i}" aria-label="Remove this screenshot">×</button>` : ''}</div>`).join(''); }
 $('#tj-shot').addEventListener('click', async e => { const b = e.target.closest('[data-snaprm]'), t = tjTrade; if (!b && e.target.tagName === 'IMG') { bigPic(e.target.src); return; } if (!b || !t) return;
   await snapRemove(t, +b.dataset.snaprm); const img = await shotGet(t.id); $('#tj-shot').classList.toggle('grid2', !!t.snaps); $('#tj-shot').innerHTML = (img ? `<img src="${img}" alt="Chart picture of this trade">` : '') + await snapHtml(t, true); toast('Screenshot removed.'); });
-async function closeJournal() { await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
+async function closeJournal() { await tjFlush(); if (tjTrade) { tjTrade.notes = $('#tj-notes').value.trim(); save(); } $('#tjournal').hidden = true; const day = !$('#dayj').hidden && tjTrade ? (isNT(tjTrade) ? tjTrade.day : new Date(tjTrade.closeT * 1000).toISOString().slice(0, 10)) : null; tjTrade = null; if (view === 'trades') renderTrades(); if (day) openDay(day); }
 /* ---------- Live trades: a journal for your real trades, kept apart from backtest sessions (like TradeZella) ---------- */
 function ensureLive() { if (!store.live || !Array.isArray(store.live.trades)) store.live = { balance0: 50000, trades: [] }; Object.assign(store.live, { id: 'live', name: 'Live trades' }); return store.live; }
 const LIVE = () => ensureLive();
@@ -4580,7 +4582,7 @@ $('#lt-mic').addEventListener('click', async () => {
   ltRec = L; $('#lt-mic').classList.add('rec'); $('#lt-mic span').textContent = 'Stop and sort notes'; $('#lt-live').textContent = 'Listening… talk about the trade.';
 });
 /* Keep the app up to date: Safari and the Home Screen app can hold on to an old copy, so check for a newer one when the app opens or comes back */
-const BUILD = '2026-11-27-105';
+const BUILD = '2026-11-27-106';
 async function checkUpdate() {
   if (location.protocol === 'file:') return;
   try {
@@ -4634,7 +4636,7 @@ async function voiceStop(keep) {
   save();
   // then the better summary, written from everything you said
   if (tg.kind === 'next') btAiFill(() => sess.idea, v => { sess.idea = v; save(); }, null);
-  else if (tg.kind === 'nt') btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (view === 'trades') renderTrades(); }, null);
+  else if (tg.kind === 'nt') btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (tjTrade === tg.x && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, null);
   else btAiFill(() => tg.x.notes, v => { tg.x.notes = v; save(); if (tjTrade === tg.x && !$('#tjournal').hidden) $('#tj-notes').value = v; if (view === 'trades') renderTrades(); }, tg.x);
 }
 /* A new session (next New York, London or Asia open, or a new day): notes for the next trade start empty again */
